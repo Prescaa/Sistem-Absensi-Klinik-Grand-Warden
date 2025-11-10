@@ -1,0 +1,5 @@
+/* 1. Import Bootstrap CSS */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+/* 2. Import Leaflet CSS */
+@import 'leaflet/dist/leaflet.css';
