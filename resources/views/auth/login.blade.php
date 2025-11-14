@@ -32,6 +32,12 @@
                             <div class="card-body p-4 p-md-5">
                                 <h3 class="fw-bold mb-4">LOGIN</h3>
                                 
+                                @if (session('error'))
+                                    <div class="alert alert-danger">
+                                        {{ session('error') }}
+                                    </div>
+                                @endif
+                                
                                 <form action="/login" method="POST">
                                     @csrf
                                     
