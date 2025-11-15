@@ -12,6 +12,12 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (Auth::check()) {
+            // --- PERUBAHAN DI SINI ---
+            // Menggunakan strtolower() untuk pengecekan
+            if (strtolower(Auth::user()->role) === 'admin') {
+                return redirect('/admin/dashboard');
+            }
+            // Asumsikan selain itu adalah karyawan
             return redirect('/dashboard');
         }
         return view('auth.login');
@@ -28,10 +34,26 @@ class AuthController extends Controller
         // 2. Attempt login with just username and password
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            return redirect()->intended('dashboard');
+
+            // 3. --- PERUBAHAN DI SINI ---
+            // Cek role setelah login berhasil
+            $user = Auth::user();
+
+            // Menggunakan strtolower() untuk pengecekan
+            if (strtolower($user->role) === 'admin') {
+                return redirect()->intended('/admin/dashboard');
+            }
+
+            if (strtolower($user->role) === 'karyawan') {
+                return redirect()->intended('/dashboard');
+            }
+
+            // Fallback jika user tidak punya role
+            Auth::logout();
+            return back()->with('error', 'Akun Anda tidak memiliki role yang valid.');
         }
 
-        // 3. Reverted error message
+        // 4. Reverted error message
         return back()->with('error', 'Username atau Password salah!');
     }
 
