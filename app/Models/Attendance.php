@@ -33,6 +33,8 @@ class Attendance extends Model
     protected $casts = [
         'waktu_unggah' => 'datetime',
         'timestamp_ekstraksi' => 'datetime',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
     /**
