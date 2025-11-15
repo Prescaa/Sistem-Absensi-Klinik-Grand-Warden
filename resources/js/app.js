@@ -29,7 +29,7 @@ function updateRealTimeClock() {
         // Format Jam: HH:MM
         const jam = now.getHours().toString().padStart(2, '0');
         const menit = now.getMinutes().toString().padStart(2, '0');
-        
+
         // Format Tanggal: Hari, DD Bulan YYYY
         const namaHari = hari[now.getDay()];
         const tanggal = now.getDate();
@@ -45,7 +45,8 @@ function updateRealTimeClock() {
 // Panggil fungsi saat halaman pertama kali dimuat
 document.addEventListener('DOMContentLoaded', () => {
     updateRealTimeClock();
-    
+
     // Update jam setiap detik
     setInterval(updateRealTimeClock, 1000);
 });
+
