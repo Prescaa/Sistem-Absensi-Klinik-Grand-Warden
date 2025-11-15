@@ -19,27 +19,31 @@ class AuthController extends Controller
 
     public function handleLogin(Request $request)
     {
+        // 1. VALIDATE THE ROLE along with username and password
         $credentials = $request->validate([
             'username' => 'required',
             'password' => 'required',
+            'role'     => 'required|string', // This line is new
         ]);
 
+        // 2. ATTEMPT LOGIN using all three credentials (username, password, AND role)
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
             return redirect()->intended('dashboard');
         }
 
-        return back()->with('error', 'Username atau Password salah!');
+        // 3. Update the error message
+        return back()->with('error', 'Username, Password, atau Role salah!');
     }
 
     public function logout(Request $request)
     {
         Auth::logout();
- 
+
         $request->session()->invalidate();
-     
+
         $request->session()->regenerateToken();
-     
+
         return redirect('/login');
     }
 }

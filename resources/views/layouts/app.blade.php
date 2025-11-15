@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('page-title') - Klinik Grand Warden</title>
-    
+
     <link rel="stylesheet" href="{{ mix('css/app.css') }}">
     <script src="{{ mix('js/app.js') }}" defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <style>
-        body { 
+        body {
             background-color: #F8F9FA;
             transition: background-color 0.3s ease;
         }
@@ -170,7 +170,7 @@
                         </a>
                     </li>
                     <li class="nav-item mb-1">
-                        <a href="/login" class="nav-link">
+                        <a href="/logout" class="nav-link">
                             <i class="bi bi-box-arrow-left me-2"></i> Logout
                         </a>
                     </li>
@@ -182,18 +182,18 @@
         <div class="w-100 d-flex flex-column">
             <!-- Header -->
             <header class="topbar d-flex justify-content-between align-items-center p-3">
-                <h4 class="fw-bold mb-0">@yield('page-title')</h4> 
+                <h4 class="fw-bold mb-0">@yield('page-title')</h4>
                 <div class="d-flex align-items-center">
                     <!-- Dark Mode Toggle -->
                     <div class="position-relative me-3" style="cursor: pointer;">
                         <i class="bi bi-moon-fill fs-5 hover-primary dark-mode-toggle"></i>
                     </div>
-                    
+
                     <!-- Notification Bell with Dropdown -->
                     <div class="position-relative me-3">
                         <i class="bi bi-bell-fill fs-5 hover-primary notification-bell" style="cursor: pointer;"></i>
                         <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">3</span>
-                        
+
                         <!-- Dropdown Notification -->
                         <div class="notification-dropdown">
                             <div class="notification-header">
@@ -213,7 +213,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- User Profile -->
                     <div class="d-flex align-items-center">
                         <img src="https://via.placeholder.com/40" class="rounded-circle" alt="Profil" style="width: 40px; height: 40px;">
@@ -250,7 +250,7 @@
             // Dark Mode Functionality
             const darkToggle = document.querySelector('.dark-mode-toggle');
             const body = document.body;
-            
+
             // Check localStorage for dark mode preference
             const isDarkMode = localStorage.getItem('darkMode') === 'true';
             if (isDarkMode) {
@@ -258,15 +258,15 @@
                 darkToggle.classList.remove('bi-moon-fill');
                 darkToggle.classList.add('bi-sun-fill');
             }
-            
+
             darkToggle.addEventListener('click', function() {
                 body.classList.toggle('dark-mode');
                 const isNowDark = body.classList.contains('dark-mode');
-                
+
                 // Toggle icon
                 this.classList.toggle('bi-moon-fill');
                 this.classList.toggle('bi-sun-fill');
-                
+
                 // Save preference to localStorage
                 localStorage.setItem('darkMode', isNowDark);
             });
@@ -275,12 +275,12 @@
             const notificationBell = document.querySelector('.notification-bell');
             const notificationDropdown = document.querySelector('.notification-dropdown');
             const notificationBadge = document.querySelector('.notification-badge');
-            
+
             notificationBell.addEventListener('click', function(e) {
                 e.stopPropagation();
-                notificationDropdown.style.display = 
+                notificationDropdown.style.display =
                     notificationDropdown.style.display === 'block' ? 'none' : 'block';
-                
+
                 // Mark as read (remove badge)
                 notificationBadge.style.display = 'none';
             });
