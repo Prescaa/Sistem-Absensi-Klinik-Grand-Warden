@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('page-title') - Klinik Grand Warden</title>
-
+    
     <link rel="stylesheet" href="{{ mix('css/app.css') }}">
     <script src="{{ mix('js/app.js') }}" defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <style>
-        body {
+        body { 
             background-color: #F8F9FA;
             transition: background-color 0.3s ease;
         }
@@ -132,7 +132,6 @@
 </head>
 <body>
     <div class="d-flex vh-100">
-        <!-- Sidebar -->
         <nav class="sidebar vh-100 d-flex flex-column p-3">
             <div>
                 <a href="/dashboard" class="d-flex align-items-center mb-3 text-white text-decoration-none">
@@ -178,23 +177,18 @@
             </div>
         </nav>
 
-        <!-- Main Content Area -->
-        <div class="w-100 d-flex flex-column">
-            <!-- Header -->
+        <div class="w-100 d-flex flex-column" style="max-height: 100vh;">
             <header class="topbar d-flex justify-content-between align-items-center p-3">
-                <h4 class="fw-bold mb-0">@yield('page-title')</h4>
+                <h4 class="fw-bold mb-0">@yield('page-title')</h4> 
                 <div class="d-flex align-items-center">
-                    <!-- Dark Mode Toggle -->
                     <div class="position-relative me-3" style="cursor: pointer;">
                         <i class="bi bi-moon-fill fs-5 hover-primary dark-mode-toggle"></i>
                     </div>
-
-                    <!-- Notification Bell with Dropdown -->
+                    
                     <div class="position-relative me-3">
                         <i class="bi bi-bell-fill fs-5 hover-primary notification-bell" style="cursor: pointer;"></i>
                         <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">3</span>
-
-                        <!-- Dropdown Notification -->
+                        
                         <div class="notification-dropdown">
                             <div class="notification-header">
                                 Notifikasi (3)
@@ -213,24 +207,34 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- User Profile -->
+                    
                     <div class="d-flex align-items-center">
                         <img src="https://via.placeholder.com/40" class="rounded-circle" alt="Profil" style="width: 40px; height: 40px;">
                         <div class="ms-2">
-                            <span class="fw-bold d-block">Mahardika</span>
-                            <small class="text-muted">mahardika@kgh.com</small>
+                            <span class="fw-bold d-block">
+                                @auth
+                                    {{ Auth::user()->employee->nama ?? Auth::user()->username }}
+                                @else
+                                    Nama Tamu
+                                @endauth
+                            </span>
+                            
+                            <small class="text-muted">
+                                @auth
+                                    {{ Auth::user()->email }}
+                                @else
+                                    email@tamu.com
+                                @endauth
+                            </small>
                         </div>
                     </div>
-                </div>
+                    </div>
             </header>
 
-            <!-- Main Content -->
             <main class="p-4 flex-grow-1 overflow-auto">
                 @yield('content')
             </main>
 
-            <!-- Footer -->
             <footer class="main-footer d-flex justify-content-between align-items-center p-3">
                 <div class="d-flex align-items-center">
                     <strong class="me-3">Klinik Grand Warden</strong>
@@ -250,24 +254,21 @@
             // Dark Mode Functionality
             const darkToggle = document.querySelector('.dark-mode-toggle');
             const body = document.body;
-
-            // Check localStorage for dark mode preference
+            
             const isDarkMode = localStorage.getItem('darkMode') === 'true';
             if (isDarkMode) {
                 body.classList.add('dark-mode');
                 darkToggle.classList.remove('bi-moon-fill');
                 darkToggle.classList.add('bi-sun-fill');
             }
-
+            
             darkToggle.addEventListener('click', function() {
                 body.classList.toggle('dark-mode');
                 const isNowDark = body.classList.contains('dark-mode');
-
-                // Toggle icon
+                
                 this.classList.toggle('bi-moon-fill');
                 this.classList.toggle('bi-sun-fill');
-
-                // Save preference to localStorage
+                
                 localStorage.setItem('darkMode', isNowDark);
             });
 
@@ -275,27 +276,32 @@
             const notificationBell = document.querySelector('.notification-bell');
             const notificationDropdown = document.querySelector('.notification-dropdown');
             const notificationBadge = document.querySelector('.notification-badge');
+            
+            if (notificationBell) {
+                notificationBell.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    notificationDropdown.style.display = 
+                        notificationDropdown.style.display === 'block' ? 'none' : 'block';
+                    
+                    if(notificationBadge) {
+                        notificationBadge.style.display = 'none';
+                    }
+                });
+            }
 
-            notificationBell.addEventListener('click', function(e) {
-                e.stopPropagation();
-                notificationDropdown.style.display =
-                    notificationDropdown.style.display === 'block' ? 'none' : 'block';
-
-                // Mark as read (remove badge)
-                notificationBadge.style.display = 'none';
-            });
-
-            // Close dropdown when clicking outside
             document.addEventListener('click', function() {
-                notificationDropdown.style.display = 'none';
+                if(notificationDropdown) {
+                    notificationDropdown.style.display = 'none';
+                }
             });
 
-            // Prevent dropdown from closing when clicking inside
-            notificationDropdown.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
+            if(notificationDropdown) {
+                notificationDropdown.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            }
         });
-    </script>
+    </SCriPt>
 
     @stack('scripts')
 </body>
