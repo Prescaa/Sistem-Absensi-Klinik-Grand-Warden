@@ -1,64 +1,99 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400"></a></p>
+# Sistem Absensi Klinik Grand Warden
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+`README.md` ini dibuat untuk proyek Sistem Absensi Karyawan berbasis foto dan geofencing untuk Klinik Grand Warden.
 
-## About Laravel
+Sistem ini dibangun menggunakan **Laravel 10** dan dirancang untuk memvalidasi absensi karyawan tidak hanya berdasarkan waktu, tetapi juga lokasi geografis yang diverifikasi melalui data EXIF foto.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Fitur Utama
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Sistem ini memiliki dua peran utama: **Admin** dan **Karyawan**.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Fitur Karyawan
 
-## Learning Laravel
+* **Dashboard Karyawan:** Menampilkan *widget* absensi harian dan navigasi utama.
+* **Absensi Foto:** Karyawan melakukan "Absen Masuk" dan "Absen Pulang" dengan mengunggah foto.
+* **Validasi Geofencing Otomatis:** Sistem secara otomatis membandingkan lokasi karyawan dengan area kerja yang terdaftar.
+* **Validasi EXIF:** Sistem membaca metadata GPS (Latitude & Longitude) langsung dari file foto yang diunggah untuk memastikan keaslian lokasi.
+* **Riwayat Absensi:** Karyawan dapat melihat riwayat absensi mereka.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Fitur Admin
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+* **Dashboard Admin:** Panel kontrol utama untuk admin.
+* **Pengaturan Geofencing:** Admin dapat mengatur titik koordinat (Latitude, Longitude) dan radius (dalam meter) untuk area absensi klinik.
+* **Validasi Absensi Manual:** Admin meninjau foto yang diunggah karyawan dan dapat **Approve** (Menyetujui) atau **Reject** (Menolak) absensi tersebut.
+* **Manajemen Karyawan:** Tempat untuk mengelola data karyawan.
 
-## Laravel Sponsors
+## 💻 Tumpukan Teknologi
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+* **Backend:** PHP / Laravel 10
+* **Frontend:** Blade Templates, Bootstrap 5, Vanilla JS
+* **Database:** MySQL
+* **Dependensi Kunci:** `php-exif` (diperlukan di server untuk membaca metadata GPS foto)
 
-### Premium Partners
+## ⚙️ Instalasi & Penyiapan
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+Berikut adalah langkah-langkah penting untuk menyiapkan proyek ini:
 
-## Contributing
+### 1. Konfigurasi File
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+* **.env:** Salin `.env.example` menjadi `.env`. Atur koneksi database Anda (DB\_DATABASE, DB\_USERNAME, DB\_PASSWORD).
+* **php.ini:**
+    * Pastikan ekstensi `exif` aktif. Hapus tanda titik koma (`;`) dari depan baris `extension=exif`.
+    * Naikkan batas unggah file agar foto berkualitas tinggi dapat diterima:
+        ```ini
+        upload_max_filesize = 10M
+        post_max_size = 12M
+        ```
+    * **PENTING:** Restart server Anda (XAMPP, Apache, dll.) setelah mengubah `php.ini`.
 
-## Code of Conduct
+### 2. Perintah Terminal
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Jalankan perintah ini di terminal Anda secara berurutan:
 
-## Security Vulnerabilities
+1.  **Instal Dependensi:**
+    ```bash
+    composer install
+    npm install && npm run dev
+    ```
+2.  **Generate Kunci Aplikasi:**
+    ```bash
+    php artisan key:generate
+    ```
+3.  **Jalankan Migrasi (Membuat Tabel):**
+    ```bash
+    php artisan migrate
+    ```
+4.  **Jalankan Seeder (Mengisi Akun Awal):**
+    ```bash
+    php artisan db:seed
+    ```
+5.  **Buat Storage Link (Wajib untuk Foto):**
+    ```bash
+    php artisan storage:link
+    ```
+6.  **Jalankan Server:**
+    ```bash
+    php artisan serve
+    ```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## 🗂️ Struktur Database & Alur
 
-## License
+1.  **USER**: Menyimpan data login (`username`, `password`, `role`). Berelasi `HasOne` ke `EMPLOYEE` melalui `user_id`.
+2.  **EMPLOYEE**: Menyimpan data karyawan (`nama`, `nip`). Memiliki `user_id` yang terhubung ke tabel `USER`.
+3.  **WORK\_AREA**: Menyimpan `koordinat_pusat` dan `radius_geofence` klinik.
+4.  **ATTENDANCE**: **Baris baru dibuat** setiap kali ada unggahan. Menyimpan `emp_id`, `waktu_unggah`, `latitude`, `longitude` (dari EXIF), dan `nama_file_foto`.
+5.  **VALIDATION**: **Baris baru dibuat** setiap kali admin melakukan validasi. Menyimpan `att_id` (dari absensi), `admin_id`, dan `status_validasi` ('Approved'/'Rejected').
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 🔑 Akun Default
+
+Akun ini dibuat oleh `php artisan db:seed`.
+
+* **Admin:**
+    * Username: `admin`
+    * Password: `password`
+    * Nama: Sahroni
+
+* **Karyawan:**
+    * Username: `karyawan`
+    * Password: `password`
+    * Nama: Mahardika
