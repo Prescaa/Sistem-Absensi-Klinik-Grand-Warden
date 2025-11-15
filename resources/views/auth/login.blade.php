@@ -64,15 +64,14 @@
                                         </div>
                                     </div>
 
-                                    <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <div class="mb-4">
                                         <div class="form-check">
                                             <input class="form-check-input" type="checkbox" value="" id="ingatSaya">
                                             <label class="form-check-label" for="ingatSaya">
                                                 Ingat Saya
                                             </label>
                                         </div>
-                                        <a href="#" class="text-decoration-none">Lupa Password?</a>
-                                    </div>
+                                        </div>
 
                                     <button class="btn btn-primary btn-lg w-100 mt-3" type="submit">
                                         Login
@@ -85,7 +84,8 @@
             </div>
         </div>
     </div>
-<script>
+
+    <script>
         document.addEventListener('DOMContentLoaded', function() {
             const togglePassword = document.querySelector('#togglePassword');
             const passwordInput = document.querySelector('#passwordInput');
