@@ -248,8 +248,88 @@ class AdminController extends Controller
      */
     public function exportLaporan(Request $request)
     {
-        // TODO: Logika untuk memfilter data dan mengekspor ke Excel/PDF
-        return redirect()->back()->with('success', 'Laporan sedang diproses.');
+        // 1. Validasi Input Tanggal
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date'   => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $startDate = Carbon::parse($request->start_date)->startOfDay();
+        $endDate   = Carbon::parse($request->end_date)->endOfDay();
+
+        $filename = "Laporan-Absensi_" . $startDate->format('Ymd') . "_sd_" . $endDate->format('Ymd') . ".csv";
+
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        // 2. Ambil Semua Karyawan
+        $listKaryawan = Employee::orderBy('nama')->get();
+
+        // 3. Buat Callback untuk Streaming CSV
+        $callback = function() use ($listKaryawan, $startDate, $endDate) {
+            $file = fopen('php://output', 'w');
+
+            // Header CSV
+            fputcsv($file, ['NIP', 'Nama Karyawan', 'Total Hadir', 'Total Terlambat', 'Total Izin/Sakit', 'Persentase Kehadiran (%)']);
+
+            foreach ($listKaryawan as $karyawan) {
+                // Hitung Kehadiran dalam Rentang Tanggal
+                $kehadiran = Attendance::where('emp_id', $karyawan->emp_id)
+                    ->whereBetween('waktu_unggah', [$startDate, $endDate])
+                    ->where('type', 'masuk')
+                    ->get();
+
+                $totalHadir = $kehadiran->count();
+
+                // Hitung Terlambat (> 08:00:00)
+                $totalTerlambat = $kehadiran->filter(function ($att) {
+                    return $att->waktu_unggah->format('H:i:s') > '08:00:00';
+                })->count();
+
+                $totalIzinSakit = 0; // Placeholder
+
+                // Hitung Hari Kerja (Senin-Jumat) dalam Rentang Tanggal
+                $totalHariKerja = $this->countWorkingDaysInRange($startDate, $endDate);
+
+                $persentase = $totalHariKerja > 0 ? ($totalHadir / $totalHariKerja) * 100 : 0;
+
+                // Tulis Baris CSV
+                fputcsv($file, [
+                    $karyawan->nip,
+                    $karyawan->nama,
+                    $totalHadir,
+                    $totalTerlambat,
+                    $totalIzinSakit,
+                    number_format(min($persentase, 100), 1) // Format 1 desimal
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Helper untuk menghitung hari kerja dalam rentang tanggal tertentu.
+     */
+    private function countWorkingDaysInRange($startDate, $endDate)
+    {
+        $count = 0;
+        $current = $startDate->copy();
+
+        while ($current->lte($endDate)) {
+            // Cek jika bukan Sabtu (6) dan Minggu (0)
+            if (!$current->isWeekend()) {
+                $count++;
+            }
+            $current->addDay();
+        }
+        return $count;
     }
 
     public function showGeofencing()

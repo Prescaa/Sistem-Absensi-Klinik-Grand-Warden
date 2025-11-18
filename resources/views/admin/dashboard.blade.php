@@ -1,10 +1,8 @@
-{{-- Menggunakan layout admin --}}
+{{-- resources/views/admin/dashboard.blade.php --}}
 @extends('layouts.admin_app')
 
-{{-- Mengatur judul halaman --}}
 @section('page-title', 'Dashboard')
 
-{{-- Konten utama halaman dashboard --}}
 @section('content')
 <div class="d-flex flex-column h-100">
     <div class="row flex-grow-1">
@@ -142,22 +140,23 @@
                 </div>
             </div>
 
-            {{-- CARD EKSPOR (Diperbesar mengisi sisa ruang) --}}
+            {{-- CARD DOWNLOAD LAPORAN (MODIFIKASI) --}}
             <div class="card shadow-sm border-0 mb-4 flex-grow-1 bg-white">
                 <div class="card-body p-5 d-flex flex-column justify-content-center align-items-center text-center">
 
-                    <div class="mb-4 p-3 rounded-circle bg-light text-primary">
+                    <div class="mb-4 p-3 rounded-circle bg-light text-success">
                         <i class="bi bi-file-earmark-spreadsheet-fill" style="font-size: 4rem;"></i>
                     </div>
 
-                    <h4 class="card-title fw-bold mb-3">Laporan Absensi</h4>
+                    <h4 class="card-title fw-bold mb-3">Download Laporan Absensi</h4>
                     <p class="text-muted mb-4 px-4">
-                        Unduh rekapitulasi data absensi karyawan secara lengkap untuk keperluan arsip atau penggajian.
+                        Pilih rentang tanggal untuk mengunduh rekapitulasi absensi karyawan dalam format CSV/Excel.
                     </p>
 
-                    <a href="{{ route('admin.laporan.show') }}" class="btn btn-primary btn-lg w-75 py-3 shadow-sm">
-                        <i class="bi bi-download me-2"></i> Buka Menu Laporan
-                    </a>
+                    {{-- Tombol Pemicu Modal --}}
+                    <button type="button" class="btn btn-success btn-lg w-75 py-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#downloadReportModal">
+                        <i class="bi bi-download me-2"></i> Pilih Tanggal & Download
+                    </button>
                 </div>
             </div>
 
@@ -165,6 +164,43 @@
 
     </div>
 </div>
+
+{{-- === MODAL DOWNLOAD LAPORAN === --}}
+<div class="modal fade" id="downloadReportModal" tabindex="-1" aria-labelledby="downloadReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="downloadReportModalLabel">
+                    <i class="bi bi-calendar-range me-2"></i> Filter Laporan Absensi
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form action="{{ route('admin.laporan.export') }}" method="POST">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label for="start_date" class="form-label fw-semibold">Dari Tanggal</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" required
+                               value="{{ now()->startOfMonth()->format('Y-m-d') }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label fw-semibold">Sampai Tanggal</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" required
+                               value="{{ now()->format('Y-m-d') }}">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-download me-2"></i> Download CSV
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('styles')
@@ -196,7 +232,6 @@
                 const minutes = String(now.getMinutes()).padStart(2, '0');
                 const seconds = String(now.getSeconds()).padStart(2, '0');
 
-                // Menambahkan detik agar lebih hidup
                 jamElement.textContent = `${hours}:${minutes}:${seconds}`;
 
                 const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
