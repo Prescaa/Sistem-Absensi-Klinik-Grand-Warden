@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 // --- HANYA ADA SATU DEKLARASI CLASS ---
 class AdminController extends Controller
@@ -25,28 +26,36 @@ class AdminController extends Controller
      */
     public function dashboard()
     {
-        // 1. Ambil jumlah total karyawan
-        $totalKaryawan = Employee::count();
+        $today = Carbon::today();
 
-        // 2. Ambil jumlah absensi yang 'pending'
-        //    (Absensi yang belum punya data di tabel VALIDATION)
-        $pendingValidasi = Attendance::whereDoesntHave('validation')->count();
+        // 1. Total Karyawan
+        $totalEmployees = Employee::count();
 
-        // 3. Ambil jumlah absensi yang HARI INI (Berdasarkan 'waktu_unggah')
-        $absensiHariIni = Attendance::whereDate('waktu_unggah', today())->count();
+        // 2. Hadir Hari Ini (Berdasarkan type 'masuk')
+        $presentCount = Attendance::whereDate('waktu_unggah', $today)
+            ->where('type', 'masuk')
+            ->distinct('emp_id') // Agar tidak terhitung ganda jika upload ulang
+            ->count('emp_id');
 
-        // 4. Ambil 5 aktivitas absensi terbaru (Berdasarkan 'waktu_unggah')
-        $aktivitasTerbaru = Attendance::with('employee') // 'employee' adalah nama relasi
-                                    ->orderBy('waktu_unggah', 'desc') // Diubah ke 'waktu_unggah'
-                                    ->take(5)
-                                    ->get();
+        // 3. Data Absensi Terbaru (Pending / Belum Divalidasi)
+        // Mengambil 5 data terakhir yang belum ada di tabel validation
+        $recentActivities = Attendance::whereDoesntHave('validation')
+            ->with('employee')
+            ->orderBy('waktu_unggah', 'desc')
+            ->take(5)
+            ->get();
 
-        // 5. Kirim semua data ke view
+        // (Opsional) Hitung Izin/Sakit jika nanti Anda sudah punya tabelnya
+        // Untuk sementara saya set 0 agar tidak error di view
+        $izinCount = 0;
+        $sakitCount = 0;
+
         return view('admin.dashboard', [
-            'totalKaryawan' => $totalKaryawan,
-            'pendingValidasi' => $pendingValidasi,
-            'absensiHariIni' => $absensiHariIni,
-            'aktivitasTerbaru' => $aktivitasTerbaru,
+            'totalEmployees' => $totalEmployees,
+            'presentCount' => $presentCount,
+            'izinCount' => $izinCount,
+            'sakitCount' => $sakitCount,
+            'recentActivities' => $recentActivities
         ]);
     }
 

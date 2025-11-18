@@ -4,43 +4,63 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\WorkArea;
-use App\Models\Attendance; // <-- TAMBAHKAN INI
+use App\Models\Attendance;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class KaryawanController extends Controller
 {
-    // Fungsi untuk menampilkan Dashboard Karyawan
-    public function dashboard()
+    /**
+     * Helper function untuk mengambil data absensi hari ini.
+     * Ini untuk menghindari duplikasi kode di dashboard() dan unggah().
+     */
+    private function getTodayAttendance()
     {
         $karyawanId = auth()->user()->employee->emp_id;
         $today = Carbon::today();
 
+        // --- PERBAIKAN QUERY ---
+        // Menggunakan kolom 'type' di database, BUKAN 'nama_file_foto LIKE'.
+        // Ini jauh lebih baik dan lebih cepat.
+
         // Cek absensi MASUK hari ini
-        // Kita gunakan 'LIKE' untuk mencari '-masuk.' di nama file
         $absensiMasuk = Attendance::where('emp_id', $karyawanId)
             ->whereDate('waktu_unggah', $today)
-            ->where('nama_file_foto', 'LIKE', '%-masuk.%')
+            ->where('type', 'masuk') // <-- Query diperbaiki
             ->first();
 
         // Cek absensi PULANG hari ini
         $absensiPulang = Attendance::where('emp_id', $karyawanId)
             ->whereDate('waktu_unggah', $today)
-            ->where('nama_file_foto', 'LIKE', '%-pulang.%')
+            ->where('type', 'pulang') // <-- Query diperbaiki
             ->first();
 
-        // Kirim DUA variabel ini ke view
-        return view('karyawan.dashboard', [
+        return [
             'absensiMasuk' => $absensiMasuk,
             'absensiPulang' => $absensiPulang
-        ]);
+        ];
+    }
+
+    // Fungsi untuk menampilkan Dashboard Karyawan
+    public function dashboard()
+    {
+        // Panggil helper function
+        $data = $this->getTodayAttendance();
+
+        // Kirim DUA variabel ini ke view
+        return view('karyawan.dashboard', $data);
     }
 
     // Fungsi untuk menampilkan Halaman Unggah
     public function unggah()
     {
-        return view('karyawan.unggah');
+        // --- PERBAIKAN ERROR UNDEFINED VARIABLE ---
+        // Panggil helper function yang sama dengan dashboard
+        $data = $this->getTodayAttendance();
+
+        // Kirim DUA variabel ini ke view
+        return view('karyawan.unggah', $data);
     }
 
     // Fungsi untuk menampilkan Halaman Riwayat
@@ -61,16 +81,19 @@ class KaryawanController extends Controller
         return view('karyawan.profil');
     }
 
-    public function showUploadForm(Request $request, $type) // Hapus $id
+    /**
+     * CATATAN: Method ini sekarang fungsinya SAMA PERSIS dengan method unggah().
+     * Sebaiknya Anda hapus method ini dan perbarui file routes/web.php Anda
+     * agar hanya menggunakan method unggah() saja.
+     */
+    public function showUploadForm(Request $request, $type)
     {
         if (!in_array($type, ['masuk', 'pulang'])) {
             abort(404, 'Tipe absensi tidak valid.');
         }
 
-        // Kirim 'type' saja ke view
-        return view('karyawan.unggah', [
-            'type' => $type
-        ]);
+        // Memanggil method unggah() agar logikanya sama
+        return $this->unggah();
     }
 
 
@@ -79,7 +102,7 @@ class KaryawanController extends Controller
      */
     public function storeFoto(Request $request)
     {
-        // 1. Validasi (attendance_id TIDAK diperlukan lagi)
+        // 1. Validasi (Sama seperti sebelumnya)
         $request->validate([
             'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:7000',
             'type' => 'required|string|in:masuk,pulang',
@@ -105,23 +128,25 @@ class KaryawanController extends Controller
         // --- Akhir Validasi Lokasi ---
 
 
-        // 3. Buat Nama File (Sertakan TIPE di nama file)
+        // 3. Buat Nama File (Sama seperti sebelumnya)
         $karyawanId = auth()->user()->employee->emp_id;
         $fileName = $karyawanId . '-' . now()->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
 
         // 4. Simpan File
         $path = $file->storeAs('public/absensi', $fileName);
-        $publicPath = Storage::url($path); // Simpan path URL
+        $publicPath = Storage::url($path);
 
         // 5. BUAT BARIS BARU DI DATABASE
+        // --- PERBAIKAN PENTING ---
         Attendance::create([
             'emp_id' => $karyawanId,
             'area_id' => $workArea->area_id,
-            'waktu_unggah' => now(), // Waktu server saat ini
-            'latitude' => $photoLat, // Latitude dari EXIF
-            'longitude' => $photoLon, // Longitude dari EXIF
-            'nama_file_foto' => $publicPath, // Simpan path URL, bukan nama file
-            'timestamp_ekstraksi' => $exif['DateTimeOriginal'] ?? null // Waktu foto diambil (jika ada)
+            'waktu_unggah' => now(),
+            'latitude' => $photoLat,
+            'longitude' => $photoLon,
+            'nama_file_foto' => $publicPath,
+            'timestamp_ekstraksi' => $exif['DateTimeOriginal'] ?? null,
+            'type' => $request->type // <-- BARIS INI DITAMBAHKAN
         ]);
 
         return redirect()->route('karyawan.dashboard')
@@ -129,7 +154,7 @@ class KaryawanController extends Controller
     }
 
 
-    // --- DUA FUNGSI HELPER DI BAWAH INI ---
+    // --- DUA FUNGSI HELPER DI BAWAH INI (TIDAK BERUBAH) ---
 
     /**
      * Menghitung jarak antara dua titik koordinat di bumi.

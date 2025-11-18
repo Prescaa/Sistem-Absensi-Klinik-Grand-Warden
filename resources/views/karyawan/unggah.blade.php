@@ -2,8 +2,8 @@
 
 @extends('layouts.app') {{-- Menggunakan layout karyawan --}}
 
-{{-- Judul halaman akan dinamis, contoh: "Unggah Foto Masuk" --}}
-@section('page-title', 'Unggah Foto ' . ucfirst($type ?? 'Absensi'))
+{{-- Judul halaman tidak lagi dinamis berdasarkan $type dari controller --}}
+@section('page-title', 'Unggah Foto Absensi')
 
 @section('content')
 <div class="container py-4">
@@ -11,7 +11,7 @@
         <div class="col-md-6">
             <div class="card shadow-sm">
                 <div class="card-body p-4">
-                    <h4 class="card-title text-center mb-4">Unggah Foto Absensi {{ ucfirst($type ?? '') }}</h4>
+                    <h4 class="card-title text-center mb-4">Unggah Foto Absensi</h4>
 
                     @if (session('error'))
                         <div class="alert alert-danger">
@@ -32,7 +32,7 @@
                     <form action="{{ route('karyawan.absensi.storeFoto') }}" method="POST" enctype="multipart/form-data">
                         @csrf
 
-                        <input type="hidden" name="type" value="{{ $type ?? '' }}">
+                        {{-- Input hidden 'type' dihapus, karena 'type' akan dikirim oleh tombol submit --}}
 
                         <div class="mb-3">
                             <label for="foto_absensi" class="form-label">Pilih Foto (Wajib ada GPS)</label>
@@ -46,10 +46,48 @@
                             <img id="imagePreview" src="https://via.placeholder.com/400x300.png?text=Preview+Foto+Anda" alt="Image Preview" class="img-fluid rounded" style="max-height: 300px; border: 1px solid #ddd;">
                         </div>
 
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-upload me-2"></i> Kirim dan Validasi Foto
-                            </button>
+                        {{--
+                           BLOK TOMBOL BARU DITEMPATKAN DI SINI
+                           Menggantikan tombol submit "Kirim dan Validasi Foto" yang lama.
+                           Logika ini diambil dari dashboard.blade.php.
+                           (Asumsi: $absensiMasuk & $absensiPulang dikirim ke view ini)
+                        --}}
+                        <div class="row g-2">
+                            <div class="col-6">
+                                @if(is_null($absensiMasuk))
+                                    {{-- 1. Belum absen masuk hari ini --}}
+                                    <button type="submit" name="type" value="masuk"
+                                            class="btn btn-primary btn-lg d-block w-100">
+                                        <i class="bi bi-box-arrow-in-right me-2"></i> Absen Masuk
+                                    </button>
+                                @else
+                                    {{-- 2. Sudah absen masuk --}}
+                                    <button class="btn btn-success btn-lg d-block w-100" disabled>
+                                        <i class="bi bi-check-circle-fill me-2"></i> Sudah Masuk
+                                    </button>
+                                @endif
+                            </div>
+
+                            <div class="col-6">
+                                @if(is_null($absensiMasuk))
+                                    {{-- 1. Belum absen masuk, tidak bisa pulang --}}
+                                    <button class="btn btn-secondary btn-lg d-block w-100" disabled
+                                            title="Harap absen masuk terlebih dahulu">
+                                        <i class="bi bi-box-arrow-right me-2"></i> Absen Pulang
+                                    </button>
+                                @elseif(is_null($absensiPulang))
+                                    {{-- 2. Sudah masuk, belum pulang --}}
+                                    <button type="submit" name="type" value="pulang"
+                                            class="btn btn-outline-secondary btn-lg d-block w-100">
+                                        <i class="bi bi-box-arrow-right me-2"></i> Absen Pulang
+                                    </button>
+                                @else
+                                    {{-- 3. Sudah pulang --}}
+                                    <button class="btn btn-dark btn-lg d-block w-100" disabled>
+                                        <i class="bi bi-check-circle-fill me-2"></i> Sudah Pulang
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     </form>
 

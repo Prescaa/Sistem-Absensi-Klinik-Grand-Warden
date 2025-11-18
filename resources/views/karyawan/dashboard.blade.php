@@ -22,45 +22,16 @@
 
                     <h5 class="mb-3">Tanggal: {{ now()->format('l, d F Y') }}</h5>
 
-                    {{-- Ini adalah blok kode asli yang dikembalikan sesuai permintaan Anda --}}
-                    <div class="row g-2">
-                        <div class="col-6">
-                            @if(is_null($absensiMasuk))
-                                {{-- 1. Belum absen masuk hari ini, tombol MASUK aktif --}}
-                                <a href="{{ route('karyawan.absensi.unggah', ['type' => 'masuk']) }}"
-                                   class="btn btn-primary btn-lg d-block">
-                                    <i class="bi bi-box-arrow-in-right me-2"></i> Absen Masuk
-                                </a>
-                            @else
-                                {{-- 2. Sudah absen masuk, tombol MASUK non-aktif --}}
-                                <button class="btn btn-success btn-lg d-block" disabled>
-                                    <i class="bi bi-check-circle-fill me-2"></i> Sudah Masuk
-                                </button>
-                            @endif
-                        </div>
+                    {{--
+                       BLOK TOMBOL KONDISIONAL TELAH DIHAPUS DARI SINI
+                       DAN DIPINDAHKAN KE KARYAWAN/UNGGAH.BLADE.PHP
 
-                        <div class="col-6">
-                            @if(is_null($absensiMasuk))
-                                {{-- 1. Belum absen masuk, tidak bisa pulang (non-aktif) --}}
-                                <button class="btn btn-secondary btn-lg d-block" disabled
-                                        title="Harap absen masuk terlebih dahulu">
-                                    <i class="bi bi-box-arrow-right me-2"></i> Absen Pulang
-                                </button>
-                            @elseif(is_null($absensiPulang))
-                                {{-- 2. Sudah masuk, belum pulang, tombol PULANG aktif --}}
-                                <a href="{{ route('karyawan.absensi.unggah', ['type' => 'pulang']) }}"
-                                   class="btn btn-outline-secondary btn-lg d-block">
-                                    <i class="bi bi-box-arrow-right me-2"></i> Absen Pulang
-                                </a>
-                            @else
-                                {{-- 3. Sudah pulang (non-aktif) --}}
-                                <button class="btn btn-dark btn-lg d-block" disabled>
-                                    <i class="bi bi-check-circle-fill me-2"></i> Sudah Pulang
-                                </button>
-                            @endif
-                        </div>
-                    </div>
-                    {{-- Akhir dari blok kode yang dikembalikan --}}
+                       Anda mungkin ingin menambahkan link permanen ke halaman unggah di sini,
+                       contoh:
+                       <a href="{{ route('karyawan.absensi.unggah') }}" class="btn btn-primary btn-lg d-block">
+                           <i class="bi bi-camera-fill me-2"></i> Buka Halaman Absensi
+                       </a>
+                    --}}
 
 
                     {{-- Karena migrasi baru tidak punya 'status', kita tampilkan waktu saja --}}

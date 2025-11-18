@@ -25,6 +25,7 @@ class Attendance extends Model
         'longitude',
         'nama_file_foto',
         'timestamp_ekstraksi',
+        'type',
     ];
 
     /**

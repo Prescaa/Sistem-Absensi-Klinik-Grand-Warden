@@ -16,10 +16,11 @@ public function up()
         Schema::create('ATTENDANCE', function (Blueprint $table) {
             $table->id('att_id');
             $table->unsignedBigInteger('emp_id');
-            $table->unsignedBigInteger('area_id')->nullable(); 
+            $table->unsignedBigInteger('area_id')->nullable();
             $table->dateTime('waktu_unggah');
             $table->decimal('latitude', 10, 8);
             $table->decimal('longitude', 11, 8);
+            $table->string('type', 10);
             $table->string('nama_file_foto')->nullable();
             $table->dateTime('timestamp_ekstraksi')->nullable();
 
