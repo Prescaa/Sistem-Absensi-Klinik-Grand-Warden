@@ -20,13 +20,34 @@ class AdminController extends Controller
     /**
      * Menampilkan halaman dashboard admin.
      */
+    /**
+     * Menampilkan halaman dashboard admin.
+     */
     public function dashboard()
     {
-        // TODO: Ambil data statistik untuk dashboard
-        // $pendingValidations = Validation::where('status_validasi_final', 'pending')->count();
-        // $totalemployee = Employee::count();
+        // 1. Ambil jumlah total karyawan
+        $totalKaryawan = Employee::count();
 
-        return view('admin.dashboard');
+        // 2. Ambil jumlah absensi yang 'pending'
+        //    (Absensi yang belum punya data di tabel VALIDATION)
+        $pendingValidasi = Attendance::whereDoesntHave('validation')->count();
+
+        // 3. Ambil jumlah absensi yang HARI INI (Berdasarkan 'waktu_unggah')
+        $absensiHariIni = Attendance::whereDate('waktu_unggah', today())->count();
+
+        // 4. Ambil 5 aktivitas absensi terbaru (Berdasarkan 'waktu_unggah')
+        $aktivitasTerbaru = Attendance::with('employee') // 'employee' adalah nama relasi
+                                    ->orderBy('waktu_unggah', 'desc') // Diubah ke 'waktu_unggah'
+                                    ->take(5)
+                                    ->get();
+
+        // 5. Kirim semua data ke view
+        return view('admin.dashboard', [
+            'totalKaryawan' => $totalKaryawan,
+            'pendingValidasi' => $pendingValidasi,
+            'absensiHariIni' => $absensiHariIni,
+            'aktivitasTerbaru' => $aktivitasTerbaru,
+        ]);
     }
 
     /**
