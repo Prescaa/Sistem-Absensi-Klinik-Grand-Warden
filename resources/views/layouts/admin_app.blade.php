@@ -121,6 +121,11 @@
                         </a>
                     </li>
                     <li class="nav-item mb-1">
+                        <a href="/admin/geofencing" class="nav-link {{ Request::is('admin/geofencing') ? 'active' : '' }}">
+                            <i class="bi bi-geo-alt-fill me-2"></i> Lokasi Geofencing
+                        </a>
+                    </li>
+                    <li class="nav-item mb-1">
                         <a href="/admin/laporan" class="nav-link {{ Request::is('admin/laporan') ? 'active' : '' }}">
                             <i class="bi bi-file-earmark-bar-graph-fill me-2"></i> Laporan
                         </a>

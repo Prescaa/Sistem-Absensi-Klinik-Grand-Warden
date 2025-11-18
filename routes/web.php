@@ -20,12 +20,21 @@ Route::get('/logout', [AuthController::class, 'logout']);
 // yang bisa mengakses rute ini.
 Route::middleware(['auth', 'role:karyawan'])->group(function () {
 
-    Route::get('/dashboard', [KaryawanController::class, 'dashboard']);
+    Route::get('/dashboard', [KaryawanController::class, 'dashboard'])
+         ->name('karyawan.dashboard');
     Route::get('/unggah', [KaryawanController::class, 'unggah']);
     Route::get('/riwayat', [KaryawanController::class, 'riwayat']);
     Route::get('/izin', [KaryawanController::class, 'izin']);
     Route::get('/profil', [KaryawanController::class, 'profil']);
 
+    // 1. Rute GET (HAPUS {id} dari sini)
+    Route::get('/absensi/unggah/{type}', [KaryawanController::class, 'showUploadForm'])
+         ->name('karyawan.absensi.unggah');
+
+    // 2. Rute untuk MENYIMPAN foto (POST) - Ini yang dicari!
+    //    URL-nya akan jadi: /karyawan/absensi/simpan-foto
+    Route::post('/absensi/simpan-foto', [KaryawanController::class, 'storeFoto'])
+         ->name('karyawan.absensi.storeFoto');
 });
 
 // -----------------------------------------------------------------
@@ -47,7 +56,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 
     // Rute baru untuk Update (dihubungkan ke modal Edit)
     Route::put('/manajemen-karyawan/update/{id}', [AdminController::class, 'updateKaryawan']);
-    
+
     // Rute baru untuk Delete (dihubungkan ke modal Hapus)
     Route::delete('/manajemen-karyawan/destroy/{id}', [AdminController::class, 'destroyKaryawan']);
     // --- Akhir Rute CRUD ---
@@ -55,4 +64,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/laporan', [AdminController::class, 'showLaporan']);
     Route::post('/laporan/export', [AdminController::class, 'exportLaporan']);
 
+    Route::get('/geofencing', [AdminController::class, 'showGeofencing'])->name('admin.geofencing.show');
+
+    // Rute untuk MENYIMPAN pengaturan geofencing
+    Route::post('/geofencing/save', [AdminController::class, 'saveGeofencing'])->name('admin.geofencing.save');
+    Route::get('/validasi', [AdminController::class, 'showValidasiPage'])
+         ->name('admin.validasi.show');
+
+    // 2. Rute POST untuk menyimpan approve/reject
+    Route::post('/validasi/simpan', [AdminController::class, 'submitValidasi'])
+         ->name('admin.validasi.submit');
 });

@@ -8,9 +8,11 @@ use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\User;
 use App\Models\Validation;
+use App\Models\WorkArea;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\Auth;
 
 // --- HANYA ADA SATU DEKLARASI CLASS ---
 class AdminController extends Controller
@@ -218,5 +220,105 @@ class AdminController extends Controller
     {
         // TODO: Logika untuk memfilter data dan mengekspor ke Excel/PDF
         return redirect()->back()->with('success', 'Laporan sedang diproses.');
+    }
+
+    public function showGeofencing()
+    {
+        // Ambil data lokasi.
+        // Kita juga perlu memilih nilai Lat dan Lon dari kolom POINT
+        $lokasi = WorkArea::select(
+            'area_id',
+            'nama_area',
+            'radius_geofence',
+            'jam_kerja',
+            // Gunakan fungsi ST_X dan ST_Y untuk mengekstrak Lat/Lon dari POINT
+            DB::raw('ST_X(koordinat_pusat) as latitude'),
+            DB::raw('ST_Y(koordinat_pusat) as longitude')
+        )->where('area_id', 1)->first();
+
+        // Kirim data lokasi ke view
+        return view('admin.geofencing', ['lokasi' => $lokasi]);
+    }
+
+    /**
+     * Menyimpan data pengaturan geofencing.
+     */
+    public function saveGeofencing(Request $request)
+    {
+        // Validasi input
+        $request->validate([
+            'nama_area' => 'required|string|max:100', // Validasi untuk nama
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'radius' => 'required|numeric|min:50', // ini 'radius' dari form
+        ]);
+
+        // Cari data lokasi berdasarkan 'area_id' = 1, atau buat baru
+        $lokasi = WorkArea::firstOrNew(['area_id' => 1]);
+
+        // === PERBAIKAN UTAMA DI SINI ===
+
+        // 1. Simpan ke 'nama_area', bukan 'latitude'
+        $lokasi->nama_area = $request->nama_area;
+
+        // 2. Simpan ke 'radius_geofence', bukan 'radius'
+        $lokasi->radius_geofence = $request->radius;
+
+        // 3. Simpan lat/lon ke 'koordinat_pusat'
+        // Kolom 'koordinat_pusat' Anda adalah tipe POINT.
+        // Cara termudah menanganinya adalah menggunakan DB::raw() untuk
+        // membuat fungsi POINT() dari MySQL.
+        $lokasi->koordinat_pusat = DB::raw("POINT({$request->latitude}, {$request->longitude})");
+
+        // Catatan: Menyimpan sebagai POINT adalah cara database yang "benar",
+        // tetapi mengambilnya kembali untuk ditampilkan di form sedikit lebih rumit.
+
+        $lokasi->save();
+
+        // Kembali ke halaman sebelumnya dengan pesan sukses
+        return redirect()->route('admin.geofencing.show')
+                         ->with('success', 'Pengaturan lokasi geofencing berhasil diperbarui!');
+    }
+
+    public function showValidasiPage()
+    {
+        // Ambil semua data absensi (ATTENDANCE)
+        // yang BELUM MEMILIKI relasi 'validation' (datanya belum ada di tabel VALIDATION)
+        $pendingAttendances = Attendance::whereDoesntHave('validation')
+            ->with('employee') // Ambil data karyawan terkait
+            ->orderBy('waktu_unggah', 'desc') // Tampilkan yg terbaru dulu
+            ->get();
+
+        return view('admin.validasi', ['attendances' => $pendingAttendances]);
+    }
+
+    /**
+     * TAMBAHKAN METODE INI:
+     * Menyimpan hasil validasi (Approve/Reject)
+     */
+    public function submitValidasi(Request $request)
+    {
+        // Validasi input dari form
+        $request->validate([
+            'att_id' => 'required|exists:ATTENDANCE,att_id',
+            'status_validasi' => 'required|in:Approved,Rejected', // Pastikan nilainya
+            'catatan_validasi' => 'nullable|string|max:500'
+        ]);
+
+        // Dapatkan 'emp_id' dari admin yang sedang login
+        // (Berdasarkan migrasi, 'admin_id' mengacu ke 'emp_id')
+        $adminEmpId = Auth::user()->employee->emp_id;
+
+        // Buat record baru di tabel VALIDATION
+        Validation::create([
+            'att_id' => $request->att_id,
+            'admin_id' => $adminEmpId,
+            'status_validasi' => $request->status_validasi,
+            'catatan_validasi' => $request->catatan_validasi,
+            'timestamp_validasi' => now()
+        ]);
+
+        return redirect()->route('admin.validasi.show')
+                         ->with('success', 'Validasi absensi berhasil disimpan.');
     }
 }
