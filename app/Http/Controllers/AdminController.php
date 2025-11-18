@@ -404,34 +404,42 @@ class AdminController extends Controller
                          ->with('success', 'Pengaturan lokasi geofencing berhasil diperbarui!');
     }
 
-    /**
-     * TAMBAHKAN METODE INI:
-     * Menyimpan hasil validasi (Approve/Reject)
+
+     /* Menyimpan hasil validasi (Approve/Reject)
      */
     public function submitValidasi(Request $request)
     {
-        // Validasi input dari form
+        // 1. Validasi input
         $request->validate([
             'att_id' => 'required|exists:ATTENDANCE,att_id',
-            'status_validasi' => 'required|in:Approved,Rejected', // Pastikan nilainya
+            
+            // PERBAIKAN: Kita memaksa input harus 'Valid' atau 'Invalid' (Sesuai Database)
+            'status_validasi' => 'required|in:Valid,Invalid', 
+            
             'catatan_validasi' => 'nullable|string|max:500'
         ]);
 
-        // Dapatkan 'emp_id' dari admin yang sedang login
-        // (Berdasarkan migrasi, 'admin_id' mengacu ke 'emp_id')
+        // Ambil ID admin yang login
         $adminEmpId = Auth::user()->employee->emp_id;
 
-        // Buat record baru di tabel VALIDATION
+        // 2. Simpan ke Database
+        // Langsung gunakan nilai dari request tanpa logika "if-else" yang membingungkan
         Validation::create([
             'att_id' => $request->att_id,
             'admin_id' => $adminEmpId,
-            'status_validasi' => $request->status_validasi,
-            'catatan_validasi' => $request->catatan_validasi,
+            
+            // Status Otomatis disamakan dengan keputusan admin
+            'status_validasi_otomatis' => $request->status_validasi, 
+            
+            // Status Final (PENTING: Ini yang akan menentukan warna hijau/merah)
+            'status_validasi_final' => $request->status_validasi, 
+            
+            'catatan_admin' => $request->catatan_validasi,
             'timestamp_validasi' => now()
         ]);
 
         return redirect()->route('admin.validasi.show')
-                         ->with('success', 'Validasi absensi berhasil disimpan.');
+                         ->with('success', 'Status absensi berhasil diperbarui menjadi: ' . $request->status_validasi);
     }
 
     public function submitValidasiIzin(Request $request)

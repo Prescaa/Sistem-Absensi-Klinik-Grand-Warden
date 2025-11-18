@@ -5,7 +5,10 @@
 @section('content')
     <div class="d-flex flex-column h-100">
 
+        {{-- Card Summary Atas --}}
         <div class="row mb-4">
+            {{-- ... (Kode Card Nama, Jam, Tanggal, Lokasi TETAP SAMA, tidak saya tulis ulang agar hemat tempat) ... --}}
+             {{-- Silakan copy bagian card summary dari kode sebelumnya jika hilang --}}
             <div class="col-xl-3 col-md-6 mb-3">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body p-3">
@@ -15,20 +18,13 @@
                             </div>
                             <div class="flex-grow-1">
                                 <h6 class="text-muted small mb-1">Nama Karyawan</h6>
-
-                                {{-- PERBAIKAN: Mengambil nama dari tabel Employee --}}
-                                {{-- Sesuaikan 'nama' dengan nama kolom di database Anda (misal: 'name', 'fullname') --}}
-                                <h5 class="fw-bold mb-0">{{ $karyawan->nama ?? $karyawan->name ?? 'Nama Tidak Ditemukan' }}</h5>
-
+                                <h5 class="fw-bold mb-0">{{ $karyawan->nama ?? 'Nama Tidak Ditemukan' }}</h5>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            {{-- ... (Sisa kode kartu Jam, Tanggal, Lokasi sama seperti sebelumnya) ... --}}
-
-            <div class="col-xl-3 col-md-6 mb-3">
+             <div class="col-xl-3 col-md-6 mb-3">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center">
@@ -43,8 +39,7 @@
                     </div>
                 </div>
             </div>
-
-            <div class="col-xl-3 col-md-6 mb-3">
+             <div class="col-xl-3 col-md-6 mb-3">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center">
@@ -59,8 +54,7 @@
                     </div>
                 </div>
             </div>
-
-            <div class="col-xl-3 col-md-6 mb-3">
+             <div class="col-xl-3 col-md-6 mb-3">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center">
@@ -75,7 +69,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> 
 
         <div class="row flex-grow-1">
             <div class="col-lg-8 d-flex flex-column">
@@ -110,24 +104,29 @@
                         @else
                             <ul class="list-group list-group-flush">
                                 @foreach($riwayatAbsensi as $absen)
-                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
                                         <div>
+                                            {{-- Tanggal --}}
                                             <strong>{{ \Carbon\Carbon::parse($absen->waktu_unggah)->translatedFormat('d F Y') }}</strong>
                                             <br>
+                                            {{-- Waktu & Tipe (Masuk/Pulang) --}}
                                             <small class="text-muted">
                                                 {{ \Carbon\Carbon::parse($absen->waktu_unggah)->format('H:i:s') }}
                                                 ({{ ucfirst($absen->type) }})
                                             </small>
                                         </div>
 
-                                        @if($absen->validation)
-                                            @if($absen->validation->status_validasi == 'valid')
-                                                <span class="badge bg-success">Valid</span>
-                                            @elseif($absen->validation->status_validasi == 'rejected' || $absen->validation->status_validasi == 'invalid')
-                                                <span class="badge bg-danger">Ditolak</span>
-                                            @else
-                                                <span class="badge bg-warning text-dark">{{ ucfirst($absen->validation->status_validasi) }}</span>
-                                            @endif
+                                        {{-- LOGIKA STATUS VALIDASI --}}
+                                        @php
+                                            // Ambil status final dari relasi validation
+                                            // Jika belum ada validasi, default ke 'pending'
+                                            $status = $absen->validation ? $absen->validation->status_validasi_final : 'Pending';
+                                        @endphp
+
+                                        @if($status == 'Valid')
+                                            <span class="badge bg-success">Diterima</span>
+                                        @elseif($status == 'Invalid')
+                                            <span class="badge bg-danger">Ditolak</span>
                                         @else
                                             <span class="badge bg-warning text-dark">Menunggu Verifikasi</span>
                                         @endif
@@ -139,12 +138,13 @@
                 </div>
             </div>
 
-            {{-- Sidebar Rekap Bulan (Bisa dibiarkan statis atau dihapus jika belum ada datanya) --}}
+            {{-- Sidebar Kanan --}}
             <div class="col-lg-4 d-flex">
                 <div class="card shadow-sm border-0 w-100">
-                    <div class="card-body p-4">
-                         <h5 class="fw-bold text-center mb-3">Info</h5>
-                         <p class="text-muted text-center">Grafik kehadiran akan muncul setelah data tersedia lebih banyak.</p>
+                    <div class="card-body p-4 text-center d-flex flex-column justify-content-center">
+                         <h5 class="fw-bold mb-3">Info</h5>
+                         <p class="text-muted">Grafik kehadiran akan muncul setelah data tersedia lebih banyak.</p>
+                         <i class="bi bi-bar-chart-line display-1 text-light"></i>
                     </div>
                 </div>
             </div>
@@ -176,7 +176,7 @@
             }
 
             if (dateEl) {
-                const options = { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' };
+                const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
                 const dateStr = now.toLocaleDateString('id-ID', options).replace('.', ',');
                 dateEl.textContent = dateStr;
             }
