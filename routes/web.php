@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\KaryawanController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +32,14 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
     Route::get('/riwayat', [KaryawanController::class, 'riwayat'])->name('karyawan.riwayat');
     Route::get('/izin', [KaryawanController::class, 'izin'])->name('karyawan.izin');
     Route::get('/profil', [KaryawanController::class, 'profil'])->name('karyawan.profil');
+
+    // --- PERBAIKAN DI SINI ---
+    // Menggunakan KaryawanController untuk menampilkan view (ini sudah benar di kode kamu)
+    Route::get('/profil', [KaryawanController::class, 'profil'])->name('karyawan.profil');
+    
+    // TAMBAHKAN INI: Route untuk memproses simpan data (POST)
+    // Kita gunakan ProfileController karena logic update-nya sudah lengkap di sana
+    Route::post('/profil', [ProfileController::class, 'update'])->name('karyawan.profil.update');
 
     // 1. Rute Halaman Upload Absensi
     Route::get('/absensi/unggah/{type}', [KaryawanController::class, 'showUploadForm'])
@@ -88,4 +97,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 
     Route::post('/geofencing/save', [AdminController::class, 'saveGeofencing'])
          ->name('admin.geofencing.save');
+     
+     Route::get('/profil', [ProfileController::class, 'index'])
+          ->name('profil.index');
+
+     Route::post('/profil', [ProfileController::class, 'update'])  
+          ->name('profil.update');
 });

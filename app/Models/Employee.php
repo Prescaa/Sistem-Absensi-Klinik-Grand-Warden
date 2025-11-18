@@ -24,6 +24,9 @@ class Employee extends Model
         'departemen',
         'posisi',
         'status_aktif',
+        'alamat',      // Baru
+        'no_telepon',  // Baru
+        'foto_profil'  // Baru
     ];
 
     /**

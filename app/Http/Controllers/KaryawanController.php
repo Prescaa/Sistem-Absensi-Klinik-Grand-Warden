@@ -147,7 +147,14 @@ class KaryawanController extends Controller
     // Fungsi untuk menampilkan Halaman Profil
     public function profil()
     {
-        return view('karyawan.profil');
+        // 1. Ambil user yang sedang login
+        $user = auth()->user();
+
+        // 2. Ambil data employee yang berelasi dengan user tersebut
+        $employee = $user->employee;
+
+        // 3. Kirim variabel $user dan $employee ke view menggunakan compact
+        return view('karyawan.profil', compact('user', 'employee'));
     }
 
     /**

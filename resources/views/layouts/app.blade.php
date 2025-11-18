@@ -33,9 +33,7 @@
             border-radius: 8px;
         }
         .sidebar-footer {
-            position: absolute;
-            bottom: 0;
-            width: 280px;
+            width: 100%;        
         }
         .topbar {
             background-color: #fff;
@@ -165,7 +163,7 @@
                 <ul class="nav nav-pills flex-column">
                     <li class="nav-item mb-1">
                         <a href="/profil" class="nav-link {{ Request::is('profil') ? 'active' : '' }}">
-                            <i class="bi bi-person-circle me-2"></i> Pengaturan Profil
+                            <i class="bi bi-person-circle me-2 flex"></i> Pengaturan Profil
                         </a>
                     </li>
                     <li class="nav-item mb-1">
