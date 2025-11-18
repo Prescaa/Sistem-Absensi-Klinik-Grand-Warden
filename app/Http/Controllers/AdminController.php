@@ -9,6 +9,7 @@ use App\Models\Employee;
 use App\Models\User;
 use App\Models\Validation;
 use App\Models\WorkArea;
+use App\Models\Leave;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules;
@@ -62,12 +63,25 @@ class AdminController extends Controller
     /**
      * Menampilkan halaman validasi absensi.
      */
-    public function showValidasi()
+    public function showValidasiPage()
     {
-        // TODO: Ambil data absensi yang perlu divalidasi
-        // $attendances = Attendance::whereDoesntHave('validation')->with('employee')->get();
+        // 1. Ambil Absensi Pending (Yang sudah ada sebelumnya)
+        $pendingAttendances = Attendance::whereDoesntHave('validation')
+            ->with('employee')
+            ->orderBy('waktu_unggah', 'desc')
+            ->get();
 
-        return view('admin.validasi');
+        // 2. Ambil Pengajuan Izin Pending (BARU)
+        $pendingLeaves = Leave::with('employee')
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'asc') // Urutkan dari yang terlama diajukan
+            ->get();
+
+        // Kirim kedua variabel ke view
+        return view('admin.validasi', [
+            'attendances' => $pendingAttendances,
+            'leaves' => $pendingLeaves
+        ]);
     }
 
     /**
@@ -390,18 +404,6 @@ class AdminController extends Controller
                          ->with('success', 'Pengaturan lokasi geofencing berhasil diperbarui!');
     }
 
-    public function showValidasiPage()
-    {
-        // Ambil semua data absensi (ATTENDANCE)
-        // yang BELUM MEMILIKI relasi 'validation' (datanya belum ada di tabel VALIDATION)
-        $pendingAttendances = Attendance::whereDoesntHave('validation')
-            ->with('employee') // Ambil data karyawan terkait
-            ->orderBy('waktu_unggah', 'desc') // Tampilkan yg terbaru dulu
-            ->get();
-
-        return view('admin.validasi', ['attendances' => $pendingAttendances]);
-    }
-
     /**
      * TAMBAHKAN METODE INI:
      * Menyimpan hasil validasi (Approve/Reject)
@@ -430,5 +432,25 @@ class AdminController extends Controller
 
         return redirect()->route('admin.validasi.show')
                          ->with('success', 'Validasi absensi berhasil disimpan.');
+    }
+
+    public function submitValidasiIzin(Request $request)
+    {
+        $request->validate([
+            'leave_id' => 'required|exists:leaves,leave_id',
+            'status' => 'required|in:disetujui,ditolak',
+            'catatan_admin' => 'nullable|string|max:500',
+        ]);
+
+        $leave = Leave::findOrFail($request->leave_id);
+
+        $leave->status = $request->status;
+        $leave->catatan_admin = $request->catatan_admin;
+        $leave->save();
+
+        $pesan = $request->status == 'disetujui' ? 'Izin berhasil disetujui.' : 'Izin telah ditolak.';
+
+        return redirect()->route('admin.validasi.show')
+                         ->with('success', $pesan);
     }
 }

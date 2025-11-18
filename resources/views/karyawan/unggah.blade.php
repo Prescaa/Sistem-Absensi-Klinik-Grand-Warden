@@ -1,8 +1,7 @@
 {{-- resources/views/karyawan/unggah.blade.php --}}
 
-@extends('layouts.app') {{-- Menggunakan layout karyawan --}}
+@extends('layouts.app')
 
-{{-- Judul halaman tidak lagi dinamis berdasarkan $type dari controller --}}
 @section('page-title', 'Unggah Foto Absensi')
 
 @section('content')
@@ -29,14 +28,43 @@
                         </div>
                     @endif
 
+                    {{-- LOGIKA PENGECEKAN STATUS --}}
+                    @php
+                        // Cek apakah hari ini sedang Izin/Sakit (Variabel dari controller)
+                        $sedangIzin = isset($todayLeave) && $todayLeave;
+
+                        // Cek apakah sudah selesai absen hari ini (Masuk & Pulang ada)
+                        $selesaiAbsen = $absensiMasuk && $absensiPulang;
+
+                        // Tentukan apakah form harus dinonaktifkan
+                        $isDisabled = $sedangIzin || $selesaiAbsen;
+                    @endphp
+
+                    @if($sedangIzin)
+                        <div class="alert alert-info border-0 bg-info bg-opacity-10 text-info-emphasis mb-4">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <strong>Anda sedang dalam masa {{ ucfirst($todayLeave->tipe_izin) }}.</strong><br>
+                            Tidak perlu melakukan upload absensi hari ini.
+                        </div>
+                    @elseif($selesaiAbsen)
+                        <div class="alert alert-success border-0 bg-success bg-opacity-10 text-success-emphasis mb-4">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            <strong>Absensi Hari Ini Selesai.</strong><br>
+                            Anda sudah melakukan absen masuk dan pulang.
+                        </div>
+                    @endif
+
                     <form action="{{ route('karyawan.absensi.storeFoto') }}" method="POST" enctype="multipart/form-data">
                         @csrf
 
-                        {{-- Input hidden 'type' dihapus, karena 'type' akan dikirim oleh tombol submit --}}
-
                         <div class="mb-3">
                             <label for="foto_absensi" class="form-label">Pilih Foto (Wajib ada GPS)</label>
-                            <input class="form-control" type="file" id="foto_absensi" name="foto_absensi" accept="image/jpeg,image/png" required>
+
+                            {{-- IMPLEMENTASI: Tombol File Disable jika $isDisabled bernilai true --}}
+                            <input class="form-control" type="file" id="foto_absensi" name="foto_absensi"
+                                   accept="image/jpeg,image/png"
+                                   {{ $isDisabled ? 'disabled' : 'required' }}>
+
                             <div class="form-text">
                                 Pastikan foto diambil langsung dengan kamera dan layanan lokasi (GPS) di HP Anda sudah aktif.
                             </div>
@@ -46,48 +74,53 @@
                             <img id="imagePreview" src="https://via.placeholder.com/400x300.png?text=Preview+Foto+Anda" alt="Image Preview" class="img-fluid rounded" style="max-height: 300px; border: 1px solid #ddd;">
                         </div>
 
-                        {{--
-                           BLOK TOMBOL BARU DITEMPATKAN DI SINI
-                           Menggantikan tombol submit "Kirim dan Validasi Foto" yang lama.
-                           Logika ini diambil dari dashboard.blade.php.
-                           (Asumsi: $absensiMasuk & $absensiPulang dikirim ke view ini)
-                        --}}
+                        {{-- BLOK TOMBOL AKSI --}}
                         <div class="row g-2">
-                            <div class="col-6">
-                                @if(is_null($absensiMasuk))
-                                    {{-- 1. Belum absen masuk hari ini --}}
-                                    <button type="submit" name="type" value="masuk"
-                                            class="btn btn-primary btn-lg d-block w-100">
-                                        <i class="bi bi-box-arrow-in-right me-2"></i> Absen Masuk
+                            {{-- Jika sedang izin, semua tombol dimatikan --}}
+                            @if($sedangIzin)
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-secondary w-100" disabled>
+                                        <i class="bi bi-slash-circle me-2"></i> Absensi Dinonaktifkan ({{ ucfirst($todayLeave->tipe_izin) }})
                                     </button>
-                                @else
-                                    {{-- 2. Sudah absen masuk --}}
-                                    <button class="btn btn-success btn-lg d-block w-100" disabled>
-                                        <i class="bi bi-check-circle-fill me-2"></i> Sudah Masuk
-                                    </button>
-                                @endif
-                            </div>
+                                </div>
+                            @else
+                                {{-- Logika Normal Absensi --}}
+                                <div class="col-6">
+                                    @if(is_null($absensiMasuk))
+                                        {{-- 1. Belum absen masuk hari ini --}}
+                                        <button type="submit" name="type" value="masuk"
+                                                class="btn btn-primary btn-lg d-block w-100">
+                                            <i class="bi bi-box-arrow-in-right me-2"></i> Absen Masuk
+                                        </button>
+                                    @else
+                                        {{-- 2. Sudah absen masuk --}}
+                                        <button type="button" class="btn btn-success btn-lg d-block w-100" disabled>
+                                            <i class="bi bi-check-circle-fill me-2"></i> Sudah Masuk
+                                        </button>
+                                    @endif
+                                </div>
 
-                            <div class="col-6">
-                                @if(is_null($absensiMasuk))
-                                    {{-- 1. Belum absen masuk, tidak bisa pulang --}}
-                                    <button class="btn btn-secondary btn-lg d-block w-100" disabled
-                                            title="Harap absen masuk terlebih dahulu">
-                                        <i class="bi bi-box-arrow-right me-2"></i> Absen Pulang
-                                    </button>
-                                @elseif(is_null($absensiPulang))
-                                    {{-- 2. Sudah masuk, belum pulang --}}
-                                    <button type="submit" name="type" value="pulang"
-                                            class="btn btn-outline-secondary btn-lg d-block w-100">
-                                        <i class="bi bi-box-arrow-right me-2"></i> Absen Pulang
-                                    </button>
-                                @else
-                                    {{-- 3. Sudah pulang --}}
-                                    <button class="btn btn-dark btn-lg d-block w-100" disabled>
-                                        <i class="bi bi-check-circle-fill me-2"></i> Sudah Pulang
-                                    </button>
-                                @endif
-                            </div>
+                                <div class="col-6">
+                                    @if(is_null($absensiMasuk))
+                                        {{-- 1. Belum absen masuk, tidak bisa pulang --}}
+                                        <button type="button" class="btn btn-secondary btn-lg d-block w-100" disabled
+                                                title="Harap absen masuk terlebih dahulu">
+                                            <i class="bi bi-box-arrow-right me-2"></i> Absen Pulang
+                                        </button>
+                                    @elseif(is_null($absensiPulang))
+                                        {{-- 2. Sudah masuk, belum pulang --}}
+                                        <button type="submit" name="type" value="pulang"
+                                                class="btn btn-outline-secondary btn-lg d-block w-100">
+                                            <i class="bi bi-box-arrow-right me-2"></i> Absen Pulang
+                                        </button>
+                                    @else
+                                        {{-- 3. Sudah pulang --}}
+                                        <button type="button" class="btn btn-dark btn-lg d-block w-100" disabled>
+                                            <i class="bi bi-check-circle-fill me-2"></i> Sudah Pulang
+                                        </button>
+                                    @endif
+                                </div>
+                            @endif
                         </div>
                     </form>
 
@@ -99,23 +132,22 @@
 @endsection
 
 @push('scripts')
-{{-- Script sederhana untuk menampilkan preview gambar yg dipilih --}}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const fileInput = document.getElementById('foto_absensi');
         const imagePreview = document.getElementById('imagePreview');
 
-        fileInput.addEventListener('change', function(event) {
-            const [file] = event.target.files;
-            if (file) {
-                // Membuat URL sementara untuk file yg dipilih
-                imagePreview.src = URL.createObjectURL(file);
-                // Hapus URL setelah gambar dimuat untuk bebaskan memori
-                imagePreview.onload = () => {
-                    URL.revokeObjectURL(imagePreview.src);
+        if(fileInput) {
+            fileInput.addEventListener('change', function(event) {
+                const [file] = event.target.files;
+                if (file) {
+                    imagePreview.src = URL.createObjectURL(file);
+                    imagePreview.onload = () => {
+                        URL.revokeObjectURL(imagePreview.src);
+                    }
                 }
-            }
-        });
+            });
+        }
     });
 </script>
 @endpush

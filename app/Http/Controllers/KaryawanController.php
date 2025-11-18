@@ -8,6 +8,8 @@ use App\Models\Attendance;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Leave;
+
 
 class KaryawanController extends Controller
 {
@@ -36,6 +38,12 @@ class KaryawanController extends Controller
             ->where('type', 'pulang') // <-- Query diperbaiki
             ->first();
 
+            $todayLeave = Leave::where('emp_id', $karyawanId)
+            ->where('status', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_selesai', '>=', $today)
+            ->first();
+            
         return [
             'absensiMasuk' => $absensiMasuk,
             'absensiPulang' => $absensiPulang
@@ -66,13 +74,74 @@ class KaryawanController extends Controller
     // Fungsi untuk menampilkan Halaman Riwayat
     public function riwayat()
     {
-        return view('karyawan.riwayat');
+        // 1. Ambil User yang sedang login
+        $user = auth()->user();
+
+        // 2. Ambil data Employee (Karyawan) dari relasi user
+        // Pastikan model User memiliki fungsi public function employee()
+        $karyawan = $user->employee;
+
+        // 3. Ambil data absensi berdasarkan emp_id dari karyawan tersebut
+        $riwayatAbsensi = Attendance::with('validation')
+            ->where('emp_id', $karyawan->emp_id)
+            ->orderBy('waktu_unggah', 'desc')
+            ->get();
+
+        // 4. Kirim variabel $karyawan dan $riwayatAbsensi ke view
+        return view('karyawan.riwayat', [
+            'karyawan' => $karyawan,
+            'riwayatAbsensi' => $riwayatAbsensi
+        ]);
     }
 
     // Fungsi untuk menampilkan Halaman Izin
     public function izin()
     {
-        return view('karyawan.izin');
+        $karyawanId = auth()->user()->employee->emp_id;
+
+        // Ambil riwayat izin karyawan tersebut untuk ditampilkan di bawah form
+        $riwayatIzin = Leave::where('emp_id', $karyawanId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('karyawan.izin', compact('riwayatIzin'));
+    }
+
+    // MENYIMPAN PENGAJUAN IZIN (BARU)
+    public function storeIzin(Request $request)
+    {
+        $request->validate([
+            'tipe_izin' => 'required|in:sakit,izin,cuti',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'deskripsi' => 'required|string|max:500',
+            'file_bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048', // Max 2MB
+        ]);
+
+        $karyawanId = auth()->user()->employee->emp_id;
+        $filePath = null;
+
+        // Simpan file bukti jika ada
+        if ($request->hasFile('file_bukti')) {
+            $file = $request->file('file_bukti');
+            $fileName = $karyawanId . '-izin-' . now()->format('YmdHis') . '.' . $file->extension();
+            $path = $file->storeAs('public/bukti_izin', $fileName);
+            $filePath = Storage::url($path);
+        }
+
+        // Simpan ke database
+        Leave::create([
+            'emp_id' => $karyawanId,
+            'tipe_izin' => $request->tipe_izin,
+            'tanggal_mulai' => $request->tanggal_mulai,
+            'tanggal_selesai' => $request->tanggal_selesai,
+            'deskripsi' => $request->deskripsi,
+            'file_bukti' => $filePath,
+            'status' => 'pending'
+        ]);
+
+        return redirect()->route('karyawan.izin')
+            ->with('success', 'Pengajuan izin berhasil dikirim dan menunggu persetujuan.');
     }
 
     // Fungsi untuk menampilkan Halaman Profil

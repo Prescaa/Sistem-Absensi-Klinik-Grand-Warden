@@ -39,6 +39,8 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
     // 2. Rute Simpan Foto
     Route::post('/absensi/simpan-foto', [KaryawanController::class, 'storeFoto'])
          ->name('karyawan.absensi.storeFoto');
+
+    Route::post('/izin/simpan', [KaryawanController::class, 'storeIzin'])->name('karyawan.izin.store');
 });
 
 
@@ -56,6 +58,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 
     Route::post('/validasi/simpan', [AdminController::class, 'submitValidasi'])
          ->name('admin.validasi.submit');
+
+    Route::post('/validasi/izin/simpan', [AdminController::class, 'submitValidasiIzin'])
+         ->name('admin.validasi.izin.submit');
 
     // 3. Manajemen Karyawan (CRUD)
     Route::get('/manajemen-karyawan', [AdminController::class, 'showManajemenKaryawan'])
