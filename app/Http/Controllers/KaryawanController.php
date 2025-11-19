@@ -72,25 +72,46 @@ class KaryawanController extends Controller
     }
 
     // Fungsi untuk menampilkan Halaman Riwayat
+// Pastikan di bagian atas file sudah ada: use App\Models\Leave;
+
     public function riwayat()
     {
-        // 1. Ambil User yang sedang login
+        // 1. Ambil User & Karyawan
         $user = auth()->user();
-
-        // 2. Ambil data Employee (Karyawan) dari relasi user
-        // Pastikan model User memiliki fungsi public function employee()
         $karyawan = $user->employee;
 
-        // 3. Ambil data absensi berdasarkan emp_id dari karyawan tersebut
+        // 2. Ambil data absensi (Logika Lama)
         $riwayatAbsensi = Attendance::with('validation')
             ->where('emp_id', $karyawan->emp_id)
             ->orderBy('waktu_unggah', 'desc')
             ->get();
 
-        // 4. Kirim variabel $karyawan dan $riwayatAbsensi ke view
+        // 3. LOGIKA BARU: Hitung Izin, Sakit, Cuti
+        // Kita hitung yang statusnya 'disetujui' saja agar akurat sebagai rekap
+        // (Jika ingin menghitung yang pending juga, hapus baris ->where('status', 'disetujui'))
+        
+        $izinCount = Leave::where('emp_id', $karyawan->emp_id)
+            ->where('tipe_izin', 'izin')
+            ->where('status', 'disetujui') 
+            ->count();
+
+        $sakitCount = Leave::where('emp_id', $karyawan->emp_id)
+            ->where('tipe_izin', 'sakit')
+            ->where('status', 'disetujui')
+            ->count();
+            
+        $cutiCount = Leave::where('emp_id', $karyawan->emp_id)
+            ->where('tipe_izin', 'cuti')
+            ->where('status', 'disetujui')
+            ->count();
+
+        // 4. Kirim semua variabel ke view
         return view('karyawan.riwayat', [
-            'karyawan' => $karyawan,
-            'riwayatAbsensi' => $riwayatAbsensi
+            'karyawan'       => $karyawan,
+            'riwayatAbsensi' => $riwayatAbsensi,
+            'izinCount'      => $izinCount,   // <-- Kirim ini
+            'sakitCount'     => $sakitCount,  // <-- Kirim ini
+            'cutiCount'      => $cutiCount    // <-- Kirim ini
         ]);
     }
 

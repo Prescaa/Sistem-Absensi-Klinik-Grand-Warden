@@ -5,10 +5,8 @@
 @section('content')
     <div class="d-flex flex-column h-100">
 
-        {{-- Card Summary Atas --}}
+        {{-- Card Summary Atas (Tetap Sama) --}}
         <div class="row mb-4">
-            {{-- ... (Kode Card Nama, Jam, Tanggal, Lokasi TETAP SAMA, tidak saya tulis ulang agar hemat tempat) ... --}}
-             {{-- Silakan copy bagian card summary dari kode sebelumnya jika hilang --}}
             <div class="col-xl-3 col-md-6 mb-3">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body p-3">
@@ -24,7 +22,8 @@
                     </div>
                 </div>
             </div>
-             <div class="col-xl-3 col-md-6 mb-3">
+
+            <div class="col-xl-3 col-md-6 mb-3">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center">
@@ -39,7 +38,8 @@
                     </div>
                 </div>
             </div>
-             <div class="col-xl-3 col-md-6 mb-3">
+
+            <div class="col-xl-3 col-md-6 mb-3">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center">
@@ -54,7 +54,8 @@
                     </div>
                 </div>
             </div>
-             <div class="col-xl-3 col-md-6 mb-3">
+
+            <div class="col-xl-3 col-md-6 mb-3">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body p-3">
                         <div class="d-flex align-items-center">
@@ -74,21 +75,32 @@
         <div class="row flex-grow-1">
             <div class="col-lg-8 d-flex flex-column">
 
-                {{-- Statistik Absensi --}}
+                {{-- Statistik Absensi (PERBAIKAN WARNA TEKS) --}}
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-body p-3">
                         <div class="row text-center">
-                            <div class="col-4">
-                                <h6 class="text-muted small">Hadir (Total)</h6>
-                                <h5 class="fw-bold">{{ $riwayatAbsensi->count() }}</h5>
+                            {{-- 1. Hadir (Netral) --}}
+                            <div class="col-6 col-md-3 border-end">
+                                <h6 class="text-muted small mb-1">Hadir (Total)</h6>
+                                <h5 class="fw-bold text-dark">{{ $riwayatAbsensi->count() }}</h5>
                             </div>
-                            <div class="col-4">
-                                <h6 class="text-muted small">Izin</h6>
-                                <h5 class="fw-bold">-</h5>
+                            
+                            {{-- 2. Cuti (Netral) --}}
+                            <div class="col-6 col-md-3 border-end">
+                                <h6 class="text-muted small mb-1">Cuti</h6>
+                                <h5 class="fw-bold text-dark">{{ $cutiCount ?? 0 }}</h5>
                             </div>
-                            <div class="col-4">
-                                <h6 class="text-muted small">Sakit</h6>
-                                <h5 class="fw-bold">-</h5>
+                            
+                            {{-- 3. Izin (Kuning/Warning) --}}
+                            <div class="col-6 col-md-3 border-end">
+                                <h6 class="text-muted small mb-1">Izin</h6>
+                                <h5 class="fw-bold text-warning">{{ $izinCount ?? 0 }}</h5>
+                            </div>
+                            
+                            {{-- 4. Sakit (Merah/Danger) --}}
+                            <div class="col-6 col-md-3">
+                                <h6 class="text-muted small mb-1">Sakit</h6>
+                                <h5 class="fw-bold text-danger">{{ $sakitCount ?? 0 }}</h5>
                             </div>
                         </div>
                     </div>
@@ -117,16 +129,18 @@
                                         </div>
 
                                         {{-- LOGIKA STATUS VALIDASI --}}
-                                        @php
-                                            // Ambil status final dari relasi validation
-                                            // Jika belum ada validasi, default ke 'pending'
-                                            $status = $absen->validation ? $absen->validation->status_validasi_final : 'Pending';
-                                        @endphp
+                                        @if($absen->validation)
+                                            @php
+                                                $status = strtolower($absen->validation->status_validasi ?? $absen->validation->status_validasi_final ?? '');
+                                            @endphp
 
-                                        @if($status == 'Valid')
-                                            <span class="badge bg-success">Diterima</span>
-                                        @elseif($status == 'Invalid')
-                                            <span class="badge bg-danger">Ditolak</span>
+                                            @if(in_array($status, ['approved', 'valid', 'diterima', 'setuju']))
+                                                <span class="badge bg-success">Diterima</span>
+                                            @elseif(in_array($status, ['rejected', 'invalid', 'ditolak', 'gagal']))
+                                                <span class="badge bg-danger">Ditolak</span>
+                                            @else
+                                                <span class="badge bg-warning text-dark">{{ ucfirst($status) }}</span>
+                                            @endif
                                         @else
                                             <span class="badge bg-warning text-dark">Menunggu Verifikasi</span>
                                         @endif
