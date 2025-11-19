@@ -4,52 +4,56 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter; // Pastikan ini ada
 use App\Models\User;
-use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
 {
-    public function showLogin()
+    public function showLogin(Request $request)
     {
+        // 1. Cek jika sudah login (Logika lama)
         if (Auth::check()) {
-            // --- PERUBAHAN DI SINI ---
-            // Menggunakan strtolower() untuk pengecekan
             if (strtolower(Auth::user()->role) === 'admin') {
                 return redirect('/admin/dashboard');
             }
-            // Asumsikan selain itu adalah karyawan
             return redirect('/dashboard');
         }
-        return view('auth.login');
+
+        // 2. --- LOGIKA BARU (PERSISTENCE) ---
+        // Cek apakah IP ini sedang dalam masa tunggu (Rate Limited)
+        // Kita lakukan ini di GET request agar saat di-refresh tetap terdeteksi
+        $throttleKey = 'login-attempt:' . $request->ip();
+        $secondsRemaining = 0;
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $secondsRemaining = RateLimiter::availableIn($throttleKey);
+        }
+
+        // Kirim variabel $secondsRemaining ke View
+        return view('auth.login', compact('secondsRemaining'));
     }
 
     public function handleLogin(Request $request)
     {
-        // 1. Define a unique throttle key based on the user's IP
-        // You can also append the username to throttle by account: $request->input('username') . '|' . $request->ip()
         $throttleKey = 'login-attempt:' . $request->ip();
 
-        // 2. Check if the user has tried too many times (e.g., 5 times)
+        // 3. Cek Rate Limiter
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $seconds = RateLimiter::availableIn($throttleKey);
-            return back()->with('error', "Terlalu banyak percobaan login. Silakan coba lagi dalam $seconds detik.");
+            // Jika kena limit, langsung kembalikan saja.
+            // Fungsi showLogin() di atas yang akan menangani tampilan error & countdown-nya.
+            return back()->withInput();
         }
 
-        // 3. Validate inputs
+        // 4. Validasi & Login (Logika lama)
         $credentials = $request->validate([
             'username' => 'required',
             'password' => 'required',
         ]);
 
-        // 4. Attempt login
         if (Auth::attempt($credentials)) {
-            // SUCCESS: Clear the rate limiter so they aren't blocked next time
             RateLimiter::clear($throttleKey);
-
             $request->session()->regenerate();
 
-            // ... existing role check logic ...
             $user = Auth::user();
             if (strtolower($user->role) === 'admin') {
                 return redirect()->intended('/admin/dashboard');
@@ -62,8 +66,7 @@ class AuthController extends Controller
             return back()->with('error', 'Akun Anda tidak memiliki role yang valid.');
         }
 
-        // FAILURE: Increment the attempt counter
-        // The second argument '60' means the "hit" stays in memory for 60 seconds
+        // 5. Jika Gagal Login
         RateLimiter::hit($throttleKey, 60);
 
         return back()->with('error', 'Username atau Password salah!');
@@ -72,11 +75,8 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         Auth::logout();
-
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
-
         return redirect('/login');
     }
 }

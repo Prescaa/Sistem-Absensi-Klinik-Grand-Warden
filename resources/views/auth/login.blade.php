@@ -32,11 +32,69 @@
                             <div class="card-body p-4 p-md-5">
                                 <h3 class="fw-bold mb-4">LOGIN</h3>
 
-                                @if (session('error'))
+                                {{-- ========================================================= --}}
+                                {{--           MULAI MODIFIKASI LOGIKA ALERT & TIMER           --}}
+                                {{-- ========================================================= --}}
+
+                                {{-- 1. Jika sedang dihukum (Rate Limited), tampilkan Timer --}}
+                                @if (isset($secondsRemaining) && $secondsRemaining > 0)
+                                    <div class="alert alert-danger text-center" role="alert">
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                        Terlalu banyak percobaan login.
+                                        <br>
+                                        Silakan tunggu <strong id="countdown" class="fs-5">{{ $secondsRemaining }}</strong> detik lagi.
+                                    </div>
+
+                                    <script>
+                                        document.addEventListener('DOMContentLoaded', function() {
+                                            // Ambil elemen-elemen penting
+                                            var countdownElement = document.getElementById('countdown');
+                                            var loginButton = document.querySelector('button[type="submit"]');
+                                            var inputs = document.querySelectorAll('input');
+
+                                            // --- PERBAIKAN DI SINI ---
+                                            // Menggunakan parseInt dan tanda kutip agar editor tidak error
+                                            var timeLeft = parseInt("{{ $secondsRemaining }}");
+
+                                            // 1. Matikan Input dan Tombol (Disable)
+                                            if (loginButton) {
+                                                loginButton.disabled = true;
+                                                loginButton.innerText = "Mohon Tunggu...";
+                                                loginButton.classList.add('btn-secondary');
+                                                loginButton.classList.remove('btn-primary');
+                                            }
+
+                                            inputs.forEach(function(input) {
+                                                input.disabled = true;
+                                            });
+
+                                            // 2. Jalankan Timer Mundur
+                                            var timer = setInterval(function() {
+                                                timeLeft--; // Kurangi 1 detik
+                                                if (countdownElement) {
+                                                    countdownElement.innerText = timeLeft; // Update teks angka
+                                                }
+
+                                                // 3. Jika waktu habis (0 atau kurang)
+                                                if (timeLeft <= 0) {
+                                                    clearInterval(timer);
+                                                    // Reload halaman agar user bisa login lagi
+                                                    window.location.reload();
+                                                }
+                                            }, 1000); // Update setiap 1000ms (1 detik)
+                                        });
+                                    </script>
+
+                                {{-- 2. Jika tidak dihukum, tapi ada error biasa (misal password salah) --}}
+                                @elseif (session('error'))
                                     <div class="alert alert-danger">
                                         {{ session('error') }}
                                     </div>
                                 @endif
+
+                                {{-- ========================================================= --}}
+                                {{--           AKHIR MODIFIKASI LOGIKA ALERT & TIMER           --}}
+                                {{-- ========================================================= --}}
 
                                 <form action="/login" method="POST">
                                     @csrf
@@ -64,15 +122,6 @@
                                         </div>
                                     </div>
 
-                                    <div class="mb-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="" id="ingatSaya">
-                                            <label class="form-check-label" for="ingatSaya">
-                                                Ingat Saya
-                                            </label>
-                                        </div>
-                                        </div>
-
                                     <button class="btn btn-primary btn-lg w-100 mt-3" type="submit">
                                         Login
                                     </button>
@@ -91,15 +140,18 @@
             const passwordInput = document.querySelector('#passwordInput');
             const eyeIcon = togglePassword.querySelector('i');
 
-            togglePassword.addEventListener('click', function () {
-                // Toggle the input type
-                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                passwordInput.setAttribute('type', type);
+            // Cek dulu apakah elemen togglePassword ada (untuk menghindari error saat disabled)
+            if (togglePassword && passwordInput) {
+                togglePassword.addEventListener('click', function () {
+                    // Toggle the input type
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
 
-                // Toggle the icon class
-                eyeIcon.classList.toggle('bi-eye');
-                eyeIcon.classList.toggle('bi-eye-slash');
-            });
+                    // Toggle the icon class
+                    eyeIcon.classList.toggle('bi-eye');
+                    eyeIcon.classList.toggle('bi-eye-slash');
+                });
+            }
         });
     </script>
 </body>

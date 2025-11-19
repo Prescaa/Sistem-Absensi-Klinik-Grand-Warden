@@ -18,8 +18,7 @@ Route::get('/', function () {
 
 // --- Rute Autentikasi ---
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'handleLogin'])
-    ->middleware('throttle:5,1');
+Route::post('/login', [AuthController::class, 'handleLogin']);
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 
