@@ -392,7 +392,10 @@ class AdminController extends Controller
         // Kolom 'koordinat_pusat' Anda adalah tipe POINT.
         // Cara termudah menanganinya adalah menggunakan DB::raw() untuk
         // membuat fungsi POINT() dari MySQL.
-        $lokasi->koordinat_pusat = DB::raw("POINT({$request->latitude}, {$request->longitude})");
+        // Safe because $lat/$lon are guaranteed to be floats
+        $lat = (float) $request->latitude;
+        $lon = (float) $request->longitude;
+        $lokasi->koordinat_pusat = DB::raw("POINT($lat, $lon)");
 
         // Catatan: Menyimpan sebagai POINT adalah cara database yang "benar",
         // tetapi mengambilnya kembali untuk ditampilkan di form sedikit lebih rumit.
@@ -412,10 +415,10 @@ class AdminController extends Controller
         // 1. Validasi input
         $request->validate([
             'att_id' => 'required|exists:ATTENDANCE,att_id',
-            
+
             // PERBAIKAN: Kita memaksa input harus 'Valid' atau 'Invalid' (Sesuai Database)
-            'status_validasi' => 'required|in:Valid,Invalid', 
-            
+            'status_validasi' => 'required|in:Valid,Invalid',
+
             'catatan_validasi' => 'nullable|string|max:500'
         ]);
 
@@ -427,13 +430,13 @@ class AdminController extends Controller
         Validation::create([
             'att_id' => $request->att_id,
             'admin_id' => $adminEmpId,
-            
+
             // Status Otomatis disamakan dengan keputusan admin
-            'status_validasi_otomatis' => $request->status_validasi, 
-            
+            'status_validasi_otomatis' => $request->status_validasi,
+
             // Status Final (PENTING: Ini yang akan menentukan warna hijau/merah)
-            'status_validasi_final' => $request->status_validasi, 
-            
+            'status_validasi_final' => $request->status_validasi,
+
             'catatan_admin' => $request->catatan_validasi,
             'timestamp_validasi' => now()
         ]);
