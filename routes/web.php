@@ -35,12 +35,15 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
 
     // --- PERBAIKAN DI SINI ---
     // Menggunakan KaryawanController untuk menampilkan view (ini sudah benar di kode kamu)
+    // 1. Rute Menampilkan Halaman Profil (GET)
     Route::get('/profil', [KaryawanController::class, 'profil'])->name('karyawan.profil');
     
-    // TAMBAHKAN INI: Route untuk memproses simpan data (POST)
-    // Kita gunakan ProfileController karena logic update-nya sudah lengkap di sana
-    Route::post('/profil', [ProfileController::class, 'update'])->name('karyawan.profil.update');
-
+    // 2. Rute Memproses Update Profil (PUT)
+    // - Menggunakan method PUT (sesuai form @method('PUT'))
+    // - URL dibedakan menjadi '/profil/update'
+    // - Menggunakan KaryawanController fungsi updateProfil
+    Route::put('/profil/update', [KaryawanController::class, 'updateProfil'])->name('karyawan.profil.update');
+    Route::delete('/profil/hapus-foto', [KaryawanController::class, 'deleteFotoProfil'])->name('karyawan.profil.deleteFoto');
     // 1. Rute Halaman Upload Absensi
     Route::get('/absensi/unggah/{type}', [KaryawanController::class, 'showUploadForm'])
          ->name('karyawan.absensi.unggah');

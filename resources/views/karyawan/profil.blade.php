@@ -11,93 +11,121 @@
         </div>
     @endif
 
+    {{-- Pesan Error --}}
+    @if($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <ul class="mb-0">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     <div class="card shadow-sm border-0">
         <div class="card-body p-4 p-md-5">
-            {{-- Form mengarah ke route update profil --}}
+            {{-- Form Update Profil --}}
             <form action="{{ route('karyawan.profil.update') }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                @method('PUT') {{-- Gunakan method PUT untuk update --}}
+                @method('PUT')
                 
-                <div class="row">
-                    {{-- Kolom Kiri: Foto Profil --}}
-                    <div class="col-md-4 text-center d-flex flex-column align-items-center border-end-md mb-4 mb-md-0">
-                        <div class="position-relative mb-3">
-                            @if(isset($employee->foto_profil) && $employee->foto_profil)
-                                <img src="{{ asset($employee->foto_profil) }}" class="rounded-circle shadow-sm object-fit-cover" alt="Foto Profil" style="width: 200px; height: 200px;">
-                            @else
-                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 200px; height: 200px; font-size: 4rem;">
-                                    {{ strtoupper(substr(Auth::user()->employee->nama ?? Auth::user()->username, 0, 1)) }}
-                                </div>
-                            @endif
+                <div class="row align-items-center">
+                    
+                    {{-- 
+                       KOLOM KIRI: FOTO PROFIL 
+                       - Foto diperbesar menjadi 280px
+                       - Posisi ditengah vertikal
+                    --}}
+                    <div class="col-md-4 text-center d-flex flex-column justify-content-center align-items-center mb-5 mb-md-0" style="border-right: 1px solid #dee2e6; min-height: 400px;">
+                        
+                        <div class="position-relative mb-4">
+                            {{-- Container Preview Foto --}}
+                            <div id="foto-preview-container">
+                                @if(isset($employee->foto_profil) && $employee->foto_profil)
+                                    {{-- FOTO DIPERBESAR (280px) --}}
+                                    <img src="{{ asset($employee->foto_profil) }}" class="rounded-circle shadow-lg object-fit-cover" alt="Foto Profil" style="width: 280px; height: 280px; border: 5px solid #fff;">
+                                @else
+                                    {{-- INISIAL DIPERBESAR (280px) --}}
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow-lg" style="width: 280px; height: 280px; font-size: 7rem; border: 5px solid #fff;">
+                                        {{ strtoupper(substr(Auth::user()->employee->nama ?? Auth::user()->username, 0, 1)) }}
+                                    </div>
+                                @endif
+                            </div>
                             
-                            {{-- Tombol Upload Tersembunyi --}}
-                            <label for="foto_input" class="position-absolute bottom-0 end-0 bg-white rounded-circle p-2 shadow cursor-pointer" style="cursor: pointer;">
-                                <i class="bi bi-camera-fill text-primary fs-4"></i>
-                            </label>
+                            {{-- Input File Tersembunyi --}}
                             <input type="file" id="foto_input" name="foto_profil" class="d-none" accept="image/*">
                         </div>
                         
-                        <h5 class="fw-bold">{{ Auth::user()->employee->nama }}</h5>
-                        <p class="text-muted small">{{ Auth::user()->employee->posisi ?? 'Karyawan' }}</p>
-                        
-                        <div class="mt-2">
-                             <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('foto_input').click()">
-                                <i class="bi bi-upload me-1"></i> Ganti Foto
+                        {{-- Tombol Aksi --}}
+                        <div class="d-flex gap-2">
+                            {{-- Tombol Ganti Foto --}}
+                            <button type="button" class="btn btn-outline-primary px-4" onclick="document.getElementById('foto_input').click()">
+                                <i class="bi bi-camera-fill me-2"></i> Ganti Foto
                             </button>
+
+                            {{-- Tombol Hapus Foto (Hanya jika ada foto) --}}
+                            @if(isset($employee->foto_profil) && $employee->foto_profil)
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteFotoModal">
+                                    <i class="bi bi-trash-fill"></i>
+                                </button>
+                            @endif
                         </div>
                     </div>
 
-                    {{-- Kolom Kanan: Form Data --}}
+                    {{-- KOLOM KANAN: FORM DATA --}}
                     <div class="col-md-8 ps-md-5">
-                        <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-person-lines-fill me-2"></i>Informasi Pribadi</h5>
                         
+                        <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-person-lines-fill me-2"></i>Informasi Pribadi</h5>
+
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label class="form-label text-muted small">Nama Lengkap</label>
+                                <label class="form-label fw-bold small text-muted">Nama Lengkap</label>
                                 <input type="text" class="form-control bg-light" value="{{ Auth::user()->employee->nama }}" readonly disabled>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label text-muted small">NIP</label>
+                                <label class="form-label fw-bold small text-muted">NIP</label>
                                 <input type="text" class="form-control bg-light" value="{{ Auth::user()->employee->nip ?? '-' }}" readonly disabled>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label text-muted small">Alamat Email</label>
+                            <label class="form-label fw-bold small text-muted">Alamat Email</label>
                             <input type="email" class="form-control bg-light" value="{{ Auth::user()->email }}" readonly disabled>
                         </div>
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label class="form-label text-muted small">Jabatan</label>
+                                <label class="form-label fw-bold small text-muted">Jabatan</label>
                                 <input type="text" class="form-control bg-light" value="{{ Auth::user()->employee->posisi ?? '-' }}" disabled>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label text-muted small">Departemen</label>
+                                <label class="form-label fw-bold small text-muted">Departemen</label>
                                 <input type="text" class="form-control bg-light" value="{{ Auth::user()->employee->departemen ?? '-' }}" disabled>
                             </div>
                         </div>
 
                         <hr class="my-4">
-                        <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-geo-alt-fill me-2"></i>Kontak & Alamat</h5>
                         
+                        <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-geo-alt-fill me-2"></i>Kontak & Alamat</h5>
+  
                         <div class="mb-3">
-                            <label for="alamatRumah" class="form-label fw-semibold">Alamat Rumah</label>
-                            <textarea class="form-control" id="alamatRumah" name="alamat_rumah" rows="2" placeholder="Masukkan alamat lengkap...">{{ Auth::user()->employee->alamat_rumah ?? '' }}</textarea>
+                            <label for="alamat" class="form-label fw-bold text-muted small">Alamat Rumah</label>
+                            <textarea class="form-control" id="alamat" name="alamat" rows="2" placeholder="Masukkan alamat lengkap...">{{ Auth::user()->employee->alamat ?? '' }}</textarea>
                         </div>
                         
                         <div class="mb-4">
-                            <label for="nomorTelepon" class="form-label fw-semibold">Nomor Telepon / WhatsApp</label>
+                            <label for="no_telepon" class="form-label fw-bold text-muted small">Nomor Telepon / WhatsApp</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white"><i class="bi bi-telephone"></i></span>
-                                <input type="text" class="form-control" id="nomorTelepon" name="nomor_telepon" value="{{ Auth::user()->employee->nomor_telepon ?? '' }}" placeholder="Contoh: 081234567890">
+                                <input type="text" class="form-control" id="no_telepon" name="no_telepon" value="{{ Auth::user()->employee->no_telepon ?? '' }}" placeholder="Contoh: 081234567890">
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-end gap-2">
+                        <div class="d-flex justify-content-end gap-2 mt-5">
                             <a href="{{ route('karyawan.dashboard') }}" class="btn btn-light text-muted px-4">Batalkan</a>
-                            <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">
-                                <i class="bi bi-save me-2"></i>Simpan Perubahan
+                            <button type="submit" class="btn btn-warning text-white px-4 fw-bold shadow-sm">
+                                Simpan Perubahan
                             </button>
                         </div>
                     </div>
@@ -105,63 +133,65 @@
             </form>
         </div>
     </div>
+
+    {{-- Modal Konfirmasi Hapus Foto --}}
+    <div class="modal fade" id="deleteFotoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center pt-0">
+                    <div class="text-danger mb-3">
+                        <i class="bi bi-exclamation-circle display-1"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Hapus Foto Profil?</h5>
+                    <p class="text-muted small">Foto akan dihapus permanen dan diganti dengan inisial nama.</p>
+                    
+                    <form action="{{ route('karyawan.profil.deleteFoto') }}" method="POST">
+                        @csrf
+                        @method('DELETE')
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @push('styles')
 <style>
-    /* KONSISTENSI WARNA: Menggunakan variabel CSS utama */
-    :root {
-        --primary-color: #0d6efd; /* Biru Bootstrap standar, bisa diganti kode hex Figma */
-    }
-    
+    :root { --primary-color: #0d6efd; }
     .text-primary { color: var(--primary-color) !important; }
-    .btn-primary { 
-        background-color: var(--primary-color); 
-        border-color: var(--primary-color);
-    }
-    .btn-primary:hover {
-        background-color: #0b5ed7; /* Versi sedikit lebih gelap untuk hover */
-        border-color: #0a58ca;
-    }
-    .btn-outline-primary {
-        color: var(--primary-color);
-        border-color: var(--primary-color);
-    }
-    .btn-outline-primary:hover {
-        background-color: var(--primary-color);
-        color: white;
-    }
+    .btn-outline-primary { color: var(--primary-color); border-color: var(--primary-color); }
+    .btn-outline-primary:hover { background-color: var(--primary-color); color: white; }
     .bg-primary { background-color: var(--primary-color) !important; }
     
-    /* Responsif border untuk desktop */
-    @media (min-width: 768px) {
-        .border-end-md {
-            border-right: 1px solid #dee2e6;
-        }
+    @media (max-width: 768px) {
+        .col-md-4 { border-right: none !important; border-bottom: 1px solid #dee2e6; padding-bottom: 2rem; margin-bottom: 2rem !important; }
+        .col-md-4[style*="min-height"] { min-height: auto !important; }
+        .ps-md-5 { padding-left: 0.75rem !important; }
     }
 </style>
 @endpush
 
 @push('scripts')
 <script>
-    // Preview gambar saat dipilih
     document.getElementById('foto_input').addEventListener('change', function(event) {
         const [file] = event.target.files;
         if (file) {
-            // Cari elemen gambar (baik img tag atau div inisial)
-            const imgContainer = this.parentElement.querySelector('img, .avatar-initial');
-            
-            if (imgContainer.tagName === 'IMG') {
-                imgContainer.src = URL.createObjectURL(file);
-            } else {
-                // Jika sebelumnya inisial, ganti jadi img
-                const newImg = document.createElement('img');
-                newImg.src = URL.createObjectURL(file);
-                newImg.className = "rounded-circle shadow-sm object-fit-cover";
-                newImg.style.width = "200px";
-                newImg.style.height = "200px";
-                imgContainer.replaceWith(newImg);
-            }
+            const container = document.getElementById('foto-preview-container');
+            container.innerHTML = ''; 
+            const newImg = document.createElement('img');
+            newImg.src = URL.createObjectURL(file);
+            newImg.className = "rounded-circle shadow-lg object-fit-cover";
+            newImg.style.width = "280px"; // Ukuran diperbesar
+            newImg.style.height = "280px"; // Ukuran diperbesar
+            newImg.style.border = "5px solid #fff";
+            container.appendChild(newImg);
         }
     });
 </script>

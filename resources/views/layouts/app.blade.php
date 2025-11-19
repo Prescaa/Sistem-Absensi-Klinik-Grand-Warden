@@ -123,7 +123,7 @@
         .notification-header { padding: 12px 16px; border-bottom: 1px solid #dee2e6; font-weight: bold; }
         .dark-mode .notification-header { border-bottom-color: #444; }
 
-        /* Avatar Style */
+        /* Avatar Style (PENTING UNTUK INISIAL) */
         .avatar-initial {
             width: 40px; height: 40px;
             background-color: var(--primary-color);
@@ -207,20 +207,22 @@
                     </div>
                 </div>
                 
-                <a href="/profil" class="d-flex align-items-center text-decoration-none text-dark">
-                    @auth
-                        @php
-                            // Ambil Nama
-                            $name = Auth::user()->employee->nama ?? Auth::user()->username;
-                            // Ambil Inisial (Huruf Pertama)
-                            $initial = strtoupper(substr($name, 0, 1));
-                            // Cek Foto (Misal nanti ada kolom 'foto_profil')
-                            $foto = null; // Auth::user()->employee->foto_profil;
-                        @endphp
-
+                @auth
+                    @php
+                        $user = Auth::user();
+                        $employee = $user->employee;
+                        $foto = $employee->foto_profil ?? null;
+                        $name = $employee->nama ?? $user->username;
+                        // Ambil inisial dari huruf pertama nama
+                        $initial = strtoupper(substr($name, 0, 1));
+                    @endphp
+                    
+                    <a href="/profil" class="d-flex align-items-center text-decoration-none text-dark">
                         @if($foto)
-                            <img src="{{ asset($foto) }}" class="rounded-circle" alt="Profil" style="width: 40px; height: 40px; object-fit: cover;">
+                            {{-- Jika ada foto di database --}}
+                            <img src="{{ asset($foto) }}" class="rounded-circle shadow-sm" alt="Profil" style="width: 40px; height: 40px; object-fit: cover;">
                         @else
+                            {{-- Jika tidak ada, tampilkan Inisial --}}
                             <div class="avatar-initial shadow-sm">
                                 {{ $initial }}
                             </div>
@@ -228,16 +230,16 @@
 
                         <div class="ms-2 d-none d-sm-block text-start">
                             <span class="fw-bold d-block text-dark">{{ $name }}</span>
-                            <small class="text-muted">{{ Auth::user()->email }}</small>
+                            <small class="text-muted">{{ $user->email }}</small>
                         </div>
-                    @else
-                        <div class="avatar-initial shadow-sm">T</div>
-                        <div class="ms-2 d-none d-sm-block text-start">
-                            <span class="fw-bold d-block text-dark">Tamu</span>
-                        </div>
-                    @endauth
-                </a>
-            </div>
+                    </a>
+                @else
+                    <div class="d-flex align-items-center">
+                         <div class="avatar-initial shadow-sm">T</div>
+                         <div class="ms-2"><span class="fw-bold">Tamu</span></div>
+                    </div>
+                @endauth
+                </div>
         </header>
 
         <main class="p-4 flex-grow-1 overflow-auto">
