@@ -18,7 +18,8 @@ Route::get('/', function () {
 
 // --- Rute Autentikasi ---
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'handleLogin']);
+Route::post('/login', [AuthController::class, 'handleLogin'])
+    ->middleware('throttle:5,1');
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 
@@ -37,7 +38,7 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
     // Menggunakan KaryawanController untuk menampilkan view (ini sudah benar di kode kamu)
     // 1. Rute Menampilkan Halaman Profil (GET)
     Route::get('/profil', [KaryawanController::class, 'profil'])->name('karyawan.profil');
-    
+
     // 2. Rute Memproses Update Profil (PUT)
     // - Menggunakan method PUT (sesuai form @method('PUT'))
     // - URL dibedakan menjadi '/profil/update'
@@ -100,10 +101,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 
     Route::post('/geofencing/save', [AdminController::class, 'saveGeofencing'])
          ->name('admin.geofencing.save');
-     
+
      Route::get('/profil', [ProfileController::class, 'index'])
           ->name('profil.index');
 
-     Route::post('/profil', [ProfileController::class, 'update'])  
+     Route::post('/profil', [ProfileController::class, 'update'])
           ->name('profil.update');
 });
