@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Leave;
+use Illuminate\Support\Facades\Log;
 
 class KaryawanController extends Controller
 {
@@ -40,28 +41,93 @@ class KaryawanController extends Controller
             })
             ->latest('waktu_unggah')
             ->first();
-        
+
         // Cek apakah hari ini ada izin yang DISETUJUI
         $todayLeave = Leave::where('emp_id', $karyawanId)
             ->where('status', 'disetujui')
             ->whereDate('tanggal_mulai', '<=', $today)
             ->whereDate('tanggal_selesai', '>=', $today)
             ->first();
-            
+
         return [
-            'absensiMasuk' => $absensiMasuk, 
+            'absensiMasuk' => $absensiMasuk,
             'absensiPulang' => $absensiPulang,
             'todayLeave' => $todayLeave
         ];
     }
 
+    // Di dalam Class KaryawanController
+
+public function checkExif(Request $request)
+{
+    // Validasi input dasar
+    $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+        'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:7000',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json(['status' => 'error', 'message' => 'File foto tidak valid atau terlalu besar.'], 400);
+    }
+
+    $file = $request->file('foto_absensi');
+
+    // --- A. CEK DUPLIKASI FILE (Hash) ---
+    $fileHash = md5_file($file->getRealPath());
+    $isDuplicate = Attendance::where('file_hash', $fileHash)->exists();
+    if ($isDuplicate) {
+        return response()->json(['status' => 'error', 'message' => 'Foto ini sudah pernah dipakai sebelumnya. Harap ambil foto baru!'], 400);
+    }
+
+    // --- B. BACA EXIF ---
+    $exif = @exif_read_data($file->getRealPath());
+
+    // Cek Kelengkapan GPS
+    if (!$exif || empty($exif['GPSLatitude']) || empty($exif['GPSLongitude'])) {
+        return response()->json(['status' => 'error', 'message' => 'Data GPS tidak ditemukan pada foto. Pastikan fitur Lokasi/GPS aktif saat memotret.'], 400);
+    }
+
+    // Cek Waktu Pengambilan (Anti-Foto Lama)
+    if (empty($exif['DateTimeOriginal'])) {
+        return response()->json(['status' => 'error', 'message' => 'Tanggal foto tidak terdeteksi. Jangan gunakan foto hasil download/editan.'], 400);
+    }
+
+    try {
+        $fotoTime = Carbon::parse($exif['DateTimeOriginal']);
+        $serverTime = now();
+        $diffInMinutes = $serverTime->diffInMinutes($fotoTime);
+
+        if ($diffInMinutes > 15) {
+            return response()->json(['status' => 'error', 'message' => 'Foto kadaluarsa (Diambil '.$diffInMinutes.' menit lalu). Harap ambil foto baru.'], 400);
+        }
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'message' => 'Format tanggal foto rusak.'], 400);
+    }
+
+    // Jika lolos semua cek EXIF
+    return response()->json(['status' => 'success', 'message' => 'Validasi Foto Berhasil']);
+}
+
     public function dashboard() { return view('karyawan.dashboard', $this->getTodayAttendance()); }
-    
-    public function unggah() { return view('karyawan.unggah', $this->getTodayAttendance()); }
-    
-    public function showUploadForm(Request $request, $type) { 
-        if (!in_array($type, ['masuk', 'pulang'])) { abort(404); } 
-        return $this->unggah(); 
+
+    // Di app/Http/Controllers/KaryawanController.php
+
+    public function unggah() {
+        $data = $this->getTodayAttendance();
+
+        // --- TAMBAHAN: Ambil data WorkArea untuk validasi Frontend ---
+        // Kita butuh Latitude, Longitude, dan Radius untuk dicek oleh JavaScript browser
+        $data['workArea'] = WorkArea::select(
+                'radius_geofence',
+                DB::raw('ST_X(koordinat_pusat) as latitude'),
+                DB::raw('ST_Y(koordinat_pusat) as longitude')
+            )->find(1); // Asumsi ID area = 1
+
+        return view('karyawan.unggah', $data);
+    }
+
+    public function showUploadForm(Request $request, $type) {
+        if (!in_array($type, ['masuk', 'pulang'])) { abort(404); }
+        return $this->unggah();
     }
 
     public function riwayat()
@@ -132,7 +198,7 @@ class KaryawanController extends Controller
 
         $employee->alamat = $request->alamat;
         $employee->no_telepon = $request->no_telepon;
-        
+
         if ($request->hasFile('foto_profil')) {
             if ($employee->foto_profil) {
                 $oldPath = str_replace('/storage/', '', $employee->foto_profil);
@@ -146,7 +212,7 @@ class KaryawanController extends Controller
         $employee->save();
         return redirect()->route('karyawan.profil')->with('success', 'Profil berhasil diperbarui.');
     }
-    
+
     public function deleteFotoProfil()
     {
         $employee = auth()->user()->employee;
@@ -161,37 +227,102 @@ class KaryawanController extends Controller
     }
 
     public function storeFoto(Request $request)
-    {
-        $request->validate(['foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:7000', 'type' => 'required|string|in:masuk,pulang']);
-        $file = $request->file('foto_absensi');
-        $exif = @exif_read_data($file->getRealPath());
+{
+    $request->validate([
+        'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:7000',
+        'type' => 'required|string|in:masuk,pulang'
+    ]);
 
-        if (empty($exif['GPSLatitude']) || empty($exif['GPSLongitude'])) {
-            return redirect()->back()->with('error', 'Foto tidak memiliki data GPS EXIF.');
-        }
+    $file = $request->file('foto_absensi');
 
-        $photoLat = $this->gpsDmsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef']);
-        $photoLon = $this->gpsDmsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef']);
-        
-        $workArea = WorkArea::select('area_id', 'radius_geofence', DB::raw('ST_X(koordinat_pusat) as latitude'), DB::raw('ST_Y(koordinat_pusat) as longitude'))->find(1);
-        if (!$workArea) return redirect()->back()->with('error', 'Area kerja belum diatur.');
+    // --- 1. CEK DUPLIKASI FILE (Anti-Replay Attack) ---
+    // Kita hash konten file. Jika user mencoba upload file yang SAMA PERSIS
+    // (meskipun nama diganti), hash-nya akan sama.
+    $fileHash = md5_file($file->getRealPath());
 
-        $distance = $this->haversineDistance($photoLat, $photoLon, $workArea->latitude, $workArea->longitude);
-        if ($distance > $workArea->radius_geofence) {
-            return redirect()->back()->with('error', 'Anda berada di luar radius absensi. Jarak: '.round($distance).'m.');
-        }
-
-        $karyawanId = auth()->user()->employee->emp_id;
-        $fileName = $karyawanId . '-' . now()->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
-        $path = $file->storeAs('public/absensi', $fileName);
-        $publicPath = Storage::url($path);
-
-        Attendance::create([
-            'emp_id' => $karyawanId, 'area_id' => $workArea->area_id, 'waktu_unggah' => now(), 'latitude' => $photoLat, 'longitude' => $photoLon, 'nama_file_foto' => $publicPath, 'timestamp_ekstraksi' => $exif['DateTimeOriginal'] ?? null, 'type' => $request->type
-        ]);
-
-        return redirect()->route('karyawan.dashboard')->with('success', 'Absensi ' . $request->type . ' berhasil disimpan.');
+    // Cek apakah hash ini sudah ada di database absensi manapun
+    $isDuplicate = Attendance::where('file_hash', $fileHash)->exists();
+    if ($isDuplicate) {
+        return redirect()->back()->with('error', 'Foto ini sudah pernah digunakan sebelumnya. Harap ambil foto baru secara langsung.');
     }
+
+    // Baca data EXIF
+    // Gunakan @ untuk suppress error, tapi kita cek hasilnya nanti
+    $exif = @exif_read_data($file->getRealPath());
+
+    // --- 2. CEK KETERSEDIAAN EXIF ---
+    if (!$exif || empty($exif['GPSLatitude']) || empty($exif['GPSLongitude'])) {
+        return redirect()->back()->with('error', 'Data GPS tidak ditemukan pada foto. Pastikan GPS aktif dan gunakan kamera langsung (bukan dari galeri/WhatsApp).');
+    }
+
+    // --- 3. VALIDASI WAKTU PENGAMBILAN FOTO (Anti-Backdate/Foto Lama) ---
+    // Foto harus memiliki tanggal original (DateTimeOriginal)
+    if (empty($exif['DateTimeOriginal'])) {
+        return redirect()->back()->with('error', 'Tanggal pengambilan foto tidak terdeteksi. Mohon gunakan kamera langsung.');
+    }
+
+    // Parsing waktu foto
+    try {
+        $fotoTime = Carbon::parse($exif['DateTimeOriginal']);
+        $serverTime = now();
+
+        // Hitung selisih waktu (dalam menit)
+        $diffInMinutes = $serverTime->diffInMinutes($fotoTime);
+
+        // Batas toleransi: misalnya 15 menit.
+        // Jika foto diambil lebih dari 15 menit yang lalu, tolak.
+        if ($diffInMinutes > 15) {
+            return redirect()->back()->with('error', 'Foto kadaluarsa. Foto terdeteksi diambil pada ' . $fotoTime->format('d M Y H:i') . '. Harap ambil foto baru saat ini juga.');
+        }
+
+        // Opsional: Cek jika foto dari masa depan (jam HP user ngaco)
+        if ($fotoTime->greaterThan($serverTime->addMinutes(5))) {
+             return redirect()->back()->with('error', 'Jam pada kamera tidak sesuai dengan waktu server. Periksa pengaturan jam HP Anda.');
+        }
+
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Format tanggal foto tidak valid.');
+    }
+
+    // --- 4. LOGIKA GPS (Kode Lama Anda) ---
+    $photoLat = $this->gpsDmsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef']);
+    $photoLon = $this->gpsDmsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef']);
+
+    // Ambil data area kerja (Pastikan ID 1 atau sesuaikan logika pengambilan area)
+    $workArea = WorkArea::select('area_id', 'radius_geofence', DB::raw('ST_X(koordinat_pusat) as latitude'), DB::raw('ST_Y(koordinat_pusat) as longitude'))->find(1);
+
+    if (!$workArea) {
+        return redirect()->back()->with('error', 'Area kerja belum diatur oleh admin.');
+    }
+
+    $distance = $this->haversineDistance($photoLat, $photoLon, $workArea->latitude, $workArea->longitude);
+
+    if ($distance > $workArea->radius_geofence) {
+        return redirect()->back()->with('error', 'Anda berada di luar radius absensi. Jarak terdeteksi: '.round($distance).' meter.');
+    }
+
+    // --- SIMPAN DATA ---
+    $karyawanId = auth()->user()->employee->emp_id;
+    $fileName = $karyawanId . '-' . now()->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
+
+    // Simpan file ke storage
+    $path = $file->storeAs('public/absensi', $fileName);
+    $publicPath = Storage::url($path);
+
+    Attendance::create([
+        'emp_id' => $karyawanId,
+        'area_id' => $workArea->area_id,
+        'waktu_unggah' => now(),
+        'latitude' => $photoLat,
+        'longitude' => $photoLon,
+        'nama_file_foto' => $publicPath,
+        'timestamp_ekstraksi' => $exif['DateTimeOriginal'],
+        'type' => $request->type,
+        'file_hash' => $fileHash // Simpan hash untuk pengecekan masa depan
+    ]);
+
+    return redirect()->route('karyawan.dashboard')->with('success', 'Absensi ' . $request->type . ' berhasil disimpan.');
+}
 
     private function haversineDistance($lat1, $lon1, $lat2, $lon2) {
         $earthRadius = 6371000;
@@ -201,7 +332,7 @@ class KaryawanController extends Controller
         $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
         return $earthRadius * $c;
     }
-    
+
     private function gpsDmsToDecimal($dmsArray, $ref) {
         $evalCoordPart = function ($coordPart) {
             $parts = explode('/', $coordPart);

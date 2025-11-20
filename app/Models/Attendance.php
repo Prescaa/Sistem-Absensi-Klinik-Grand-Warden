@@ -26,6 +26,7 @@ class Attendance extends Model
         'nama_file_foto',
         'timestamp_ekstraksi',
         'type',
+        'file_hash',
     ];
 
     /**

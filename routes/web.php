@@ -47,7 +47,8 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
     // 1. Rute Halaman Upload Absensi
     Route::get('/absensi/unggah/{type}', [KaryawanController::class, 'showUploadForm'])
          ->name('karyawan.absensi.unggah');
-
+    Route::post('/karyawan/absensi/check-exif', [App\Http\Controllers\KaryawanController::class, 'checkExif'])
+    ->name('karyawan.absensi.checkExif');
     // 2. Rute Simpan Foto
     Route::post('/absensi/simpan-foto', [KaryawanController::class, 'storeFoto'])
          ->name('karyawan.absensi.storeFoto');

@@ -11,7 +11,7 @@ class CreateAttendancesTable extends Migration
      *
      * @return void
      */
-public function up()
+    public function up()
     {
         Schema::create('ATTENDANCE', function (Blueprint $table) {
             $table->id('att_id');
@@ -20,8 +20,14 @@ public function up()
             $table->dateTime('waktu_unggah');
             $table->decimal('latitude', 10, 8);
             $table->decimal('longitude', 11, 8);
-            $table->string('type', 10);
+            $table->string('type', 10); // 'masuk' atau 'pulang'
             $table->string('nama_file_foto')->nullable();
+
+            // --- TAMBAHAN: Kolom Hash untuk Anti-Cheat ---
+            // Menyimpan hash MD5/SHA256 dari file untuk mendeteksi duplikasi gambar.
+            // Panjang 64 cukup untuk SHA-256 (MD5 cuma 32), nullable agar aman.
+            $table->string('file_hash', 64)->nullable();
+
             $table->dateTime('timestamp_ekstraksi')->nullable();
 
             $table->foreign('emp_id')->references('emp_id')->on('EMPLOYEE')->onDelete('cascade');
