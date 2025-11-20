@@ -194,18 +194,63 @@
                     <i class="bi bi-moon-fill fs-5 hover-primary dark-mode-toggle"></i>
                 </div>
                 
+                {{-- --- AWAL BAGIAN NOTIFIKASI --- --}}
                 <div class="position-relative me-3">
                     <i class="bi bi-bell-fill fs-5 hover-primary notification-bell" style="cursor: pointer;"></i>
-                    <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">3</span>
                     
-                    <div class="notification-dropdown">
-                        <div class="notification-header">Notifikasi (3)</div>
-                        <div class="notification-item">
-                            <div class="fw-bold">Absensi Menunggu Verifikasi</div>
-                            <small class="text-muted">11 April 2025 - 08:15</small>
+                    {{-- Badge Merah Dinamis --}}
+                    @if(isset($notifCount) && $notifCount > 0)
+                        <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ $notifCount }}
+                        </span>
+                    @endif
+                    
+                    {{-- Dropdown Isi Notifikasi --}}
+                    <div class="notification-dropdown" style="width: 320px;">
+                        <div class="notification-header d-flex justify-content-between align-items-center">
+                            <span>Notifikasi</span>
+                            @if(isset($notifCount) && $notifCount > 0)
+                                <span class="badge bg-primary rounded-pill">{{ $notifCount }} Baru</span>
+                            @endif
+                        </div>
+
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            @if(isset($globalNotifications) && count($globalNotifications) > 0)
+                                @foreach($globalNotifications as $notif)
+                                    {{-- Item Notifikasi --}}
+                                    <a href="{{ $notif['url'] }}" class="text-decoration-none text-dark">
+                                        <div class="notification-item">
+                                            <div class="d-flex align-items-start">
+                                                <div class="me-2 mt-1">
+                                                    @if($notif['type'] == 'absensi')
+                                                        <i class="bi bi-x-circle-fill text-danger"></i>
+                                                    @else
+                                                        <i class="bi bi-info-circle-fill text-primary"></i>
+                                                    @endif
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold small">{{ $notif['title'] }}</div>
+                                                    <small class="text-muted d-block" style="line-height: 1.2;">
+                                                        {{ $notif['message'] }}
+                                                    </small>
+                                                    <small class="text-secondary" style="font-size: 0.7rem;">
+                                                        {{ \Carbon\Carbon::parse($notif['time'])->diffForHumans() }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                @endforeach
+                            @else
+                                <div class="p-4 text-center text-muted">
+                                    <i class="bi bi-bell-slash fs-4 mb-2 d-block"></i>
+                                    <small>Tidak ada notifikasi baru</small>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
+                {{-- --- AKHIR BAGIAN NOTIFIKASI --- --}}
                 
                 @auth
                     @php

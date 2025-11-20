@@ -12,13 +12,34 @@ use App\Models\Leave;
 
 class KaryawanController extends Controller
 {
-    private function getTodayAttendance()
-    {
+    private function getTodayAttendance() {
         $karyawanId = auth()->user()->employee->emp_id;
         $today = Carbon::today();
 
-        $absensiMasuk = Attendance::where('emp_id', $karyawanId)->whereDate('waktu_unggah', $today)->where('type', 'masuk')->first();
-        $absensiPulang = Attendance::where('emp_id', $karyawanId)->whereDate('waktu_unggah', $today)->where('type', 'pulang')->first();
+        // --- LOGIKA ABSEN ULANG (PERBAIKAN UTAMA) ---
+        // Kita cari absensi hari ini, TAPI kita filter:
+        // Ambil yang status validasinya BUKAN 'Invalid' atau 'Rejected'.
+        // Jika statusnya 'Pending' atau 'Valid', maka dianggap sudah absen.
+        // Jika statusnya 'Invalid' (Ditolak), query ini TIDAK akan mengambil data tersebut,
+        // sehingga variabel $absensiMasuk/Pulang akan null, dan tombol absen muncul lagi.
+
+        $absensiMasuk = Attendance::where('emp_id', $karyawanId)
+            ->whereDate('waktu_unggah', $today)
+            ->where('type', 'masuk')
+            ->whereDoesntHave('validation', function($q) {
+                $q->whereIn('status_validasi_final', ['Invalid', 'Rejected']);
+            })
+            ->latest('waktu_unggah') // Ambil yang paling baru jika ada duplikat
+            ->first();
+
+        $absensiPulang = Attendance::where('emp_id', $karyawanId)
+            ->whereDate('waktu_unggah', $today)
+            ->where('type', 'pulang')
+            ->whereDoesntHave('validation', function($q) {
+                $q->whereIn('status_validasi_final', ['Invalid', 'Rejected']);
+            })
+            ->latest('waktu_unggah')
+            ->first();
         
         // Cek apakah hari ini ada izin yang DISETUJUI
         $todayLeave = Leave::where('emp_id', $karyawanId)
@@ -30,7 +51,7 @@ class KaryawanController extends Controller
         return [
             'absensiMasuk' => $absensiMasuk, 
             'absensiPulang' => $absensiPulang,
-            'todayLeave' => $todayLeave // <-- PENTING: Kirim data izin ke view
+            'todayLeave' => $todayLeave
         ];
     }
 

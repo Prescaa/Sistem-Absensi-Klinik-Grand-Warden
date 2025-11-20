@@ -89,7 +89,7 @@
                                     <th class="ps-4">Tanggal</th>
                                     <th>Tipe</th>
                                     <th>Keterangan</th>
-                                    <th>Status</th>
+                                    <th style="width: 25%;">Status & Catatan</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -97,10 +97,10 @@
                                     <tr>
                                         <td class="ps-4">
                                             <small class="d-block fw-bold text-dark">
-                                                {{ $izin->tanggal_mulai->format('d M Y') }}
+                                                {{ \Carbon\Carbon::parse($izin->tanggal_mulai)->format('d M Y') }}
                                             </small>
                                             <small class="text-muted">
-                                                s/d {{ $izin->tanggal_selesai->format('d M Y') }}
+                                                s/d {{ \Carbon\Carbon::parse($izin->tanggal_selesai)->format('d M Y') }}
                                             </small>
                                         </td>
                                         <td>
@@ -113,7 +113,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <span class="d-inline-block text-truncate" style="max-width: 150px;">
+                                            <span class="d-inline-block text-truncate" style="max-width: 150px;" title="{{ $izin->deskripsi }}">
                                                 {{ $izin->deskripsi }}
                                             </span>
                                             @if($izin->file_bukti)
@@ -121,12 +121,21 @@
                                             @endif
                                         </td>
                                         <td>
+                                            {{-- Badge Status --}}
                                             @if($izin->status == 'pending')
-                                                <span class="badge bg-secondary">Menunggu</span>
+                                                <span class="badge bg-secondary mb-1">Menunggu</span>
                                             @elseif($izin->status == 'disetujui')
-                                                <span class="badge bg-success">Disetujui</span>
+                                                <span class="badge bg-success mb-1">Disetujui</span>
                                             @else
-                                                <span class="badge bg-danger">Ditolak</span>
+                                                <span class="badge bg-danger mb-1">Ditolak</span>
+                                            @endif
+
+                                            {{-- --- BAGIAN BARU: MENAMPILKAN CATATAN ADMIN --- --}}
+                                            @if(!empty($izin->catatan_admin))
+                                                <div class="alert alert-light border p-2 mt-1 mb-0 small text-muted" style="font-size: 0.8rem; line-height: 1.2;">
+                                                    <strong class="d-block text-dark"><i class="bi bi-info-circle me-1"></i>Admin:</strong>
+                                                    {{ $izin->catatan_admin }}
+                                                </div>
                                             @endif
                                         </td>
                                     </tr>

@@ -13,6 +13,16 @@
                         $sedangIzin = isset($todayLeave) && $todayLeave;
                         $selesaiAbsen = $absensiMasuk && $absensiPulang;
                         $isDisabled = $sedangIzin || $selesaiAbsen;
+
+                        $karyawanId = auth()->user()->employee->emp_id;
+                        $today = \Carbon\Carbon::today();
+                        
+                        // Cek manual apakah ada data 'Invalid' hari ini
+                        $rejectedToday = \App\Models\Attendance::where('emp_id', $karyawanId)
+                            ->whereDate('waktu_unggah', $today)
+                            ->whereHas('validation', function($q) {
+                                $q->whereIn('status_validasi_final', ['Invalid', 'Rejected']);
+                            })->first();
                     @endphp
 
                     @if($sedangIzin)
@@ -25,6 +35,12 @@
                             <i class="bi bi-check-circle-fill text-success fs-1 d-block mb-2"></i>
                             <h3 class="fw-bold text-success">Absensi Hari Ini Selesai</h3>
                             <p class="text-muted mb-0">Terima kasih atas kerja keras Anda.</p>
+                        </div>
+                    @elseif($rejectedToday)
+                        <div class="alert alert-danger mx-4 mt-4 mb-0">
+                            <i class="bi bi-x-circle-fill me-2"></i>
+                            <strong>Perhatian:</strong> Absensi {{ ucfirst($rejectedToday->type) }} Anda hari ini ditolak oleh Admin.
+                            <br>Silakan ambil foto baru yang lebih jelas dan sesuai lokasi.
                         </div>
                     @else
                         <div>
