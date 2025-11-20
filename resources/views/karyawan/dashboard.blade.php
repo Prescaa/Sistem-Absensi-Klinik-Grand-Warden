@@ -50,7 +50,7 @@
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-body p-4 text-center d-flex flex-column justify-content-center">
                     <h6 class="text-muted mb-2">Waktu Saat Ini</h6>
-                    <h2 class="fw-bold mb-0 display-4" id="realtime-jam">--:--</h2>
+                    <h2 class="fw-bold mb-0 display-4 text-body" id="realtime-jam">--:--</h2>
                     <p class="text-primary fw-bold mb-0 mt-1" id="realtime-tanggal">...</p>
                 </div>
             </div>
@@ -62,11 +62,10 @@
         <div class="col-lg-7 mb-3 mb-lg-0 d-flex">
             <div class="card shadow-sm border-0 w-100">
                 <div class="card-header bg-white py-3 border-0">
-                    <h5 class="fw-bold mb-0 text-dark">Status Kehadiran Hari Ini</h5>
+                    <h5 class="fw-bold mb-0 text-body">Status Kehadiran Hari Ini</h5>
                 </div>
                 <div class="card-body p-5 d-flex flex-column justify-content-center align-items-center">
                     
-                    {{-- LOGIKA TAMPILAN STATUS --}}
                     @if(isset($todayLeave) && $todayLeave)
                         <div class="text-center">
                             <div class="mb-4"><i class="bi bi-calendar-x-fill text-info" style="font-size: 6rem;"></i></div>
@@ -86,11 +85,11 @@
                             <div class="d-flex gap-4 mt-4 justify-content-center">
                                 <div class="bg-light rounded p-3 px-4 border text-center">
                                     <small class="d-block text-muted mb-1">Masuk</small>
-                                    <strong class="fs-4 text-dark">{{ \Carbon\Carbon::parse($absensiMasuk->waktu_unggah)->format('H:i') }}</strong>
+                                    <strong class="fs-4 text-body">{{ \Carbon\Carbon::parse($absensiMasuk->waktu_unggah)->format('H:i') }}</strong>
                                 </div>
                                 <div class="bg-light rounded p-3 px-4 border text-center">
                                     <small class="d-block text-muted mb-1">Pulang</small>
-                                    <strong class="fs-4 text-dark">{{ \Carbon\Carbon::parse($absensiPulang->waktu_unggah)->format('H:i') }}</strong>
+                                    <strong class="fs-4 text-body">{{ \Carbon\Carbon::parse($absensiPulang->waktu_unggah)->format('H:i') }}</strong>
                                 </div>
                             </div>
                         </div>
@@ -108,7 +107,7 @@
                     @else
                         <div class="text-center">
                             <div class="mb-4"><i class="bi bi-alarm text-warning" style="font-size: 6rem;"></i></div>
-                            <h2 class="fw-bold text-dark">Belum Absen</h2>
+                            <h2 class="fw-bold text-body">Belum Absen</h2>
                             <p class="text-muted fs-5">Silakan melakukan absensi masuk di panel sebelah kanan.</p>
                         </div>
                     @endif
@@ -120,12 +119,11 @@
         <div class="col-lg-5 d-flex">
             <div class="card shadow-sm border-0 w-100">
                 <div class="card-header bg-white py-3 border-0">
-                    <h5 class="fw-bold mb-0 text-dark">Aksi Cepat</h5>
+                    <h5 class="fw-bold mb-0 text-body">Aksi Cepat</h5>
                 </div>
                 <div class="card-body p-5 d-flex flex-column justify-content-center gap-4">
                     
                     @if(isset($todayLeave) && $todayLeave)
-                        {{-- JIKA SEDANG IZIN: Matikan Tombol --}}
                         <div class="alert alert-info text-center border-0 bg-info bg-opacity-10">
                             <i class="bi bi-info-circle-fill me-2"></i>
                             Absensi dinonaktifkan karena Anda sedang dalam masa <strong>{{ ucfirst($todayLeave->tipe_izin) }}</strong>.
@@ -177,14 +175,42 @@
     .user-card {
         background: linear-gradient(45deg, #0d6efd, #0a58ca);
     }
+
+    /* === DARK MODE OVERRIDES (DARI ADMIN) === */
+    .dark-mode .text-body { color: #e0e0e0 !important; }
+    
+    /* Card Styles */
+    .dark-mode .card { background-color: #1e1e1e !important; border: 1px solid #333; }
+    .dark-mode .card-header { background-color: #1e1e1e !important; border-bottom: 1px solid #333; }
+    
+    /* Background Light pada Status Box */
+    .dark-mode .bg-light { background-color: #2b2b2b !important; border-color: #444 !important; }
+    
+    /* Tombol Disabled di Dark Mode agar tidak putih menyilaukan */
+    .dark-mode .btn-light.disabled { 
+        background-color: #2b2b2b !important; 
+        border-color: #444 !important; 
+        color: #666 !important; 
+    }
+    
+    /* Alert Info Dark Mode */
+    .dark-mode .bg-info.bg-opacity-10 { 
+        background-color: rgba(13, 202, 240, 0.15) !important; 
+        color: #6edff6 !important;
+    }
 </style>
 @endpush
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Ambil waktu server dari PHP (Blade) saat halaman diload
+        let serverTime = new Date("{{ now()->format('Y-m-d H:i:s') }}").getTime();
+
         function updateDateTime() {
-            const now = new Date();
+            serverTime += 1000; 
+            
+            const now = new Date(serverTime);
             const timeEl = document.getElementById('realtime-jam');
             const dateEl = document.getElementById('realtime-tanggal');
             
@@ -200,7 +226,8 @@
                 dateEl.textContent = now.toLocaleDateString('id-ID', options);
             }
         }
-        updateDateTime();
+        
+        updateDateTime(); 
         setInterval(updateDateTime, 1000);
     });
 </script>

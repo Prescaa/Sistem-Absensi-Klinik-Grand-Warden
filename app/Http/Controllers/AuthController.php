@@ -61,6 +61,9 @@ class AuthController extends Controller
             if (strtolower($user->role) === 'karyawan') {
                 return redirect()->intended('/dashboard');
             }
+            if (strtolower($user->role) === 'manajemen') {
+                return redirect()->intended('/manajemen/dashboard');
+            }
 
             Auth::logout();
             return back()->with('error', 'Akun Anda tidak memiliki role yang valid.');

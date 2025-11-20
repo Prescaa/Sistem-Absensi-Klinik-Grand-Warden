@@ -15,9 +15,8 @@ class EmployeeSeeder extends Seeder
         Employee::truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        // --- DATA UNTUK KARYAWAN (Mahardika) ---
+        // 1. DATA KARYAWAN (Mahardika)
         $karyawanUser = User::where('username', 'karyawan')->first();
-
         if ($karyawanUser) {
             Employee::create([
                 'user_id'       => $karyawanUser->user_id,
@@ -26,27 +25,30 @@ class EmployeeSeeder extends Seeder
                 'departemen'    => 'Teknologi Informasi',
                 'posisi'        => 'Frontend Developer',
             ]);
-
-            // HAPUS BARIS-BARIS INI:
-            // $karyawanUser->emp_id = $employeeKaryawan->emp_id;
-            // $karyawanUser->save();
         }
 
-        // --- DATA UNTUK ADMIN (Sahroni) ---
+        // 2. DATA ADMIN (Sahroni)
         $adminUser = User::where('username', 'admin')->first();
-
         if ($adminUser) {
             Employee::create([
                 'user_id'       => $adminUser->user_id,
                 'nama'          => 'Sahroni',
                 'nip'           => '987654321',
-                'departemen'    => 'Manajemen',
+                'departemen'    => 'Manajemen', // Departemen Admin
                 'posisi'        => 'Administrator',
             ]);
+        }
 
-            // HAPUS BARIS-BARIS INI:
-            // $adminUser->emp_id = $employeeAdmin->emp_id;
-            // $adminUser->save();
+        // 3. DATA MANAJEMEN (Ahmad) - DATA BARU
+        $manajemenUser = User::where('username', 'manajemen')->first();
+        if ($manajemenUser) {
+            Employee::create([
+                'user_id'       => $manajemenUser->user_id,
+                'nama'          => 'Ahmad',
+                'nip'           => '1234567890',
+                'departemen'    => 'Eksekutif',
+                'posisi'        => 'Manajer',
+            ]);
         }
     }
 }

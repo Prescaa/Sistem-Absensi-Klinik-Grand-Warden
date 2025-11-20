@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\KaryawanController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ManajemenController; // <--- Tambahkan ini
 
 /*
 |--------------------------------------------------------------------------
@@ -58,54 +59,44 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
 });
 
 
-// --- Rute Admin ---
+// --- GROUP ADMIN (Fokus Operasional) ---
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+    
+    // Dashboard Admin (Versi Validasi)
+    // Nanti kita buat view baru: admin.dashboard_validasi
+    Route::get('/dashboard', [AdminController::class, 'showValidasiPage'])->name('admin.dashboard'); 
+    
+    // Validasi
+    Route::get('/validasi', [AdminController::class, 'showValidasiPage'])->name('admin.validasi.show');
+    Route::post('/validasi/simpan', [AdminController::class, 'submitValidasi'])->name('admin.validasi.submit');
+    Route::post('/validasi/izin/simpan', [AdminController::class, 'submitValidasiIzin'])->name('admin.validasi.izin.submit');
 
-    // 1. Dashboard
-    Route::get('/dashboard', [AdminController::class, 'dashboard'])
-         ->name('admin.dashboard');
+    // CRUD Karyawan
+    Route::get('/manajemen-karyawan', [AdminController::class, 'showManajemenKaryawan'])->name('admin.karyawan.index');
+    Route::post('/manajemen-karyawan/store', [AdminController::class, 'storeKaryawan'])->name('admin.karyawan.store');
+    Route::put('/manajemen-karyawan/update/{id}', [AdminController::class, 'updateKaryawan'])->name('admin.karyawan.update');
+    Route::delete('/manajemen-karyawan/destroy/{id}', [AdminController::class, 'destroyKaryawan'])->name('admin.karyawan.destroy');
 
-    // 2. Validasi Absensi
-    // (Menggunakan showValidasiPage yang baru)
-    Route::get('/validasi', [AdminController::class, 'showValidasiPage'])
-         ->name('admin.validasi.show');
+    // Geofencing
+    Route::get('/geofencing', [AdminController::class, 'showGeofencing'])->name('admin.geofencing.show');
+    Route::post('/geofencing/save', [AdminController::class, 'saveGeofencing'])->name('admin.geofencing.save');
 
-    Route::post('/validasi/simpan', [AdminController::class, 'submitValidasi'])
-         ->name('admin.validasi.submit');
+    // Profil (Shared)
+    Route::get('/profil', [ProfileController::class, 'index'])->name('admin.profil');
+    Route::post('/profil', [ProfileController::class, 'update'])->name('admin.profil.update');
+});
 
-    Route::post('/validasi/izin/simpan', [AdminController::class, 'submitValidasiIzin'])
-         ->name('admin.validasi.izin.submit');
+// --- GROUP MANAJEMEN (Fokus Monitoring) ---
+// Asumsi: Role di database adalah 'Manajemen' atau 'HRD' (sesuaikan dengan DB kamu)
+Route::middleware(['auth', 'role:manajemen'])->prefix('manajemen')->group(function () {
 
-    // 3. Manajemen Karyawan (CRUD)
-    Route::get('/manajemen-karyawan', [AdminController::class, 'showManajemenKaryawan'])
-         ->name('admin.karyawan.index');
+    // Dashboard Statistik
+    Route::get('/dashboard', [ManajemenController::class, 'dashboard'])->name('manajemen.dashboard');
 
-    Route::post('/manajemen-karyawan/store', [AdminController::class, 'storeKaryawan'])
-         ->name('admin.karyawan.store');
+    // Laporan
+    Route::post('/laporan/export', [ManajemenController::class, 'exportLaporan'])->name('manajemen.laporan.export');
 
-    Route::put('/manajemen-karyawan/update/{id}', [AdminController::class, 'updateKaryawan'])
-         ->name('admin.karyawan.update');
-
-    Route::delete('/manajemen-karyawan/destroy/{id}', [AdminController::class, 'destroyKaryawan'])
-         ->name('admin.karyawan.destroy');
-
-    // 4. Laporan & Ekspor (INI PERBAIKAN UTAMANYA)
-    Route::get('/laporan', [AdminController::class, 'showLaporan'])
-         ->name('admin.laporan.show'); // <--- Nama ini yang sebelumnya hilang
-
-    Route::post('/laporan/export', [AdminController::class, 'exportLaporan'])
-         ->name('admin.laporan.export');
-
-    // 5. Geofencing
-    Route::get('/geofencing', [AdminController::class, 'showGeofencing'])
-         ->name('admin.geofencing.show');
-
-    Route::post('/geofencing/save', [AdminController::class, 'saveGeofencing'])
-         ->name('admin.geofencing.save');
-
-     Route::get('/profil', [ProfileController::class, 'index'])
-          ->name('profil.index');
-
-     Route::post('/profil', [ProfileController::class, 'update'])
-          ->name('profil.update');
+    // Profil (Shared)
+    Route::get('/profil', [ProfileController::class, 'index'])->name('manajemen.profil');
+    Route::post('/profil', [ProfileController::class, 'update'])->name('manajemen.profil.update');
 });

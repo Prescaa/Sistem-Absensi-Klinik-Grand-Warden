@@ -146,25 +146,15 @@
 
     <nav class="sidebar vh-100 d-flex flex-column p-3">
         <div>
-            <a href="/admin/dashboard" class="d-flex align-items-center mb-3 text-white text-decoration-none">
-                <i class="bi bi-shield-lock-fill fs-2 me-2"></i>
-                <span class="fs-4">Admin Klinik</span>
+            <a href="/manajemen/dashboard" class="d-flex align-items-center mb-3 text-white text-decoration-none">
+                <i class="bi bi-graph-up-arrow fs-2 me-2"></i> {{-- Ikon Beda untuk Pembeda --}}
+                <span class="fs-4">Manajemen</span>
             </a>
 
             <ul class="nav nav-pills flex-column">
                 <li class="nav-item mb-1">
-                    <a href="/admin/validasi" class="nav-link {{ Request::is('admin/validasi') ? 'active' : '' }}">
-                        <i class="bi bi-check-circle-fill me-2"></i> Validasi Absensi
-                    </a>
-                </li>
-                <li class="nav-item mb-1">
-                    <a href="/admin/manajemen-karyawan" class="nav-link {{ Request::is('admin/manajemen-karyawan') ? 'active' : '' }}">
-                        <i class="bi bi-people-fill me-2"></i> Manajemen Karyawan
-                    </a>
-                </li>
-                <li class="nav-item mb-1">
-                    <a href="/admin/geofencing" class="nav-link {{ Request::is('admin/geofencing') ? 'active' : '' }}">
-                        <i class="bi bi-geo-alt-fill me-2"></i> Lokasi Geofencing
+                    <a href="/manajemen/dashboard" class="nav-link {{ Request::is('manajemen/dashboard') ? 'active' : '' }}">
+                        <i class="bi bi-grid-fill me-2"></i> Dashboard & Analisis
                     </a>
                 </li>
             </ul>
