@@ -92,21 +92,20 @@ public function checkExif(Request $request)
     }
 
     try {
-        $fotoTime = Carbon::parse($exif['DateTimeOriginal']);
-        $serverTime = now();
-        $diffInMinutes = $serverTime->diffInMinutes($fotoTime);
+       $fotoTime = Carbon::parse($exif['DateTimeOriginal']);
+       $serverTime = now();
+       $diffInMinutes = $serverTime->diffInMinutes($fotoTime);
 
-        if ($diffInMinutes > 15) {
-            return response()->json(['status' => 'error', 'message' => 'Foto kadaluarsa (Diambil '.$diffInMinutes.' menit lalu). Harap ambil foto baru.'], 400);
-        }
+       if ($diffInMinutes > 15) {
+           return response()->json(['status' => 'error', 'message' => 'Foto kadaluarsa (Diambil '.$diffInMinutes.' menit lalu). Harap ambil foto baru.'], 400);
+       }
     } catch (\Exception $e) {
-        return response()->json(['status' => 'error', 'message' => 'Format tanggal foto rusak.'], 400);
+       return response()->json(['status' => 'error', 'message' => 'Format tanggal foto rusak.'], 400);
     }
 
     // Jika lolos semua cek EXIF
     return response()->json(['status' => 'success', 'message' => 'Validasi Foto Berhasil']);
 }
-
     public function dashboard() { return view('karyawan.dashboard', $this->getTodayAttendance()); }
 
     // Di app/Http/Controllers/KaryawanController.php

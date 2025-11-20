@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="container-fluid">
-    {{-- Data Work Area untuk JS (Disembunyikan) --}}
+    {{-- Data Work Area untuk JS (Pastikan Controller mengirim variabel $workArea) --}}
     @if(isset($workArea))
         <div id="work-area-data"
              data-lat="{{ $workArea->latitude }}"
@@ -23,7 +23,6 @@
                         $isDisabled = $sedangIzin || $selesaiAbsen;
                         $karyawanId = auth()->user()->employee->emp_id;
                         $today = \Carbon\Carbon::today();
-
                         $rejectedToday = \App\Models\Attendance::where('emp_id', $karyawanId)
                             ->whereDate('waktu_unggah', $today)
                             ->whereHas('validation', function($q) {
@@ -34,27 +33,29 @@
                     @if($sedangIzin)
                         <div class="alert alert-info border-0 bg-info bg-opacity-10 text-info-emphasis mb-0 d-inline-block px-5">
                             <i class="bi bi-info-circle-fill me-2 fs-5"></i>
-                            <strong>Anda sedang dalam masa {{ ucfirst($todayLeave->tipe_izin) }}.</strong>
+                            <strong>Anda sedang dalam masa {{ ucfirst($todayLeave->tipe_izin) }}.</strong> Tidak perlu absen hari ini.
                         </div>
                     @elseif($selesaiAbsen)
                         <div class="py-2">
                             <i class="bi bi-check-circle-fill text-success fs-1 d-block mb-2"></i>
                             <h3 class="fw-bold text-success">Absensi Hari Ini Selesai</h3>
+                            <p class="text-muted mb-0">Terima kasih atas kerja keras Anda.</p>
                         </div>
                     @elseif($rejectedToday)
                         <div class="alert alert-danger mx-4 mt-4 mb-0">
                             <i class="bi bi-x-circle-fill me-2"></i>
-                            <strong>Absensi Ditolak.</strong> Silakan unggah foto baru yang valid.
+                            <strong>Perhatian:</strong> Absensi {{ ucfirst($rejectedToday->type) }} Anda hari ini ditolak.
+                            <br>Silakan ambil foto baru yang lebih jelas dan sesuai lokasi.
                         </div>
                     @else
-                        <div class="alert alert-secondary border-0 d-inline-flex text-start px-4 py-3">
-                            <i class="bi bi-shield-lock-fill fs-3 me-3 mt-1 text-primary"></i>
-                            <div>
-                                <strong>VERIFIKASI GANDA:</strong>
-                                <ul class="mb-0 ps-3 small mt-1 text-muted">
-                                    <li><strong>Lokasi File:</strong> Foto harus memiliki data lokasi (GPS) di area kantor.</li>
-                                    <li><strong>Lokasi Anda:</strong> Anda wajib berada di kantor saat menekan tombol kirim.</li>
-                                </ul>
+                        <div>
+                            <h4 class="fw-bold text-dark mb-2">Silakan Lakukan Absensi</h4>
+                            <div class="alert alert-warning border-0 d-inline-flex align-items-center px-4 py-2">
+                                <i class="bi bi-phone-vibrate fs-4 me-3"></i>
+                                <div class="text-start">
+                                    <strong>PENTING:</strong><br>
+                                    Sistem akan mengecek validitas foto terlebih dahulu sebelum mengecek lokasi Anda.
+                                </div>
                             </div>
                         </div>
                     @endif
@@ -70,75 +71,70 @@
                         </div>
                     @endif
 
-                    {{-- FORM UPLOAD --}}
                     <form action="{{ route('karyawan.absensi.storeFoto') }}" method="POST" enctype="multipart/form-data" id="uploadForm" class="h-100">
                         @csrf
-                        {{-- Input Type Hidden (Diisi oleh JS saat tombol diklik) --}}
+                        {{-- Hidden Input untuk menyimpan Tipe Absen (Masuk/Pulang) --}}
                         <input type="hidden" name="type" id="attendanceType">
 
                         <div class="row g-0">
                             {{-- Kolom Kiri: Upload Area --}}
                             <div class="col-lg-8 border-end">
-                                <div class="upload-area d-flex flex-column justify-content-center align-items-center text-center p-5" id="dropZone" style="min-height: 600px; cursor: pointer; background-color: #f8f9fa;">
+                                <div class="upload-area d-flex flex-column justify-content-center align-items-center text-center p-5" id="dropZone" style="min-height: 600px; cursor: pointer; background-color: #fcfcfc;">
 
                                     <input type="file" id="foto_absensi" name="foto_absensi" class="d-none" accept="image/jpeg,image/png" required>
 
                                     <div id="uploadPlaceholder">
-                                        <div class="mb-4 p-4 rounded-circle bg-white shadow-sm d-inline-block">
-                                            <i class="bi bi-geo-alt-fill text-primary" style="font-size: 5rem;"></i>
+                                        <div class="mb-4 p-4 rounded-circle bg-light d-inline-block">
+                                            <i class="bi bi-cloud-arrow-up-fill text-primary" style="font-size: 6rem;"></i>
                                         </div>
-                                        <h3 class="fw-bold mb-2">Pilih Foto Bukti</h3>
-                                        <p class="text-muted mb-4">Foto harus mengandung data lokasi (GPS Tag)</p>
-                                        <button type="button" class="btn btn-primary btn-lg px-5 rounded-pill shadow-sm">
-                                            <i class="bi bi-folder2-open me-2"></i> Cari File
+                                        <h2 class="fw-bold mb-3">Seret & Lepas Foto di Sini</h2>
+                                        <p class="text-muted fs-5 mb-4">atau klik di area ini untuk membuka kamera/galeri</p>
+                                        <button type="button" class="btn btn-outline-primary btn-lg px-5 rounded-pill">
+                                            <i class="bi bi-camera-fill me-2"></i> Ambil Foto
                                         </button>
                                     </div>
 
-                                    <div id="previewContainer" class="d-none position-relative w-100 h-100 d-flex align-items-center justify-content-center bg-dark rounded-3 shadow-inner" style="max-height: 550px; overflow:hidden;">
+                                    <div id="previewContainer" class="d-none position-relative w-100 h-100 d-flex align-items-center justify-content-center bg-dark rounded-3" style="max-height: 550px;">
                                         <img id="imagePreview" src="#" alt="Preview" class="img-fluid" style="max-height: 100%; max-width: 100%; object-fit: contain;">
                                         <div class="position-absolute bottom-0 start-0 w-100 p-3 bg-dark bg-opacity-75 text-white d-flex justify-content-between align-items-center">
                                             <span class="small text-truncate" id="fileNameDisplay">Nama File...</span>
-                                            <button type="button" class="btn btn-sm btn-danger rounded-pill px-3" id="removeFile">
-                                                <i class="bi bi-trash-fill me-1"></i> Ganti
+                                            <button type="button" class="btn btn-danger rounded-circle p-2 shadow" id="removeFile" title="Hapus Foto">
+                                                <i class="bi bi-x-lg"></i>
                                             </button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {{-- Kolom Kanan: Tombol Aksi --}}
-                            <div class="col-lg-4 bg-white d-flex flex-column justify-content-center p-5 border-start-lg position-relative">
+                            {{-- Kolom Kanan: Tombol Konfirmasi --}}
+                            <div class="col-lg-4 bg-light d-flex flex-column justify-content-center p-5 position-relative">
 
-                                {{-- Loading Overlay --}}
-                                <div id="locationLoading" class="position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-90 d-flex flex-column justify-content-center align-items-center d-none" style="z-index: 10;">
-                                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
-                                    <h5 class="fw-bold text-dark">Memverifikasi Lokasi...</h5>
-                                    <p class="text-muted small">Mohon tunggu sebentar</p>
+                                {{-- OVERLAY LOADING (Hidden by default) --}}
+                                <div id="processOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-95 d-flex flex-column justify-content-center align-items-center d-none" style="z-index: 10; border-left: 1px solid #dee2e6;">
+                                    <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+                                    <h5 class="fw-bold text-dark mb-1" id="loadingTitle">Memproses...</h5>
+                                    <p class="text-muted small text-center px-4" id="loadingText">Mohon tunggu sebentar</p>
                                 </div>
 
-                                <h4 class="fw-bold mb-4 text-center text-dark">Konfirmasi Kehadiran</h4>
-                                <div class="d-grid gap-3">
+                                <h4 class="fw-bold mb-4 text-center">Konfirmasi Absensi</h4>
+                                <div class="d-grid gap-4">
                                     @if(is_null($absensiMasuk))
-                                        {{-- Tombol Masuk --}}
-                                        <button type="button" onclick="startAbsensi('masuk')" class="btn btn-primary btn-lg py-3 shadow-sm transition-hover">
+                                        {{-- Tombol Absen Masuk (Type Button + OnClick) --}}
+                                        <button type="button" onclick="startAbsensi('masuk')" class="btn btn-primary btn-lg py-4 fs-4 shadow-sm">
                                             <div class="d-flex align-items-center justify-content-center">
-                                                <i class="bi bi-box-arrow-in-right me-2 fs-4"></i>
-                                                <span class="fw-bold">Absen Masuk</span>
+                                                <i class="bi bi-box-arrow-in-right me-3 fs-2"></i> <span>Absen Masuk</span>
                                             </div>
                                         </button>
-                                        <button type="button" class="btn btn-light btn-lg py-3 text-muted border" disabled><i class="bi bi-lock-fill me-2"></i> Absen Pulang</button>
+                                        <button type="button" class="btn btn-secondary btn-lg py-3 disabled" style="opacity: 0.6"><i class="bi bi-lock-fill me-2"></i> Absen Pulang Terkunci</button>
                                     @else
-                                        <div class="alert alert-success border-0 d-flex align-items-center"><i class="bi bi-check-circle-fill fs-4 me-3"></i><div><small class="d-block fw-bold">STATUS</small>Sudah Masuk</div></div>
+                                        <button type="button" class="btn btn-success btn-lg py-3 disabled" style="opacity: 1"><i class="bi bi-check-circle-fill me-2"></i> Sudah Masuk</button>
                                         @if(is_null($absensiPulang))
-                                            {{-- Tombol Pulang --}}
-                                            <button type="button" onclick="startAbsensi('pulang')" class="btn btn-danger btn-lg py-3 shadow-sm mt-2 transition-hover">
-                                                <div class="d-flex align-items-center justify-content-center">
-                                                    <i class="bi bi-box-arrow-right me-2 fs-4"></i>
-                                                    <span class="fw-bold">Absen Pulang</span>
-                                                </div>
+                                            {{-- Tombol Absen Pulang (Type Button + OnClick) --}}
+                                            <button type="button" onclick="startAbsensi('pulang')" class="btn btn-danger btn-lg py-4 fs-4 shadow-sm mt-3">
+                                                <div class="d-flex align-items-center justify-content-center"><i class="bi bi-box-arrow-right me-3 fs-2"></i><span>Absen Pulang</span></div>
                                             </button>
                                         @else
-                                            <div class="alert alert-success border-0 d-flex align-items-center mt-2"><i class="bi bi-check-circle-fill fs-4 me-3"></i><div><small class="d-block fw-bold">STATUS</small>Sudah Pulang</div></div>
+                                            <button type="button" class="btn btn-success btn-lg py-3 disabled mt-3" style="opacity: 1"><i class="bi bi-check-circle-fill me-2"></i> Sudah Pulang</button>
                                         @endif
                                     @endif
                                 </div>
@@ -155,154 +151,167 @@
 
 @push('styles')
 <style>
-    .upload-area { transition: all 0.2s ease-in-out; }
-    .upload-area.dragover { background-color: #e2e6ea !important; border: 2px dashed var(--primary-color); }
-    .btn-lg { border-radius: 10px; }
-    .transition-hover:hover { transform: translateY(-2px); }
+    .upload-area { transition: all 0.3s ease; }
+    .upload-area.dragover { background-color: #e9ecef !important; border: 2px dashed var(--primary-color); }
+    .btn-lg { border-radius: 12px; }
 </style>
 @endpush
 
 @push('scripts')
 <script>
-    // --- VARIABLE GLOBAL ---
-    const workAreaEl = document.getElementById('work-area-data');
-    const OFFICE_LAT = workAreaEl ? parseFloat(workAreaEl.dataset.lat) : 0;
-    const OFFICE_LNG = workAreaEl ? parseFloat(workAreaEl.dataset.lng) : 0;
-    const OFFICE_RAD = workAreaEl ? parseFloat(workAreaEl.dataset.rad) : 50;
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- SETUP UI VARIABLES ---
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('foto_absensi');
+        const previewContainer = document.getElementById('previewContainer');
+        const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+        const imagePreview = document.getElementById('imagePreview');
+        const removeFileBtn = document.getElementById('removeFile');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
 
-    // --- LOGIKA UPLOAD FILE (PREVIEW) ---
-    // (Bagian ini sama seperti sebelumnya, untuk preview gambar)
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('foto_absensi');
-    const previewContainer = document.getElementById('previewContainer');
-    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
-    const imagePreview = document.getElementById('imagePreview');
-    const removeFileBtn = document.getElementById('removeFile');
-    const fileNameDisplay = document.getElementById('fileNameDisplay');
+        // Data WorkArea dari Backend
+        const workAreaEl = document.getElementById('work-area-data');
+        const OFFICE_LAT = workAreaEl ? parseFloat(workAreaEl.dataset.lat) : 0;
+        const OFFICE_LNG = workAreaEl ? parseFloat(workAreaEl.dataset.lng) : 0;
+        const OFFICE_RAD = workAreaEl ? parseFloat(workAreaEl.dataset.rad) : 50;
 
-    function handleFile(file) {
-        if (file && file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                imagePreview.src = e.target.result;
-                fileNameDisplay.textContent = file.name;
-                uploadPlaceholder.classList.add('d-none');
-                previewContainer.classList.remove('d-none');
+        // --- FILE HANDLING ---
+        function handleFile(file) {
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    if(fileNameDisplay) fileNameDisplay.textContent = file.name;
+                    uploadPlaceholder.classList.add('d-none');
+                    previewContainer.classList.remove('d-none');
+                }
+                reader.readAsDataURL(file);
             }
-            reader.readAsDataURL(file);
         }
-    }
+        fileInput.addEventListener('change', function(e) { handleFile(e.target.files[0]); });
 
-    fileInput.addEventListener('change', function(e) { handleFile(e.target.files[0]); });
-    dropZone.addEventListener('click', (e) => { if(e.target !== removeFileBtn && !removeFileBtn.contains(e.target)) fileInput.click(); });
-
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }, false));
-    ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('dragover'), false));
-    ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('dragover'), false));
-    dropZone.addEventListener('drop', (e) => { fileInput.files = e.dataTransfer.files; handleFile(e.dataTransfer.files[0]); });
-
-    removeFileBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); fileInput.value = ''; imagePreview.src = '#';
-        previewContainer.classList.add('d-none'); uploadPlaceholder.classList.remove('d-none');
-    });
-
-    // ==========================================
-    // --- LOGIKA ABSENSI BERJENJANG (LAYER) ---
-    // ==========================================
-
-    function startAbsensi(type) {
-        const form = document.getElementById('uploadForm');
-        const loading = document.getElementById('locationLoading'); // Pastikan elemen ini ada di HTML Anda
-        const loadingText = loading.querySelector('h5'); // Untuk ubah teks loading
-        const inputType = document.getElementById('attendanceType');
-
-        // Cek apakah file sudah dipilih
-        if (!fileInput.files || fileInput.files.length === 0) {
-            alert('Harap pilih foto bukti absensi terlebih dahulu!');
-            return;
-        }
-
-        // Set tipe absen
-        inputType.value = type;
-
-        // Tampilkan Loading Awal
-        loading.classList.remove('d-none');
-        if(loadingText) loadingText.innerText = "LAYER 1: Memeriksa Validitas Foto...";
-
-        // --- LAYER 1: Cek EXIF ke Server via AJAX ---
-        const formData = new FormData();
-        formData.append('foto_absensi', fileInput.files[0]);
-        formData.append('_token', '{{ csrf_token() }}'); // CSRF Token Wajib
-
-        fetch('{{ route("karyawan.absensi.checkExif") }}', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'error') {
-                // GAGAL LAYER 1 (EXIF/Hash Salah)
-                throw new Error(data.message);
-            }
-
-            // BERHASIL LAYER 1 -> LANJUT LAYER 2
-            if(loadingText) loadingText.innerText = "LAYER 2: Memverifikasi Lokasi Anda...";
-
-            // Delay sedikit agar transisi teks terbaca (opsional)
-            return new Promise(resolve => setTimeout(resolve, 500));
-        })
-        .then(() => {
-            // --- LAYER 2: Cek Geolocation Browser ---
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const userLat = position.coords.latitude;
-                        const userLng = position.coords.longitude;
-                        const distance = haversineDistance(userLat, userLng, OFFICE_LAT, OFFICE_LNG);
-
-                        console.log(`Jarak User: ${distance}m`);
-
-                        if (distance <= OFFICE_RAD) {
-                            // LOLOS LAYER 2 -> SUBMIT FINAL
-                            if(loadingText) loadingText.innerText = "Menyimpan Data Absensi...";
-                            form.submit();
-                        } else {
-                            // GAGAL LAYER 2 (Diluar Jangkauan)
-                            loading.classList.add('d-none');
-                            alert(`GAGAL LAYER 2: Posisi Anda terdeteksi sejauh ${Math.round(distance)}m dari kantor. Maksimal radius: ${OFFICE_RAD}m.`);
-                        }
-                    },
-                    (error) => {
-                        // GAGAL LAYER 2 (Error GPS Browser)
-                        loading.classList.add('d-none');
-                        let msg = "Gagal mengambil lokasi browser.";
-                        if (error.code == error.PERMISSION_DENIED) msg = "Izin lokasi ditolak browser. Anda wajib mengizinkan lokasi untuk absen.";
-                        alert(msg);
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                );
-            } else {
-                loading.classList.add('d-none');
-                alert("Browser tidak mendukung Geolocation.");
-            }
-        })
-        .catch(error => {
-            // Tangkap Error dari Layer 1 atau Fetch
-            loading.classList.add('d-none');
-            alert("GAGAL LAYER 1: " + error.message);
+        dropZone.addEventListener('click', (e) => {
+            if(e.target !== removeFileBtn && !removeFileBtn.contains(e.target)) fileInput.click();
         });
-    }
 
-    // Rumus Haversine
-    function haversineDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371000;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                  Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-    }
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); }, false));
+        ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('dragover'), false));
+        ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('dragover'), false));
+
+        dropZone.addEventListener('drop', (e) => {
+            fileInput.files = e.dataTransfer.files;
+            handleFile(e.dataTransfer.files[0]);
+        });
+
+        removeFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.value = '';
+            imagePreview.src = '#';
+            previewContainer.classList.add('d-none');
+            uploadPlaceholder.classList.remove('d-none');
+        });
+
+        // ==========================================
+        // --- LOGIKA UTAMA (Start Absensi) ---
+        // ==========================================
+        window.startAbsensi = function(type) {
+            const form = document.getElementById('uploadForm');
+            const overlay = document.getElementById('processOverlay');
+            const loadingTitle = document.getElementById('loadingTitle');
+            const loadingText = document.getElementById('loadingText');
+            const inputType = document.getElementById('attendanceType');
+
+            // 1. Validasi File Ada
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Mohon pilih atau ambil foto bukti absensi terlebih dahulu!');
+                return;
+            }
+
+            // 2. Set Hidden Input Type
+            inputType.value = type;
+
+            // 3. Tampilkan Overlay Loading
+            overlay.classList.remove('d-none');
+            loadingTitle.innerText = "Cek Validitas Foto";
+            loadingText.innerText = "Memeriksa metadata dan keaslian foto...";
+
+            // --- LAYER 1: AJAX Check EXIF ---
+            const formData = new FormData();
+            formData.append('foto_absensi', fileInput.files[0]);
+            formData.append('_token', '{{ csrf_token() }}');
+
+            fetch('{{ route("karyawan.absensi.checkExif") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'error') {
+                    // GAGAL di Layer 1
+                    throw new Error(data.message);
+                }
+
+                // SUKSES Layer 1 -> Lanjut Layer 2
+                loadingTitle.innerText = "Verifikasi Lokasi";
+                loadingText.innerText = "Foto valid. Sedang memverifikasi posisi Anda...";
+
+                // Delay sejenak agar user sempat baca status
+                return new Promise(resolve => setTimeout(resolve, 800));
+            })
+            .then(() => {
+                // --- LAYER 2: Browser Geolocation ---
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const userLat = position.coords.latitude;
+                            const userLng = position.coords.longitude;
+                            const distance = haversineDistance(userLat, userLng, OFFICE_LAT, OFFICE_LNG);
+
+                            console.log(`Jarak User: ${distance}m`);
+
+                            if (distance <= OFFICE_RAD) {
+                                // SUKSES Layer 2 -> Submit
+                                loadingTitle.innerText = "Mengirim Data...";
+                                loadingText.innerText = "Lokasi terverifikasi. Menyimpan absensi...";
+                                form.submit();
+                            } else {
+                                // GAGAL Layer 2 (Jarak Jauh)
+                                overlay.classList.add('d-none');
+                                alert(`GAGAL: Posisi Anda terdeteksi sejauh ${Math.round(distance)}m dari kantor. Maksimal radius: ${OFFICE_RAD}m.`);
+                            }
+                        },
+                        (error) => {
+                            // GAGAL Layer 2 (Error GPS)
+                            overlay.classList.add('d-none');
+                            let msg = "Gagal mengambil lokasi browser.";
+                            if (error.code == error.PERMISSION_DENIED) msg = "Izin lokasi ditolak browser. Anda WAJIB mengizinkan lokasi untuk melanjutkan absen.";
+                            alert(msg);
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                } else {
+                    overlay.classList.add('d-none');
+                    alert("Browser Anda tidak mendukung Geolocation.");
+                }
+            })
+            .catch(error => {
+                // Tangkap Error dari Layer 1 atau Fetch
+                overlay.classList.add('d-none');
+                alert("VALIDASI FOTO GAGAL:\n" + error.message);
+            });
+        };
+
+        // Rumus Haversine (Meter)
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+    });
 </script>
 @endpush
