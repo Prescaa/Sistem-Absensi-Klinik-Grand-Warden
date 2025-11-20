@@ -3,17 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- Judul halaman akan dinamis, defaultnya "Admin - Klinik Grand Warden" -->
     <title>@yield('page-title', 'Admin Dashboard') - Admin - Klinik Grand Warden</title>
 
-    <!-- Memuat aset CSS dan JS utama -->
     <link rel="stylesheet" href="{{ mix('css/app.css') }}">
     <script src="{{ mix('js/app.js') }}" defer></script>
 
-    <!-- Ikon Bootstrap -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-    <!-- Style ini disalin dari layouts/app.blade.php untuk konsistensi -->
     <style>
         body {
             background-color: #F8F9FA;
@@ -21,20 +17,19 @@
         }
         .sidebar {
             width: 280px;
-            background-color: #212529; /* Warna gelap untuk sidebar admin */
+            background-color: #212529;
             color: #fff;
-            transition: background-color 0.3s ease;
         }
         .sidebar .nav-link {
             color: #adb5bd;
             padding: .75rem 1.5rem;
             font-size: 0.95rem;
-            transition: all 0.3s ease;
+            transition: .3s;
         }
         .sidebar .nav-link:hover { color: #fff; }
         .sidebar .nav-link.active {
             color: #fff;
-            background-color: #0d6efd; /* Warna biru untuk link aktif */
+            background-color: #0d6efd;
             border-radius: 8px;
         }
         .sidebar-footer {
@@ -46,195 +41,318 @@
             background-color: #fff;
             border-bottom: 1px solid #dee2e6;
             box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
-            transition: all 0.3s ease;
         }
         .main-footer {
             background-color: #e9ecef;
             color: #6c757d;
             border-top: 1px solid #dee2e6;
-            margin-top: auto;
-            transition: all 0.3s ease;
-        }
-        .hover-primary:hover {
-            color: #0d6efd !important;
-            transition: color 0.3s ease;
         }
         .notification-badge {
             font-size: 0.6rem;
             padding: 0.25em 0.4em;
         }
 
-        /* Style Dark Mode */
+        /* === STYLE NOTIFIKASI === */
+        .notif-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        .notif-item:hover {
+            background: #f8f9fa;
+        }
+        .notif-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .notif-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 2px; color: #333; }
+        .notif-msg { font-size: 0.85rem; color: #666; line-height: 1.3; }
+        .notif-time { font-size: 0.75rem; color: #999; margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+        .notif-empty { padding: 20px; font-size: .9rem; color:#6c757d; text-align: center; }
+
+        /* === DARK MODE === */
         .dark-mode {
             background-color: #1a1a1a;
-            color: #ffffff;
+            color: #e0e0e0;
         }
         .dark-mode .topbar {
             background-color: #2d2d2d;
             border-bottom-color: #444;
-            color: #ffffff;
+            color: #fff;
         }
         .dark-mode .main-footer {
             background-color: #2d2d2d;
             border-top-color: #444;
-            color: #ffffff;
+            color: #aaa;
         }
+        
+        /* Dark Mode: Card */
         .dark-mode .card {
             background-color: #2d2d2d;
             border-color: #444;
-            color: #ffffff;
+            color: #fff;
         }
-        .dark-mode .text-muted {
-            color: #adb5bd !important;
+        .dark-mode .card-header, .dark-mode .card-footer {
+            background-color: #333;
+            border-color: #444;
+            color: #fff;
         }
+        
+        /* Dark Mode: Dropdown & Notif */
+        .dark-mode .dropdown-menu {
+            background-color: #2d2d2d;
+            border-color: #444;
+        }
+        .dark-mode .dropdown-item { color: #e0e0e0; }
+        .dark-mode .dropdown-item:hover { background-color: #3a3a3a; }
+        .dark-mode .dropdown-header { color: #fff; }
+        .dark-mode .dropdown-divider { border-top-color: #444; }
+        
+        .dark-mode .notif-title { color: #fff; }
+        .dark-mode .notif-msg { color: #ccc; }
+        .dark-mode .notif-item:hover { background: #3a3a3a; }
+
+        /* Dark Mode: Tabel & Form */
+        .dark-mode .table { color: #e0e0e0; border-color: #444; }
+        .dark-mode .table-light th { background-color: #333; color: #fff; border-color: #444; }
+        .dark-mode .table-hover tbody tr:hover { background-color: #3a3a3a; color: #fff; }
+        
+        .dark-mode .form-control, .dark-mode .form-select {
+            background-color: #2b2b2b;
+            border-color: #444;
+            color: #fff;
+        }
+        .dark-mode .form-control:focus {
+            background-color: #333;
+            color: #fff;
+            border-color: #0d6efd;
+        }
+        .dark-mode .bg-light { background-color: #2b2b2b !important; }
+        .dark-mode .text-muted { color: #adb5bd !important; }
+        .dark-mode .text-dark { color: #fff !important; }
     </style>
-    <!-- Untuk style tambahan per halaman -->
+
     @stack('styles')
 </head>
 <body>
-    <div class="d-flex vh-100">
+<div class="d-flex vh-100">
 
-        <!-- === Sidebar Admin === -->
-        <nav class="sidebar vh-100 d-flex flex-column p-3">
-            <div>
-                <!-- Judul Sidebar -->
-                <a href="/admin/dashboard" class="d-flex align-items-center mb-3 text-white text-decoration-none">
-                    <i class="bi bi-shield-lock-fill fs-2 me-2"></i>
-                    <span class="fs-4">Admin Klinik</span>
-                </a>
+    <nav class="sidebar vh-100 d-flex flex-column p-3">
+        <div>
+            <a href="/admin/dashboard" class="d-flex align-items-center mb-3 text-white text-decoration-none">
+                <i class="bi bi-shield-lock-fill fs-2 me-2"></i>
+                <span class="fs-4">Admin Klinik</span>
+            </a>
 
-                <!-- Link Navigasi Admin -->
-                <ul class="nav nav-pills flex-column">
-                    <li class="nav-item mb-1">
-                        <a href="/admin/dashboard" class="nav-link {{ Request::is('admin/dashboard') ? 'active' : '' }}">
-                            <i class="bi bi-grid-fill me-2"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item mb-1">
-                        <a href="/admin/validasi" class="nav-link {{ Request::is('admin/validasi') ? 'active' : '' }}">
-                            <i class="bi bi-check-circle-fill me-2"></i> Validasi Absensi
-                        </a>
-                    </li>
-                    <li class="nav-item mb-1">
-                        <a href="/admin/manajemen-karyawan" class="nav-link {{ Request::is('admin/manajemen-karyawan') ? 'active' : '' }}">
-                            <i class="bi bi-people-fill me-2"></i> Manajemen Karyawan
-                        </a>
-                    </li>
-                    <li class="nav-item mb-1">
-                        <a href="/admin/geofencing" class="nav-link {{ Request::is('admin/geofencing') ? 'active' : '' }}">
-                            <i class="bi bi-geo-alt-fill me-2"></i> Lokasi Geofencing
-                        </a>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Footer Sidebar (Logout) -->
-            <div class="sidebar-footer mt-auto">
-                <ul class="nav nav-pills flex-column">
-                    <li class="nav-item mb-1">
-                        <a href="/logout" class="nav-link">
-                            <i class="bi bi-box-arrow-left me-2"></i> Logout
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </nav>
-
-        <!-- === Area Konten Utama === -->
-        <div class="w-100 d-flex flex-column">
-
-            <!-- Header -->
-            <header class="topbar d-flex justify-content-between align-items-center p-3">
-                <!-- Judul halaman diambil dari @yield('page-title') -->
-                <h4 class="fw-bold mb-0">@yield('page-title')</h4>
-
-                <div class="d-flex align-items-center">
-                    <!-- Tombol Dark Mode -->
-                    <div class="position-relative me-3" style="cursor: pointer;">
-                        <i class="bi bi-moon-fill fs-5 hover-primary dark-mode-toggle"></i>
-                    </div>
-
-                    <!-- Lonceng Notifikasi -->
-                    <div class="position-relative me-3">
-                        <i class="bi bi-bell-fill fs-5 hover-primary notification-bell" style="cursor: pointer;"></i>
-                        <!-- Badge ini bisa diisi data dinamis, misal jumlah validasi pending -->
-                        <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                            5 <!-- Contoh Angka -->
-                        </span>
-                    </div>
-
-                    <!-- Profil Admin -->
-                    <div class="d-flex align-items-center">
-                        <img src="https://via.placeholder.com/40" class="rounded-circle" alt="Profil" style="width: 40px; height: 40px;">
-                        <div class="ms-2">
-                            <!-- Mengambil nama admin yang sedang login -->
-                            <span class="fw-bold d-block">{{ Auth::user()->username ?? 'Admin' }}</span>
-                            <small class="text-muted">Administrator</small>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Konten Halaman -->
-            <main class="p-4 flex-grow-1 overflow-auto">
-                <!-- Notifikasi (jika ada) -->
-                @if (session('success'))
-                    <div class="alert alert-success">
-                        {{ session('success') }}
-                    </div>
-                @endif
-                @if (session('error'))
-                    <div class="alert alert-danger">
-                        {{ session('error') }}
-                    </div>
-                @endif
-
-                <!-- Konten dari file (dashboard, validasi, dll) akan dimuat di sini -->
-                @yield('content')
-            </main>
-
-            <!-- Footer -->
-            <footer class="main-footer d-flex justify-content-between align-items-center p-3">
-                <div class="d-flex align-items-center">
-                    <strong class="me-3">Klinik Grand Warden</strong>
-                    <span class="text-muted">Jl. Medan Merdeka Timur No.11-13 Clash Universe</span>
-                </div>
-                <div class="d-flex">
-                    <i class="bi bi-facebook fs-6 me-3 text-muted hover-primary"></i>
-                    <i class="bi bi-twitter-x fs-6 me-3 text-muted hover-primary"></i>
-                    <i class="bi bi-instagram fs-6 text-muted hover-primary"></i>
-                </div>
-            </footer>
+            <ul class="nav nav-pills flex-column">
+                <li class="nav-item mb-1">
+                    <a href="/admin/dashboard" class="nav-link {{ Request::is('admin/dashboard') ? 'active' : '' }}">
+                        <i class="bi bi-grid-fill me-2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="/admin/validasi" class="nav-link {{ Request::is('admin/validasi') ? 'active' : '' }}">
+                        <i class="bi bi-check-circle-fill me-2"></i> Validasi Absensi
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="/admin/manajemen-karyawan" class="nav-link {{ Request::is('admin/manajemen-karyawan') ? 'active' : '' }}">
+                        <i class="bi bi-people-fill me-2"></i> Manajemen Karyawan
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="/admin/geofencing" class="nav-link {{ Request::is('admin/geofencing') ? 'active' : '' }}">
+                        <i class="bi bi-geo-alt-fill me-2"></i> Lokasi Geofencing
+                    </a>
+                </li>
+            </ul>
         </div>
+
+        <div class="sidebar-footer mt-auto">
+            <ul class="nav nav-pills flex-column">
+                <li class="nav-item mb-1">
+                    <a href="/logout" class="nav-link">
+                        <i class="bi bi-box-arrow-left me-2"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="w-100 d-flex flex-column">
+
+        <header class="topbar d-flex justify-content-between align-items-center p-3">
+            <h4 class="fw-bold mb-0">@yield('page-title')</h4>
+
+            <div class="d-flex align-items-center">
+
+                <div class="position-relative me-3" style="cursor: pointer;">
+                    <i class="bi bi-moon-fill fs-5 hover-primary dark-mode-toggle"></i>
+                </div>
+
+                <div class="dropdown me-3">
+                    <div class="position-relative" id="adminNotifToggle" data-bs-toggle="dropdown" style="cursor:pointer;">
+                        <i class="bi bi-bell-fill fs-5 hover-primary"></i>
+
+                        @if(($adminNotifCount ?? 0) > 0)
+                            <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="adminNotifBadge">
+                                {{ $adminNotifCount }}
+                            </span>
+                        @endif
+                    </div>
+
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="width: 360px;">
+                        <li class="dropdown-header fw-bold d-flex justify-content-between align-items-center py-2">
+                            <span class="fs-6">Notifikasi</span>
+                            @if(($adminNotifCount ?? 0) > 0)
+                                <span class="badge bg-primary rounded-pill">{{ $adminNotifCount }} Baru</span>
+                            @endif
+                        </li>
+                        <li><hr class="dropdown-divider my-0"></li>
+
+                        <div style="max-height: 350px; overflow-y: auto;">
+                            @forelse ($adminNotifList ?? [] as $n)
+                                <li>
+                                    <a href="{{ $n['url'] }}" class="dropdown-item p-0" style="white-space: normal;">
+                                        <div class="notif-item">
+                                            @if($n['type'] == 'absensi')
+                                                <div class="notif-icon bg-primary text-white">
+                                                    <i class="bi bi-camera-fill"></i>
+                                                </div>
+                                            @else
+                                                <div class="notif-icon bg-warning text-dark">
+                                                    <i class="bi bi-file-medical-fill"></i>
+                                                </div>
+                                            @endif
+
+                                            <div class="flex-grow-1">
+                                                <div class="notif-title">{{ $n['title'] }}</div>
+                                                <div class="notif-msg">{{ $n['message'] }}</div>
+                                                <div class="notif-time">
+                                                    <i class="bi bi-clock"></i>
+                                                    {{ \Carbon\Carbon::parse($n['time'])->diffForHumans() }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-0"></li>
+                            @empty
+                                <li class="notif-empty text-center py-4">
+                                    <i class="bi bi-bell-slash fs-3 mb-2 d-block"></i>
+                                    Tidak ada notifikasi baru
+                                </li>
+                            @endforelse
+                        </div>
+                    </ul>
+                </div>
+
+                @php
+                    $name = Auth::user()->username ?? 'Admin';
+                    $initial = strtoupper(substr($name, 0, 1));
+                @endphp
+
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center"
+                         style="width:40px;height:40px;font-weight:bold;font-size:1.2rem;">
+                        {{ $initial }}
+                    </div>
+
+                    <div class="ms-2">
+                        <span class="fw-bold d-block">{{ $name }}</span>
+                        <small class="text-muted">Administrator</small>
+                    </div>
+                </div>
+
+            </div>
+        </header>
+
+        <main class="p-4 flex-grow-1 overflow-auto">
+            @if (session('success'))
+                <div class="alert alert-success">{{ session('success') }}</div>
+            @endif
+            @if (session('error'))
+                <div class="alert alert-danger">{{ session('error') }}</div>
+            @endif
+
+            @yield('content')
+        </main>
+
+        <footer class="main-footer d-flex justify-content-between align-items-center p-3">
+            <div class="d-flex align-items-center">
+                <strong class="me-3">Klinik Grand Warden</strong>
+                <span class="text-muted">Jl. Medan Merdeka Timur No.11-13 Clash Universe</span>
+            </div>
+            <div class="d-flex">
+                <i class="bi bi-facebook fs-6 me-3 text-muted hover-primary"></i>
+                <i class="bi bi-twitter-x fs-6 me-3 text-muted hover-primary"></i>
+                <i class="bi bi-instagram fs-6 text-muted hover-primary"></i>
+            </div>
+        </footer>
     </div>
+</div>
 
-    <!-- Script untuk Dark Mode (disalin dari app.blade.php) -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const darkToggle = document.querySelector('.dark-mode-toggle');
-            const body = document.body;
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- 1. Dark Mode ---
+        const darkToggle = document.querySelector('.dark-mode-toggle');
+        const body = document.body;
 
-            const isDarkMode = localStorage.getItem('darkMode') === 'true';
-            if (isDarkMode) {
-                body.classList.add('dark-mode');
-                darkToggle.classList.remove('bi-moon-fill');
-                darkToggle.classList.add('bi-sun-fill');
+        const isDarkMode = localStorage.getItem('darkMode') === 'true';
+        if (isDarkMode) {
+            body.classList.add('dark-mode');
+            if(darkToggle) {
+                darkToggle.classList.replace('bi-moon-fill', 'bi-sun-fill');
             }
+        }
 
+        if(darkToggle) {
             darkToggle.addEventListener('click', function() {
                 body.classList.toggle('dark-mode');
                 const isNowDark = body.classList.contains('dark-mode');
-
                 this.classList.toggle('bi-moon-fill');
                 this.classList.toggle('bi-sun-fill');
                 localStorage.setItem('darkMode', isNowDark);
             });
+        }
 
-            // Script notifikasi bisa ditambahkan di sini
-        });
-    </script>
+        // --- 2. Logika Badge Notifikasi Pintar ---
+        // Badge hilang saat dropdown dibuka, dan tetap hilang sampai ada notif baru (count bertambah)
+        const notifToggle = document.getElementById('adminNotifToggle');
+        const notifBadge = document.getElementById('adminNotifBadge');
+        
+        // Ambil jumlah notifikasi saat ini dari PHP
+        const currentCount = Number('{{ $adminNotifCount ?? 0 }}');
+        
+        // Ambil jumlah terakhir yang "dilihat" dari LocalStorage
+        const seenCount = parseInt(localStorage.getItem('adminNotifSeenCount') || '0');
 
-    <!-- Untuk script tambahan per halaman -->
-    @stack('scripts')
+        // Jika jumlah saat ini <= jumlah yang sudah dilihat, sembunyikan badge
+        if (notifBadge && currentCount <= seenCount) {
+            notifBadge.style.display = 'none';
+        }
+
+        if (notifToggle) {
+            notifToggle.addEventListener('show.bs.dropdown', function() {
+                // Simpan jumlah saat ini sebagai "sudah dilihat"
+                localStorage.setItem('adminNotifSeenCount', currentCount);
+                // Sembunyikan badge secara visual
+                if (notifBadge) {
+                    notifBadge.style.display = 'none';
+                }
+            });
+        }
+    });
+</script>
+
+@stack('scripts')
 </body>
 </html>

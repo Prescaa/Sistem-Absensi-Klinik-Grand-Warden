@@ -183,15 +183,8 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Ambil waktu server dari PHP (Blade) saat halaman diload
-        // Pastikan formatnya aman untuk parsing JS (ISO string atau timestamp ms)
-        let serverTime = new Date("{{ now()->format('Y-m-d H:i:s') }}").getTime();
-
         function updateDateTime() {
-            // Tambah 1 detik setiap interval
-            serverTime += 1000; 
-            
-            const now = new Date(serverTime);
+            const now = new Date();
             const timeEl = document.getElementById('realtime-jam');
             const dateEl = document.getElementById('realtime-tanggal');
             
@@ -207,9 +200,7 @@
                 dateEl.textContent = now.toLocaleDateString('id-ID', options);
             }
         }
-        
-        // Jalankan sekali di awal biar gak nunggu 1 detik
-        updateDateTime(); 
+        updateDateTime();
         setInterval(updateDateTime, 1000);
     });
 </script>

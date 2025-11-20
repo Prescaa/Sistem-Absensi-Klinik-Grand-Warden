@@ -12,16 +12,15 @@
     <style>
         /* === FLUID SCALING === */
         :root {
-            font-size: clamp(14px, 0.9rem + 0.35vw, 20px);
-            --sidebar-width: 17.5rem; 
+            --sidebar-width: 280px;
             --topbar-height: 70px;
-            --primary-color: #0d6efd; /* Warna Utama Biru */
+            --primary-color: #0d6efd; 
         }
 
         body { 
             background-color: #F8F9FA;
             transition: background-color 0.3s ease;
-            font-size: 1rem;
+            font-size: 0.925rem;
             overflow-x: hidden;
         }
 

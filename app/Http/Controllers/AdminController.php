@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-// --- SEMUA USE STATEMENT DIKUMPULKAN DI SINI ---
 use Illuminate\Http\Request;
 use App\Models\Attendance;
 use App\Models\Employee;
@@ -16,12 +15,8 @@ use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
-// --- HANYA ADA SATU DEKLARASI CLASS ---
 class AdminController extends Controller
 {
-    /**
-     * Menampilkan halaman dashboard admin.
-     */
     /**
      * Menampilkan halaman dashboard admin.
      */
@@ -35,21 +30,31 @@ class AdminController extends Controller
         // 2. Hadir Hari Ini (Berdasarkan type 'masuk')
         $presentCount = Attendance::whereDate('waktu_unggah', $today)
             ->where('type', 'masuk')
-            ->distinct('emp_id') // Agar tidak terhitung ganda jika upload ulang
+            ->distinct('emp_id') 
             ->count('emp_id');
 
-        // 3. Data Absensi Terbaru (Pending / Belum Divalidasi)
-        // Mengambil 5 data terakhir yang belum ada di tabel validation
+        // 3. Hitung Izin Hari Ini (DINAMIS)
+        // Menghitung izin yang statusnya 'disetujui' dan tanggalnya mencakup hari ini
+        $izinCount = Leave::where('tipe_izin', 'izin')
+            ->where('status', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_selesai', '>=', $today)
+            ->count();
+
+        // 4. Hitung Sakit Hari Ini (DINAMIS)
+        // Menghitung sakit yang statusnya 'disetujui' dan tanggalnya mencakup hari ini
+        $sakitCount = Leave::where('tipe_izin', 'sakit')
+            ->where('status', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_selesai', '>=', $today)
+            ->count();
+
+        // 5. Data Absensi Terbaru (Pending / Belum Divalidasi)
         $recentActivities = Attendance::whereDoesntHave('validation')
             ->with('employee')
             ->orderBy('waktu_unggah', 'desc')
             ->take(5)
             ->get();
-
-        // (Opsional) Hitung Izin/Sakit jika nanti Anda sudah punya tabelnya
-        // Untuk sementara saya set 0 agar tidak error di view
-        $izinCount = 0;
-        $sakitCount = 0;
 
         return view('admin.dashboard', [
             'totalEmployees' => $totalEmployees,
@@ -65,44 +70,31 @@ class AdminController extends Controller
      */
     public function showValidasiPage()
     {
-        // 1. Ambil Absensi Pending (Yang sudah ada sebelumnya)
+        // 1. Ambil Absensi Pending
         $pendingAttendances = Attendance::whereDoesntHave('validation')
             ->with('employee')
             ->orderBy('waktu_unggah', 'desc')
             ->get();
 
-        // 2. Ambil Pengajuan Izin Pending (BARU)
+        // 2. Ambil Pengajuan Izin Pending
         $pendingLeaves = Leave::with('employee')
             ->where('status', 'pending')
-            ->orderBy('created_at', 'asc') // Urutkan dari yang terlama diajukan
+            ->orderBy('created_at', 'asc')
             ->get();
 
-        // Kirim kedua variabel ke view
         return view('admin.validasi', [
             'attendances' => $pendingAttendances,
             'leaves' => $pendingLeaves
         ]);
     }
 
-    /**
-     * Menangani proses approve absensi.
-     */
     public function handleApprove(Request $request)
     {
-        // TODO: Logika untuk approve absensi
-        // $validation = Validation::find($request->input('validation_id'));
-        // $validation->update(['status_validasi_final' => 'approved']);
         return redirect()->back()->with('success', 'Absensi telah disetujui.');
     }
 
-    /**
-     * Menangani proses reject absensi.
-     */
     public function handleReject(Request $request)
     {
-        // TODO: Logika untuk reject absensi
-        // $validation = Validation::find($request->input('validation_id'));
-        // $validation->update(['status_validasi_final' => 'rejected', 'catatan_admin' => $request->input('catatan')]);
         return redirect()->back()->with('success', 'Absensi telah ditolak.');
     }
 
@@ -110,24 +102,14 @@ class AdminController extends Controller
     // --- FUNGSI CRUD KARYAWAN ---
     // -----------------------------------------------------------------
 
-    /**
-     * READ: Menampilkan halaman manajemen karyawan
-     */
     public function showManajemenKaryawan()
     {
-        // Ambil semua data karyawan beserta data user login-nya
         $employee = Employee::with('user')->get();
-
-        // Kirim data ke view
         return view('admin.manajemen_karyawan', ['employee' => $employee]);
     }
 
-    /**
-     * CREATE: Menangani proses penambahan karyawan baru.
-     */
     public function storeKaryawan(Request $request)
     {
-        // 1. Validasi input
         $request->validate([
             'nama' => ['required', 'string', 'max:255'],
             'nip' => ['required', 'string', 'max:50', 'unique:employee'],
@@ -137,105 +119,79 @@ class AdminController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // 2. Gunakan Transaksi Database
         DB::beginTransaction();
         try {
-            // 3. Buat User baru
             $user = User::create([
                 'username' => $request->username,
-                'email' => $request->username . '@klinik.com', // Email default
-                'password_hash' => Hash::make($request->password), // Sesuai model User Anda
-                'role' => 'Karyawan', // Otomatis set role
+                'email' => $request->username . '@klinik.com',
+                'password_hash' => Hash::make($request->password),
+                'role' => 'Karyawan',
             ]);
 
-            // 4. Buat Employee baru yang terhubung dengan User
             Employee::create([
-                'user_id' => $user->user_id, // Menggunakan primary key yang benar
+                'user_id' => $user->user_id,
                 'nama' => $request->nama,
                 'nip' => $request->nip,
                 'departemen' => $request->departemen,
                 'posisi' => $request->posisi,
-                'status_aktif' => true, // Otomatis aktif
+                'status_aktif' => true,
             ]);
 
-            // 5. Jika sukses, commit transaksi
             DB::commit();
-
             return redirect()->back()->with('success', 'Karyawan baru berhasil ditambahkan.');
 
         } catch (\Exception $e) {
-            // 6. Jika gagal, batalkan semua
             DB::rollBack();
             return redirect()->back()->with('error', 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage());
         }
     }
 
-    /**
-     * UPDATE: Menangani proses update data karyawan.
-     */
     public function updateKaryawan(Request $request, $id)
     {
-        // $id di sini adalah user_id
         $user = User::findOrFail($id);
         $employee = $user->employee;
 
-        // 1. Validasi input
         $request->validate([
             'nama' => ['required', 'string', 'max:255'],
-            'nip' => ['required', 'string', 'max:50', 'unique:employee,nip,' . $employee->emp_id . ',emp_id'], // Abaikan NIP milik sendiri
+            'nip' => ['required', 'string', 'max:50', 'unique:employee,nip,' . $employee->emp_id . ',emp_id'],
             'departemen' => ['nullable', 'string', 'max:100'],
             'posisi' => ['nullable', 'string', 'max:100'],
-            'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id'], // Abaikan username milik sendiri
-            'password' => ['nullable', 'confirmed', Rules\Password::defaults()], // Password boleh kosong
+            'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id'],
+            'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // 2. Gunakan Transaksi
         DB::beginTransaction();
         try {
-            // 3. Update User
             $user->username = $request->username;
-
-            // Hanya update password jika diisi
             if ($request->filled('password')) {
-                $user->password_hash = Hash::make($request->password); // Sesuai model User Anda
+                $user->password_hash = Hash::make($request->password);
             }
             $user->save();
 
-            // 4. Update Employee
             $employee->nama = $request->nama;
             $employee->nip = $request->nip;
             $employee->departemen = $request->departemen;
             $employee->posisi = $request->posisi;
             $employee->save();
 
-            // 5. Commit
             DB::commit();
-
             return redirect()->back()->with('success', 'Data karyawan berhasil diperbarui.');
 
         } catch (\Exception $e) {
-            // 6. Rollback
             DB::rollBack();
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat memperbarui data: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal update: ' . $e->getMessage());
         }
     }
 
-    /**
-     * DELETE: Menangani proses hapus karyawan.
-     */
     public function destroyKaryawan($id)
     {
-        // $id di sini adalah user_id
         $user = User::findOrFail($id);
 
-        // Kita gunakan transaksi untuk memastikan keduanya terhapus
         DB::beginTransaction();
         try {
-            // Hapus employee dulu
             if ($user->employee) {
                 $user->employee->delete();
             }
-            // Hapus user
             $user->delete();
 
             DB::commit();
@@ -243,26 +199,21 @@ class AdminController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal hapus: ' . $e->getMessage());
         }
     }
 
-    // --- AKHIR FUNGSI CRUD KARYAWAN ---
+    // -----------------------------------------------------------------
+    // --- FUNGSI LAPORAN & GEOFENCING ---
+    // -----------------------------------------------------------------
 
-    /**
-     * Menampilkan halaman laporan.
-     */
     public function showLaporan()
     {
         return view('admin.laporan');
     }
 
-    /**
-     * Menangani proses ekspor laporan (SECURED).
-     */
     public function exportLaporan(Request $request)
     {
-        // 1. Validasi Input Tanggal
         $request->validate([
             'start_date' => 'required|date',
             'end_date'   => 'required|date|after_or_equal:start_date',
@@ -270,61 +221,57 @@ class AdminController extends Controller
 
         $startDate = Carbon::parse($request->start_date)->startOfDay();
         $endDate   = Carbon::parse($request->end_date)->endOfDay();
-
-        $filename = "Laporan-Absensi_" . $startDate->format('Ymd') . "_sd_" . $endDate->format('Ymd') . ".csv";
+        $filename = "Laporan-Absensi_" . $startDate->format('Ymd') . "-" . $endDate->format('Ymd') . ".csv";
 
         $headers = [
-            "Content-type"        => "text/csv",
+            "Content-type" => "text/csv",
             "Content-Disposition" => "attachment; filename=$filename",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
         ];
 
-        // 2. Ambil Semua Karyawan
         $listKaryawan = Employee::orderBy('nama')->get();
 
-        // 3. Buat Callback untuk Streaming CSV
         $callback = function() use ($listKaryawan, $startDate, $endDate) {
             $file = fopen('php://output', 'w');
-
-            // --- SECURITY FIX: Sanitization Helper ---
-            // Prevents CSV Injection (Formula Injection)
+            
+            // Helper Sanitasi untuk mencegah CSV Injection
             $sanitize = function ($value) {
-                // If value starts with =, +, -, or @, prepend a single quote
                 if (is_string($value) && preg_match('/^[\=\+\-\@]/', $value)) {
                     return "'" . $value;
                 }
                 return $value;
             };
 
-            // Header CSV
-            fputcsv($file, ['NIP', 'Nama Karyawan', 'Total Hadir', 'Total Terlambat', 'Total Izin/Sakit', 'Persentase Kehadiran (%)']);
+            fputcsv($file, ['NIP', 'Nama', 'Hadir', 'Terlambat', 'Izin/Sakit', '% Kehadiran']);
 
             foreach ($listKaryawan as $karyawan) {
-                // Hitung Kehadiran dalam Rentang Tanggal
                 $kehadiran = Attendance::where('emp_id', $karyawan->emp_id)
                     ->whereBetween('waktu_unggah', [$startDate, $endDate])
                     ->where('type', 'masuk')
                     ->get();
 
                 $totalHadir = $kehadiran->count();
-
-                // Hitung Terlambat (> 08:00:00)
+                
                 $totalTerlambat = $kehadiran->filter(function ($att) {
                     return $att->waktu_unggah->format('H:i:s') > '08:00:00';
                 })->count();
 
-                $totalIzinSakit = 0; // Placeholder (Fix logic here if you have Leave table connected)
+                // Hitung Izin/Sakit (Disetujui)
+                $totalIzinSakit = Leave::where('emp_id', $karyawan->emp_id)
+                    ->where('status', 'disetujui')
+                    ->where(function($q) use ($startDate, $endDate) {
+                        $q->whereBetween('tanggal_mulai', [$startDate, $endDate])
+                          ->orWhereBetween('tanggal_selesai', [$startDate, $endDate]);
+                    })->count();
 
-                // Hitung Hari Kerja
                 $totalHariKerja = $this->countWorkingDaysInRange($startDate, $endDate);
                 $persentase = $totalHariKerja > 0 ? ($totalHadir / $totalHariKerja) * 100 : 0;
 
-                // Tulis Baris CSV dengan Sanitasi
                 fputcsv($file, [
-                    $sanitize($karyawan->nip),   // Apply sanitization
-                    $sanitize($karyawan->nama),  // Apply sanitization
+                    $sanitize($karyawan->nip),
+                    $sanitize($karyawan->nama),
                     $totalHadir,
                     $totalTerlambat,
                     $totalIzinSakit,
@@ -337,16 +284,11 @@ class AdminController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    /**
-     * Helper untuk menghitung hari kerja dalam rentang tanggal tertentu.
-     */
     private function countWorkingDaysInRange($startDate, $endDate)
     {
         $count = 0;
         $current = $startDate->copy();
-
         while ($current->lte($endDate)) {
-            // Cek jika bukan Sabtu (6) dan Minggu (0)
             if (!$current->isWeekend()) {
                 $count++;
             }
@@ -357,101 +299,56 @@ class AdminController extends Controller
 
     public function showGeofencing()
     {
-        // Ambil data lokasi.
-        // Kita juga perlu memilih nilai Lat dan Lon dari kolom POINT
         $lokasi = WorkArea::select(
-            'area_id',
-            'nama_area',
-            'radius_geofence',
-            'jam_kerja',
-            // Gunakan fungsi ST_X dan ST_Y untuk mengekstrak Lat/Lon dari POINT
+            'area_id', 'nama_area', 'radius_geofence', 'jam_kerja',
             DB::raw('ST_X(koordinat_pusat) as latitude'),
             DB::raw('ST_Y(koordinat_pusat) as longitude')
         )->where('area_id', 1)->first();
 
-        // Kirim data lokasi ke view
         return view('admin.geofencing', ['lokasi' => $lokasi]);
     }
 
-    /**
-     * Menyimpan data pengaturan geofencing.
-     */
     public function saveGeofencing(Request $request)
     {
-        // Validasi input
         $request->validate([
-            'nama_area' => 'required|string|max:100', // Validasi untuk nama
+            'nama_area' => 'required|string|max:100',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'radius' => 'required|numeric|min:50', // ini 'radius' dari form
+            'radius' => 'required|numeric|min:50',
         ]);
 
-        // Cari data lokasi berdasarkan 'area_id' = 1, atau buat baru
         $lokasi = WorkArea::firstOrNew(['area_id' => 1]);
-
-        // === PERBAIKAN UTAMA DI SINI ===
-
-        // 1. Simpan ke 'nama_area', bukan 'latitude'
         $lokasi->nama_area = $request->nama_area;
-
-        // 2. Simpan ke 'radius_geofence', bukan 'radius'
         $lokasi->radius_geofence = $request->radius;
-
-        // 3. Simpan lat/lon ke 'koordinat_pusat'
-        // Kolom 'koordinat_pusat' Anda adalah tipe POINT.
-        // Cara termudah menanganinya adalah menggunakan DB::raw() untuk
-        // membuat fungsi POINT() dari MySQL.
-        // Safe because $lat/$lon are guaranteed to be floats
         $lat = (float) $request->latitude;
         $lon = (float) $request->longitude;
         $lokasi->koordinat_pusat = DB::raw("POINT($lat, $lon)");
-
-        // Catatan: Menyimpan sebagai POINT adalah cara database yang "benar",
-        // tetapi mengambilnya kembali untuk ditampilkan di form sedikit lebih rumit.
-
         $lokasi->save();
 
-        // Kembali ke halaman sebelumnya dengan pesan sukses
-        return redirect()->route('admin.geofencing.show')
-                         ->with('success', 'Pengaturan lokasi geofencing berhasil diperbarui!');
+        return redirect()->route('admin.geofencing.show')->with('success', 'Lokasi berhasil diperbarui!');
     }
 
-
-     /* Menyimpan hasil validasi (Approve/Reject)
-     */
     public function submitValidasi(Request $request)
     {
-        // 1. Validasi input
         $request->validate([
             'att_id' => 'required|exists:ATTENDANCE,att_id',
-
-            // PERBAIKAN: Kita memaksa input harus 'Valid' atau 'Invalid' (Sesuai Database)
             'status_validasi' => 'required|in:Valid,Invalid',
-
             'catatan_validasi' => 'nullable|string|max:500'
         ]);
 
-        // Ambil ID admin yang login
         $adminEmpId = Auth::user()->employee->emp_id;
 
-        // 2. Simpan ke Database
-        // Langsung gunakan nilai dari request tanpa logika "if-else" yang membingungkan
         Validation::create([
             'att_id' => $request->att_id,
             'admin_id' => $adminEmpId,
-
-            // Status Otomatis disamakan dengan keputusan admin
             'status_validasi_otomatis' => $request->status_validasi,
-
-            // Status Final (PENTING: Ini yang akan menentukan warna hijau/merah)
             'status_validasi_final' => $request->status_validasi,
-
             'catatan_admin' => $request->catatan_validasi,
             'timestamp_validasi' => now()
         ]);
 
         return redirect()->route('admin.validasi.show')
-                         ->with('success', 'Status absensi berhasil diperbarui menjadi: ' . $request->status_validasi);
+                         ->with('success', 'Validasi absensi berhasil disimpan.');
     }
 
     public function submitValidasiIzin(Request $request)
@@ -463,7 +360,6 @@ class AdminController extends Controller
         ]);
 
         $leave = Leave::findOrFail($request->leave_id);
-
         $leave->status = $request->status;
         $leave->catatan_admin = $request->catatan_admin;
         $leave->save();
