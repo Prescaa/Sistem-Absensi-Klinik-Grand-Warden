@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Leave;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cookie;
 
 class KaryawanController extends Controller
 {
@@ -227,119 +228,127 @@ public function checkExif(Request $request)
 
     public function storeFoto(Request $request)
 {
+    // =========================================================================
+    // LAYER 1: DEVICE LOCK (Anti-Joki)
+    // =========================================================================
+    // Cek apakah browser ini sudah "di-tag" oleh karyawan lain.
+    $deviceOwner = $request->cookie('device_owner_id');
+    $currentUserId = auth()->user()->employee->emp_id;
 
+    // Jika cookie ada, tapi isinya BUKAN ID karyawan yang sedang login -> BLOKIR
+    if ($deviceOwner && $deviceOwner != $currentUserId) {
+        return redirect()->back()->with('error', 'KEAMANAN: Perangkat ini sudah terdaftar atas nama karyawan lain. Harap gunakan HP Anda sendiri.');
+    }
 
-    // 1. Validasi Input (Termasuk koordinat dari Browser)
+    // =========================================================================
+    // LAYER 2: VALIDASI INPUT DASAR
+    // =========================================================================
     $request->validate([
-        'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:7000',
-        'type' => 'required|string|in:masuk,pulang',
-        'browser_lat' => 'required|numeric', // Wajib ada
-        'browser_lng' => 'required|numeric', // Wajib ada
+        'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:5000',
+        'type'         => 'required|in:masuk,pulang',
+        'browser_lat'  => 'required|numeric',
+        'browser_lng'  => 'required|numeric',
     ]);
 
     $file = $request->file('foto_absensi');
-    $browserLat = (float) $request->browser_lat;
-    $browserLng = (float) $request->browser_lng;
 
-    // --- 2. CEK HASH FILE (Anti-Duplikasi) ---
+    // =========================================================================
+    // LAYER 3: CEK DUPLIKASI FILE (Hash)
+    // =========================================================================
+    // Mencegah upload ulang foto yang sama persis (Hash Check)
     $fileHash = md5_file($file->getRealPath());
     if (Attendance::where('file_hash', $fileHash)->exists()) {
-        return redirect()->back()->with('error', 'Foto ini sudah pernah digunakan sebelumnya.');
+        return redirect()->back()->with('error', 'Foto ini sudah pernah digunakan sebelumnya. Harap ambil foto baru!');
     }
 
-    // --- 3. BACA EXIF FOTO (Bukti Lokasi) ---
+    // =========================================================================
+    // LAYER 4: STRICT TIME CHECK (Anti-Drive-By)
+    // =========================================================================
+    // Baca EXIF untuk memastikan foto diambil BARU SAJA (Max 2 Menit)
     $exif = @exif_read_data($file->getRealPath());
-    if (!$exif || empty($exif['GPSLatitude']) || empty($exif['GPSLongitude'])) {
-        return redirect()->back()->with('error', 'Validasi Gagal: Foto tidak memiliki data GPS.');
-    }
 
-    // === [BAGIAN YANG PERLU ANDA TAMBAHKAN] ===
-
-    // A. BLOKIR EDITOR FOTO (Yang belum Anda miliki)
-    // Mengecek apakah foto disentuh oleh Photoshop, GIMP, dll.
-    if (!empty($exif['Software'])) {
-        $blacklist = ['Adobe', 'Photoshop', 'Lightroom', 'GIMP', 'Picasa', 'Canva', 'Editor'];
-        foreach ($blacklist as $tool) {
-            if (stripos($exif['Software'], $tool) !== false) {
-                return redirect()->back()->with('error', 'Foto ditolak: Terdeteksi hasil editan software (' . $exif['Software'] . '). Gunakan kamera asli!');
-            }
-        }
-    }
-
-    // B. BLOKIR FOTO LAMA (Yang Anda lupa masukkan di sini)
-    if (empty($exif['DateTimeOriginal'])) {
-        return redirect()->back()->with('error', 'Tanggal foto tidak terdeteksi.');
+    // Fallback: Jika EXIF tanggal tidak ada, kita tolak (Force Real Camera)
+    if (!isset($exif['DateTimeOriginal'])) {
+        return redirect()->back()->with('error', 'Tanggal foto tidak terdeteksi. Pastikan menggunakan kamera langsung (Bukan upload file lama).');
     }
 
     try {
-        $fotoTime = \Carbon\Carbon::parse($exif['DateTimeOriginal']);
-        // Cek selisih waktu (Logika yang hilang dari storeFoto)
-        if (now()->diffInMinutes($fotoTime) > 15) {
-            return redirect()->back()->with('error', 'Foto Kadaluarsa! Diambil lebih dari 15 menit lalu.');
+        $fotoTime = Carbon::parse($exif['DateTimeOriginal']);
+        // Batas toleransi hanya 2 menit
+        if (now()->diffInMinutes($fotoTime) > 2) {
+            return redirect()->back()->with('error', 'Foto kadaluarsa! Foto harus di-upload segera setelah diambil (Maksimal 2 menit).');
         }
     } catch (\Exception $e) {
-        return redirect()->back()->with('error', 'Format tanggal foto rusak.');
-    }
-    // (Opsional: Tambahkan validasi selisih waktu menit di sini seperti kode lama Anda)
-
-    // Konversi Koordinat EXIF
-    $exifLat = $this->gpsDmsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef']);
-    $exifLng = $this->gpsDmsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef']);
-
-    // --- 4. AMBIL DATA KANTOR ---
-    // --- 4. AMBIL DATA KANTOR ---
-// Kita harus men-select secara manual menggunakan fungsi ST_X dan ST_Y
-$workArea = WorkArea::select(
-    'area_id',
-    'radius_geofence',
-    \Illuminate\Support\Facades\DB::raw('ST_X(koordinat_pusat) as latitude'),
-    \Illuminate\Support\Facades\DB::raw('ST_Y(koordinat_pusat) as longitude')
-)->find(1);
-
-if (!$workArea) {
-    return redirect()->back()->with('error', 'Data lokasi kantor tidak ditemukan.');
-}
-
-    // --- 5. LOGIKA VALIDASI GANDA (DOUBLE CHECK) ---
-
-    // A. Cek Jarak Browser vs Kantor (Real-time Check)
-    $distBrowser = $this->haversineDistance($browserLat, $browserLng, $workArea->latitude, $workArea->longitude);
-    if ($distBrowser > $workArea->radius_geofence) {
-        return redirect()->back()->with('error', "Posisi Anda (Browser) terdeteksi diluar jangkauan ($distBrowser m).");
+        return redirect()->back()->with('error', 'Format tanggal foto tidak valid.');
     }
 
-    // B. Cek Jarak Foto vs Kantor (Evidence Check)
-    $distExif = $this->haversineDistance($exifLat, $exifLng, $workArea->latitude, $workArea->longitude);
-    if ($distExif > $workArea->radius_geofence) {
-        return redirect()->back()->with('error', "Foto terdeteksi diambil diluar area kantor ($distExif m).");
+    // =========================================================================
+    // LAYER 5: SERVER-SIDE GEOFENCING (Hidden Coordinates)
+    // =========================================================================
+    // Ambil koordinat kantor dari database (Hidden from user)
+    $workArea = WorkArea::select(
+        'area_id',
+        'radius_geofence',
+        DB::raw('ST_X(koordinat_pusat) as latitude'),
+        DB::raw('ST_Y(koordinat_pusat) as longitude')
+    )->find(1); // Asumsi ID Kantor = 1
+
+    if (!$workArea) {
+        return redirect()->back()->with('error', 'Konfigurasi lokasi kantor belum diset.');
     }
 
-    // C. CROSS-CHECK: Konsistensi Browser vs Foto
-    // Apakah HP dan Foto berada di tempat yang sama? (Toleransi 100m-200m untuk akurasi GPS)
-    $distConsistency = $this->haversineDistance($browserLat, $browserLng, $exifLat, $exifLng);
-    if ($distConsistency > 1000) {
-        return redirect()->back()->with('error', "KEAMANAN: Lokasi HP dan Lokasi Foto tidak cocok! Selisih: " . round($distConsistency) . "m. Jangan gunakan Fake GPS atau foto lama.");
+    // Hitung Jarak Browser ke Kantor
+    $jarakMeters = $this->haversineDistance(
+        $request->browser_lat,
+        $request->browser_lng,
+        $workArea->latitude,
+        $workArea->longitude
+    );
+
+    // Validasi Jarak
+    if ($jarakMeters > $workArea->radius_geofence) {
+        return redirect()->back()->with('error', "Lokasi Anda terlalu jauh dari kantor ($jarakMeters meter). Harap masuk ke area kantor.");
     }
 
-    // --- 6. SIMPAN DATA (Jika Lolos Semua) ---
-    $karyawanId = auth()->user()->employee->emp_id;
-    $fileName = $karyawanId . '-' . now()->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
+    // (Opsional) Cross-Check Koordinat Foto EXIF jika tersedia
+    $exifLat = isset($exif['GPSLatitude']) ? $this->gpsDmsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef'] ?? 'N') : null;
+    $exifLng = isset($exif['GPSLongitude']) ? $this->gpsDmsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef'] ?? 'E') : null;
+
+    // Jika foto punya GPS, pastikan konsisten (Toleransi 500m karena akurasi GPS dalam gedung buruk)
+    if ($exifLat && $exifLng) {
+        $jarakFoto = $this->haversineDistance($exifLat, $exifLng, $workArea->latitude, $workArea->longitude);
+        if ($jarakFoto > ($workArea->radius_geofence + 500)) {
+             return redirect()->back()->with('error', 'Data lokasi pada Foto terdeteksi di luar kantor. Gunakan kamera asli.');
+        }
+    }
+
+    // =========================================================================
+    // LAYER 6: SIMPAN DATA
+    // =========================================================================
+    $fileName = $currentUserId . '-' . now()->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
     $path = $file->storeAs('public/absensi', $fileName);
     $publicPath = Storage::url($path);
 
     Attendance::create([
-        'emp_id' => $karyawanId,
+        'emp_id' => $currentUserId,
         'area_id' => $workArea->area_id,
         'waktu_unggah' => now(),
-        'latitude' => $exifLat,  // Kita simpan yang EXIF sebagai bukti fisik
-        'longitude' => $exifLng,
+        'latitude' => $exifLat ?? $request->browser_lat, // Prioritaskan EXIF untuk bukti, atau Browser jika EXIF null
+        'longitude' => $exifLng ?? $request->browser_lng,
         'nama_file_foto' => $publicPath,
         'timestamp_ekstraksi' => $exif['DateTimeOriginal'],
         'type' => $request->type,
         'file_hash' => $fileHash
     ]);
 
-    return redirect()->route('karyawan.dashboard')->with('success', 'Absensi berhasil! Lokasi terverifikasi.');
+    // =========================================================================
+    // SUCCESS: Kunci Device Ini Selamanya (5 Tahun)
+    // =========================================================================
+    $cookieLifetime = 2628000; // 5 Tahun (dalam menit)
+
+    return redirect()->route('karyawan.dashboard')
+        ->with('success', 'Absensi berhasil dicatat!')
+        ->withCookie(cookie('device_owner_id', $currentUserId, $cookieLifetime));
 }
 
     private function haversineDistance($lat1, $lon1, $lat2, $lon2) {
