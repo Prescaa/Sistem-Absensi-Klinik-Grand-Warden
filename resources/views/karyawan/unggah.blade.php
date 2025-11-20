@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="container-fluid">
-    {{-- Data Work Area untuk JS (Pastikan Controller mengirim variabel $workArea) --}}
+    {{-- Data Work Area untuk JS (Dikirim dari Controller) --}}
     @if(isset($workArea))
         <div id="work-area-data"
              data-lat="{{ $workArea->latitude }}"
@@ -54,7 +54,7 @@
                                 <i class="bi bi-phone-vibrate fs-4 me-3"></i>
                                 <div class="text-start">
                                     <strong>PENTING:</strong><br>
-                                    Sistem akan mengecek validitas foto terlebih dahulu sebelum mengecek lokasi Anda.
+                                    Sistem akan memverifikasi Lokasi Foto (EXIF) dan Lokasi HP (GPS) secara bersamaan.
                                 </div>
                             </div>
                         </div>
@@ -75,6 +75,11 @@
                         @csrf
                         {{-- Hidden Input untuk menyimpan Tipe Absen (Masuk/Pulang) --}}
                         <input type="hidden" name="type" id="attendanceType">
+
+                        {{-- === SECURITY UPDATE: Input untuk Lokasi Browser === --}}
+                        <input type="hidden" name="browser_lat" id="browser_lat">
+                        <input type="hidden" name="browser_lng" id="browser_lng">
+                        {{-- ================================================== --}}
 
                         <div class="row g-0">
                             {{-- Kolom Kiri: Upload Area --}}
@@ -119,7 +124,7 @@
                                 <h4 class="fw-bold mb-4 text-center">Konfirmasi Absensi</h4>
                                 <div class="d-grid gap-4">
                                     @if(is_null($absensiMasuk))
-                                        {{-- Tombol Absen Masuk (Type Button + OnClick) --}}
+                                        {{-- Tombol Absen Masuk --}}
                                         <button type="button" onclick="startAbsensi('masuk')" class="btn btn-primary btn-lg py-4 fs-4 shadow-sm">
                                             <div class="d-flex align-items-center justify-content-center">
                                                 <i class="bi bi-box-arrow-in-right me-3 fs-2"></i> <span>Absen Masuk</span>
@@ -129,7 +134,7 @@
                                     @else
                                         <button type="button" class="btn btn-success btn-lg py-3 disabled" style="opacity: 1"><i class="bi bi-check-circle-fill me-2"></i> Sudah Masuk</button>
                                         @if(is_null($absensiPulang))
-                                            {{-- Tombol Absen Pulang (Type Button + OnClick) --}}
+                                            {{-- Tombol Absen Pulang --}}
                                             <button type="button" onclick="startAbsensi('pulang')" class="btn btn-danger btn-lg py-4 fs-4 shadow-sm mt-3">
                                                 <div class="d-flex align-items-center justify-content-center"><i class="bi bi-box-arrow-right me-3 fs-2"></i><span>Absen Pulang</span></div>
                                             </button>
@@ -212,7 +217,7 @@
         });
 
         // ==========================================
-        // --- LOGIKA UTAMA (Start Absensi) ---
+        // --- LOGIKA UTAMA (Double Validation) ---
         // ==========================================
         window.startAbsensi = function(type) {
             const form = document.getElementById('uploadForm');
@@ -232,10 +237,11 @@
 
             // 3. Tampilkan Overlay Loading
             overlay.classList.remove('d-none');
-            loadingTitle.innerText = "Cek Validitas Foto";
-            loadingText.innerText = "Memeriksa metadata dan keaslian foto...";
+            loadingTitle.innerText = "Cek Foto & Lokasi";
+            loadingText.innerText = "Sedang memvalidasi data...";
 
-            // --- LAYER 1: AJAX Check EXIF ---
+            // --- LAYER 1: AJAX Check EXIF (Opsional, untuk Quick Fail) ---
+            // Kita tetap cek EXIF di frontend supaya user tahu lebih cepat kalau fotonya tidak valid
             const formData = new FormData();
             formData.append('foto_absensi', fileInput.files[0]);
             formData.append('_token', '{{ csrf_token() }}');
@@ -247,57 +253,59 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'error') {
-                    // GAGAL di Layer 1
                     throw new Error(data.message);
                 }
 
-                // SUKSES Layer 1 -> Lanjut Layer 2
-                loadingTitle.innerText = "Verifikasi Lokasi";
-                loadingText.innerText = "Foto valid. Sedang memverifikasi posisi Anda...";
-
-                // Delay sejenak agar user sempat baca status
-                return new Promise(resolve => setTimeout(resolve, 800));
-            })
-            .then(() => {
                 // --- LAYER 2: Browser Geolocation ---
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            const userLat = position.coords.latitude;
-                            const userLng = position.coords.longitude;
-                            const distance = haversineDistance(userLat, userLng, OFFICE_LAT, OFFICE_LNG);
+                loadingTitle.innerText = "Mengambil GPS...";
+                return new Promise((resolve, reject) => {
+                    if (!navigator.geolocation) {
+                        reject(new Error("Browser Anda tidak mendukung Geolocation."));
+                    } else {
+                        navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                                resolve(position);
+                            },
+                            (error) => {
+                                let msg = "Gagal mengambil lokasi browser.";
+                                if (error.code == error.PERMISSION_DENIED) msg = "Izin lokasi ditolak. Wajib aktifkan lokasi.";
+                                reject(new Error(msg));
+                            },
+                            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                        );
+                    }
+                });
+            })
+            .then((position) => {
+                // Data GPS Browser didapatkan
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
 
-                            console.log(`Jarak User: ${distance}m`);
+                // 1. MASUKKAN KE FORM (Hidden Inputs)
+                // Ini bagian terpenting agar Controller bisa membaca lokasi browser
+                document.getElementById('browser_lat').value = userLat;
+                document.getElementById('browser_lng').value = userLng;
 
-                            if (distance <= OFFICE_RAD) {
-                                // SUKSES Layer 2 -> Submit
-                                loadingTitle.innerText = "Mengirim Data...";
-                                loadingText.innerText = "Lokasi terverifikasi. Menyimpan absensi...";
-                                form.submit();
-                            } else {
-                                // GAGAL Layer 2 (Jarak Jauh)
-                                overlay.classList.add('d-none');
-                                alert(`GAGAL: Posisi Anda terdeteksi sejauh ${Math.round(distance)}m dari kantor. Maksimal radius: ${OFFICE_RAD}m.`);
-                            }
-                        },
-                        (error) => {
-                            // GAGAL Layer 2 (Error GPS)
-                            overlay.classList.add('d-none');
-                            let msg = "Gagal mengambil lokasi browser.";
-                            if (error.code == error.PERMISSION_DENIED) msg = "Izin lokasi ditolak browser. Anda WAJIB mengizinkan lokasi untuk melanjutkan absen.";
-                            alert(msg);
-                        },
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                    );
+                // 2. Cek Jarak (Client-Side Check - UX Only)
+                // Meskipun backend akan cek ulang, kita kasih info di depan biar user tidak bingung kalau gagal
+                const distance = haversineDistance(userLat, userLng, OFFICE_LAT, OFFICE_LNG);
+                console.log(`Jarak User: ${distance}m`);
+
+                if (distance <= OFFICE_RAD) {
+                    // SUKSES: Kirim Form
+                    loadingTitle.innerText = "Mengirim Data...";
+                    loadingText.innerText = "Verifikasi berhasil. Menyimpan absensi...";
+                    form.submit();
                 } else {
+                    // GAGAL: Jarak Jauh
                     overlay.classList.add('d-none');
-                    alert("Browser Anda tidak mendukung Geolocation.");
+                    alert(`GAGAL: Posisi Anda terdeteksi sejauh ${Math.round(distance)}m dari kantor. Maksimal radius: ${OFFICE_RAD}m.`);
                 }
             })
             .catch(error => {
-                // Tangkap Error dari Layer 1 atau Fetch
+                // Tangkap Error (Baik dari EXIF maupun GPS)
                 overlay.classList.add('d-none');
-                alert("VALIDASI FOTO GAGAL:\n" + error.message);
+                alert("ABSENSI GAGAL:\n" + error.message);
             });
         };
 
