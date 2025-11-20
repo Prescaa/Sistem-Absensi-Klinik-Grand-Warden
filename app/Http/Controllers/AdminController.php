@@ -258,7 +258,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Menangani proses ekspor laporan (SECURED).
+     * Menangani proses ekspor laporan.
      */
     public function exportLaporan(Request $request)
     {
@@ -288,16 +288,6 @@ class AdminController extends Controller
         $callback = function() use ($listKaryawan, $startDate, $endDate) {
             $file = fopen('php://output', 'w');
 
-            // --- SECURITY FIX: Sanitization Helper ---
-            // Prevents CSV Injection (Formula Injection)
-            $sanitize = function ($value) {
-                // If value starts with =, +, -, or @, prepend a single quote
-                if (is_string($value) && preg_match('/^[\=\+\-\@]/', $value)) {
-                    return "'" . $value;
-                }
-                return $value;
-            };
-
             // Header CSV
             fputcsv($file, ['NIP', 'Nama Karyawan', 'Total Hadir', 'Total Terlambat', 'Total Izin/Sakit', 'Persentase Kehadiran (%)']);
 
@@ -315,20 +305,21 @@ class AdminController extends Controller
                     return $att->waktu_unggah->format('H:i:s') > '08:00:00';
                 })->count();
 
-                $totalIzinSakit = 0; // Placeholder (Fix logic here if you have Leave table connected)
+                $totalIzinSakit = 0; // Placeholder
 
-                // Hitung Hari Kerja
+                // Hitung Hari Kerja (Senin-Jumat) dalam Rentang Tanggal
                 $totalHariKerja = $this->countWorkingDaysInRange($startDate, $endDate);
+
                 $persentase = $totalHariKerja > 0 ? ($totalHadir / $totalHariKerja) * 100 : 0;
 
-                // Tulis Baris CSV dengan Sanitasi
+                // Tulis Baris CSV
                 fputcsv($file, [
-                    $sanitize($karyawan->nip),   // Apply sanitization
-                    $sanitize($karyawan->nama),  // Apply sanitization
+                    $karyawan->nip,
+                    $karyawan->nama,
                     $totalHadir,
                     $totalTerlambat,
                     $totalIzinSakit,
-                    number_format(min($persentase, 100), 1)
+                    number_format(min($persentase, 100), 1) // Format 1 desimal
                 ]);
             }
             fclose($file);

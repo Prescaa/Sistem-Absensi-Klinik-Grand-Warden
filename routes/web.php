@@ -51,9 +51,8 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
     ->name('karyawan.absensi.checkExif');
     // 2. Rute Simpan Foto
     Route::post('/absensi/simpan-foto', [KaryawanController::class, 'storeFoto'])
-     ->middleware('throttle:5,1') // Limit to 5 uploads per minute
-     ->name('karyawan.absensi.storeFoto');
-     
+         ->name('karyawan.absensi.storeFoto');
+
     Route::post('/izin/simpan', [KaryawanController::class, 'storeIzin'])->name('karyawan.izin.store');
 });
 
