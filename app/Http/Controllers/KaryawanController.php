@@ -250,12 +250,35 @@ public function checkExif(Request $request)
     // --- 3. BACA EXIF FOTO (Bukti Lokasi) ---
     $exif = @exif_read_data($file->getRealPath());
     if (!$exif || empty($exif['GPSLatitude']) || empty($exif['GPSLongitude'])) {
-        return redirect()->back()->with('error', 'Validasi Gagal: Foto tidak memiliki data GPS. Pastikan menggunakan kamera langsung dengan GPS aktif.');
+        return redirect()->back()->with('error', 'Validasi Gagal: Foto tidak memiliki data GPS.');
     }
 
-    // Cek Tanggal Foto (Anti-Foto Lama)
+    // === [BAGIAN YANG PERLU ANDA TAMBAHKAN] ===
+
+    // A. BLOKIR EDITOR FOTO (Yang belum Anda miliki)
+    // Mengecek apakah foto disentuh oleh Photoshop, GIMP, dll.
+    if (!empty($exif['Software'])) {
+        $blacklist = ['Adobe', 'Photoshop', 'Lightroom', 'GIMP', 'Picasa', 'Canva', 'Editor'];
+        foreach ($blacklist as $tool) {
+            if (stripos($exif['Software'], $tool) !== false) {
+                return redirect()->back()->with('error', 'Foto ditolak: Terdeteksi hasil editan software (' . $exif['Software'] . '). Gunakan kamera asli!');
+            }
+        }
+    }
+
+    // B. BLOKIR FOTO LAMA (Yang Anda lupa masukkan di sini)
     if (empty($exif['DateTimeOriginal'])) {
         return redirect()->back()->with('error', 'Tanggal foto tidak terdeteksi.');
+    }
+
+    try {
+        $fotoTime = \Carbon\Carbon::parse($exif['DateTimeOriginal']);
+        // Cek selisih waktu (Logika yang hilang dari storeFoto)
+        if (now()->diffInMinutes($fotoTime) > 15) {
+            return redirect()->back()->with('error', 'Foto Kadaluarsa! Diambil lebih dari 15 menit lalu.');
+        }
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Format tanggal foto rusak.');
     }
     // (Opsional: Tambahkan validasi selisih waktu menit di sini seperti kode lama Anda)
 
