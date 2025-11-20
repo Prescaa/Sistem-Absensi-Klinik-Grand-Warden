@@ -6,7 +6,7 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            
+
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body p-4 text-center">
                     @php
@@ -16,7 +16,7 @@
 
                         $karyawanId = auth()->user()->employee->emp_id;
                         $today = \Carbon\Carbon::today();
-                        
+
                         // Cek manual apakah ada data 'Invalid' hari ini
                         $rejectedToday = \App\Models\Attendance::where('emp_id', $karyawanId)
                             ->whereDate('waktu_unggah', $today)
@@ -59,13 +59,13 @@
 
             @if(!$isDisabled)
             <div class="card shadow-lg border-0">
-                <div class="card-body p-0"> 
+                <div class="card-body p-0">
                     @if (session('error'))
                         <div class="alert alert-danger m-4">
                             <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
                         </div>
                     @endif
-                    
+
                     <form action="{{ route('karyawan.absensi.storeFoto') }}" method="POST" enctype="multipart/form-data" id="uploadForm" class="h-100">
                         @csrf
                         <div class="row g-0">
@@ -78,7 +78,7 @@
                                         </div>
                                         <h2 class="fw-bold mb-3">Seret & Lepas Foto di Sini</h2>
                                         <p class="text-muted fs-5 mb-4">atau klik di area ini untuk membuka kamera/galeri</p>
-                                        <button type="button" class="btn btn-outline-primary btn-lg px-5 rounded-pill" onclick="document.getElementById('foto_absensi').click()">
+                                        <button type="button" class="btn btn-outline-primary btn-lg px-5 rounded-pill">
                                             <i class="bi bi-camera-fill me-2"></i> Ambil Foto
                                         </button>
                                     </div>
