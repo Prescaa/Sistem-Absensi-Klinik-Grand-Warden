@@ -99,7 +99,7 @@
                                         </button>
                                     </div>
 
-                                    <div id="previewContainer" class="d-none position-relative w-100 h-100 d-flex align-items-center justify-content-center bg-dark rounded-3" style="max-height: 550px;">
+                                    <div id="previewContainer" class="d-none position-relative w-100 h-100 d-flex align-items-center justify-content-center bg-dark rounded-3 overflow-hidden" style="max-height: 550px; min-height: 400px;">
                                         <img id="imagePreview" src="#" alt="Preview" class="img-fluid" style="max-height: 100%; max-width: 100%; object-fit: contain;">
                                         <div class="position-absolute bottom-0 start-0 w-100 p-3 bg-dark bg-opacity-75 text-white d-flex justify-content-between align-items-center">
                                             <span class="small text-truncate" id="fileNameDisplay">Nama File...</span>
