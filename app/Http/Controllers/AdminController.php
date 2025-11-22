@@ -20,6 +20,45 @@ class AdminController extends Controller
     /**
      * Menampilkan halaman dashboard admin.
      */
+        public function dashboard()
+    {
+        $today = Carbon::today();
+
+        // 1. Statistik Utama
+        $totalEmployees = Employee::count();
+
+        $presentCount = Attendance::whereDate('waktu_unggah', $today)
+            ->where('type', 'masuk')
+            ->distinct('emp_id')
+            ->count('emp_id');
+
+        $izinCount = Leave::where('tipe_izin', 'izin')
+            ->where('status', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_selesai', '>=', $today)
+            ->count();
+
+        $sakitCount = Leave::where('tipe_izin', 'sakit')
+            ->where('status', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_selesai', '>=', $today)
+            ->count();
+
+        // 2. Data untuk "Menunggu Validasi Terbaru"
+        $recentActivities = Attendance::whereDoesntHave('validation')
+            ->with('employee')
+            ->orderBy('waktu_unggah', 'desc')
+            ->take(5)
+            ->get();
+
+        return view('admin.dashboard', [
+            'totalEmployees' => $totalEmployees,
+            'presentCount' => $presentCount,
+            'izinCount' => $izinCount,
+            'sakitCount' => $sakitCount,
+            'recentActivities' => $recentActivities
+        ]);
+    }
 
     /**
      * Menampilkan halaman validasi absensi.

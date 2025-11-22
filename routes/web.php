@@ -5,7 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\KaryawanController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ManajemenController; // <--- Tambahkan ini
+use App\Http\Controllers\ManajemenController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,35 +26,22 @@ Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 // --- Rute Karyawan (Pegawai) ---
 Route::middleware(['auth', 'role:karyawan'])->group(function () {
 
-    Route::get('/dashboard', [KaryawanController::class, 'dashboard'])
-         ->name('karyawan.dashboard');
-
+    Route::get('/dashboard', [KaryawanController::class, 'dashboard'])->name('karyawan.dashboard');
     Route::get('/unggah', [KaryawanController::class, 'unggah'])->name('karyawan.unggah');
     Route::get('/riwayat', [KaryawanController::class, 'riwayat'])->name('karyawan.riwayat');
     Route::get('/izin', [KaryawanController::class, 'izin'])->name('karyawan.izin');
     Route::get('/profil', [KaryawanController::class, 'profil'])->name('karyawan.profil');
 
-    // --- PERBAIKAN DI SINI ---
-    // Menggunakan KaryawanController untuk menampilkan view (ini sudah benar di kode kamu)
-    // 1. Rute Menampilkan Halaman Profil (GET)
-    Route::get('/profil', [KaryawanController::class, 'profil'])->name('karyawan.profil');
-
-    // 2. Rute Memproses Update Profil (PUT)
-    // - Menggunakan method PUT (sesuai form @method('PUT'))
-    // - URL dibedakan menjadi '/profil/update'
-    // - Menggunakan KaryawanController fungsi updateProfil
+    // Rute Update & Hapus Foto Karyawan
     Route::put('/profil/update', [KaryawanController::class, 'updateProfil'])->name('karyawan.profil.update');
     Route::delete('/profil/hapus-foto', [KaryawanController::class, 'deleteFotoProfil'])->name('karyawan.profil.deleteFoto');
-    // 1. Rute Halaman Upload Absensi
-    Route::get('/absensi/unggah/{type}', [KaryawanController::class, 'showUploadForm'])
-         ->name('karyawan.absensi.unggah');
-    Route::post('/karyawan/absensi/check-exif', [App\Http\Controllers\KaryawanController::class, 'checkExif'])
-    ->name('karyawan.absensi.checkExif');
-    // 2. Rute Simpan Foto
-    Route::post('/absensi/simpan-foto', [KaryawanController::class, 'storeFoto'])
-     ->middleware('throttle:5,1') // Limit to 5 uploads per minute
-     ->name('karyawan.absensi.storeFoto');
-     
+
+    // Rute Absensi
+    Route::get('/absensi/unggah/{type}', [KaryawanController::class, 'showUploadForm'])->name('karyawan.absensi.unggah');
+    Route::post('/karyawan/absensi/check-exif', [KaryawanController::class, 'checkExif'])->name('karyawan.absensi.checkExif');
+    Route::post('/absensi/simpan-foto', [KaryawanController::class, 'storeFoto'])->middleware('throttle:5,1')->name('karyawan.absensi.storeFoto');
+    
+    // Rute Izin
     Route::post('/izin/simpan', [KaryawanController::class, 'storeIzin'])->name('karyawan.izin.store');
 });
 
@@ -62,9 +49,7 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
 // --- GROUP ADMIN (Fokus Operasional) ---
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     
-    // Dashboard Admin (Versi Validasi)
-    // Nanti kita buat view baru: admin.dashboard_validasi
-    Route::get('/dashboard', [AdminController::class, 'showValidasiPage'])->name('admin.dashboard'); 
+    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard'); 
     
     // Validasi
     Route::get('/validasi', [AdminController::class, 'showValidasiPage'])->name('admin.validasi.show');
@@ -81,22 +66,21 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/geofencing', [AdminController::class, 'showGeofencing'])->name('admin.geofencing.show');
     Route::post('/geofencing/save', [AdminController::class, 'saveGeofencing'])->name('admin.geofencing.save');
 
-    // Profil (Shared)
+    // Laporan
+    Route::get('/laporan', [AdminController::class, 'showLaporan'])->name('admin.laporan.show'); 
+    Route::post('/laporan/export', [AdminController::class, 'exportLaporan'])->name('admin.laporan.export');
+
+    // Profil Admin (Shared Controller)
     Route::get('/profil', [ProfileController::class, 'index'])->name('admin.profil');
     Route::post('/profil', [ProfileController::class, 'update'])->name('admin.profil.update');
+    
 });
 
-// --- GROUP MANAJEMEN (Fokus Monitoring) ---
-// Asumsi: Role di database adalah 'Manajemen' atau 'HRD' (sesuaikan dengan DB kamu)
+// --- GROUP MANAJEMEN ---
 Route::middleware(['auth', 'role:manajemen'])->prefix('manajemen')->group(function () {
-
-    // Dashboard Statistik
     Route::get('/dashboard', [ManajemenController::class, 'dashboard'])->name('manajemen.dashboard');
-
-    // Laporan
     Route::post('/laporan/export', [ManajemenController::class, 'exportLaporan'])->name('manajemen.laporan.export');
-
-    // Profil (Shared)
     Route::get('/profil', [ProfileController::class, 'index'])->name('manajemen.profil');
     Route::post('/profil', [ProfileController::class, 'update'])->name('manajemen.profil.update');
+    Route::delete('/profil/hapus-foto', [ProfileController::class, 'deleteFotoAdmin'])->name('manajemen.profil.deleteFoto');
 });

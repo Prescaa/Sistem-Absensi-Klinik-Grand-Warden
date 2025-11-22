@@ -1,12 +1,8 @@
-{{-- Menggunakan layout admin --}}
 @extends('layouts.admin_app')
 
-{{-- Mengatur judul halaman --}}
-@section('page-title', 'Dashboard')
+@section('page-title', 'Dashboard Admin')
 
-{{-- Konten utama halaman dashboard --}}
 @section('content')
-
 <div class="d-flex flex-column h-100">
 
     <div class="row flex-grow-1">
@@ -224,9 +220,7 @@
     }
     .card-stat:hover { transform: translateY(-3px); }
 
-    /* === DARK MODE OVERRIDES (INI BAGIAN PENTINGNYA) === */
-    
-    /* 1. Ubah background soft yang terlalu terang menjadi gelap & elegan */
+    /* === DARK MODE OVERRIDES === */
     .dark-mode .bg-success-soft { background-color: #052c1e !important; border: 1px solid #0f5132; }
     .dark-mode .text-success-dark { color: #75b798 !important; }
     
@@ -239,24 +233,15 @@
     .dark-mode .bg-danger-soft { background-color: #2c0b0e !important; border: 1px solid #842029; }
     .dark-mode .text-danger-dark { color: #ea868f !important; }
 
-    /* 2. Penyesuaian Teks & Card Umum */
     .dark-mode .text-dark-emphasis { color: #e0e0e0 !important; }
     .dark-mode .text-body { color: #e0e0e0 !important; }
     .dark-mode .card { background-color: #1e1e1e !important; border: 1px solid #333; }
     
-    /* 3. Penyesuaian Card Download Laporan (Lingkaran Icon) */
-    .dark-mode .bg-success.bg-opacity-10 { 
-        background-color: rgba(25, 135, 84, 0.2) !important; 
-    }
-    
-    /* 4. Modal Dark Mode */
+    /* Modal di Dark Mode */
     .dark-mode .modal-content { background-color: #1e1e1e; color: #fff; }
     .dark-mode .modal-footer.bg-light { background-color: #252525 !important; }
     .dark-mode .btn-close { filter: invert(1); }
     .dark-mode .form-control { background-color: #2b2b2b; border-color: #444; color: #fff; }
-    
-    /* 5. List Group Item */
-    .dark-mode .list-group-item { background-color: transparent; color: #e0e0e0; border-bottom-color: #333 !important; }
 </style>
 @endpush
 
@@ -283,7 +268,7 @@
         }
 
         updateClock();
-        setInterval(updateClock, 1000);
+        setInterval(updateClock, 60000);
     });
 </script>
 @endpush

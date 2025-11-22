@@ -19,14 +19,14 @@ class Employee extends Model
      */
     protected $fillable = [
         'user_id',
-        'nama',
+        'nama',        // ✅ INI YANG HILANG - TAMBAHKAN INI
         'nip',
         'departemen',
         'posisi',
         'status_aktif',
-        'alamat',      // Baru
-        'no_telepon',  // Baru
-        'foto_profil'  // Baru
+        'alamat',
+        'no_telepon',
+        'foto_profil'
     ];
 
     /**

@@ -156,9 +156,53 @@
 
 @push('styles')
 <style>
-    .upload-area { transition: all 0.3s ease; }
-    .upload-area.dragover { background-color: #e9ecef !important; border: 2px dashed var(--primary-color); }
     .btn-lg { border-radius: 12px; }
+    
+    /* === CSS DARK MODE KHUSUS === */
+    
+    /* Background Upload Area & Sidebar Kanan */
+    .dark-mode .upload-area,
+    .dark-mode .col-lg-4.bg-light {
+        background-color: #2b2b2b !important;
+        border-color: #444 !important;
+    }
+    
+    /* Background Lingkaran Ikon */
+    .dark-mode .bg-body-secondary {
+        background-color: #3a3a3a !important;
+    }
+    
+    /* Border pemisah */
+    .dark-mode .border-end {
+        border-right-color: #444 !important;
+    }
+    
+    /* Overlay Loading */
+    .dark-mode #processOverlay {
+        background-color: rgba(43, 43, 43, 0.95) !important;
+        border-left-color: #444 !important;
+    }
+    
+    /* Warna Teks */
+    .dark-mode .text-dark { color: #fff !important; }
+    .dark-mode .text-muted { color: #aaa !important; }
+    
+    /* Border Dashed saat normal & hover */
+    .border-dashed {
+        border-style: dashed !important;
+        border-color: #dee2e6;
+        transition: all 0.3s ease;
+    }
+    .dark-mode .border-dashed {
+        border-color: #555;
+    }
+    .upload-area:hover, .upload-area.dragover {
+        background-color: #e9ecef !important;
+        border-color: var(--primary-color) !important;
+    }
+    .dark-mode .upload-area:hover, .dark-mode .upload-area.dragover {
+        background-color: #333 !important;
+    }
 </style>
 @endpush
 
