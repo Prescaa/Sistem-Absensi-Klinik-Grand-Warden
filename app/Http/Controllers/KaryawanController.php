@@ -148,7 +148,7 @@ class KaryawanController extends Controller
         $sakitCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'sakit')->where('status', 'disetujui')->count();
         $cutiCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'cuti')->where('status', 'disetujui')->count();
 
-        // ✅ PERBAIKAN: Ambil data riwayat izin untuk ditampilkan
+        // Ambil data riwayat izin untuk ditampilkan
         $riwayatIzin = Leave::where('emp_id', $karyawan->emp_id)
             ->orderBy('created_at', 'desc')
             ->get();
@@ -176,7 +176,7 @@ class KaryawanController extends Controller
 
         return view('karyawan.riwayat', compact(
             'karyawan', 'riwayatAbsensi', 'izinCount', 'sakitCount', 'cutiCount', 
-            'chartData', 'chartLabels', 'riwayatIzin' // ✅ PERBAIKAN: Tambahkan riwayatIzin
+            'chartData', 'chartLabels', 'riwayatIzin'
         ));
     }
 
@@ -188,24 +188,54 @@ class KaryawanController extends Controller
 
     public function storeIzin(Request $request)
     {
+        // 1. VALIDASI INPUT DASAR
+        // ✅ PERBAIKAN: 'file_bukti' menjadi required_if:tipe_izin,sakit
         $request->validate([
             'tipe_izin' => 'required|in:sakit,izin,cuti',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'deskripsi' => 'required|string|max:500',
-            'file_bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'file_bukti' => 'required_if:tipe_izin,sakit|file|mimes:jpg,jpeg,png,pdf|max:2048',
+        ], [
+            'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.'
         ]);
 
+        $empId = auth()->user()->employee->emp_id;
+
+        // 2. CEK TUMPANG TINDIH (OVERLAPPING) IZIN
+        $checkOverlap = Leave::where('emp_id', $empId)
+            ->where('status', '!=', 'ditolak') // Hitung yg pending atau disetujui
+            ->where(function($q) use ($request) {
+                $start = $request->tanggal_mulai;
+                $end = $request->tanggal_selesai;
+                // Logika Overlap
+                $q->whereBetween('tanggal_mulai', [$start, $end])
+                  ->orWhereBetween('tanggal_selesai', [$start, $end])
+                  ->orWhere(function($sub) use ($start, $end) {
+                      $sub->where('tanggal_mulai', '<=', $start)
+                          ->where('tanggal_selesai', '>=', $end);
+                  });
+            })
+            ->first();
+
+        if ($checkOverlap) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['tanggal_mulai' => 'Anda sudah memiliki pengajuan pada tanggal tersebut.']);
+        }
+
+        // 3. PROSES UPLOAD FILE
         $filePath = null;
         if ($request->hasFile('file_bukti')) {
             $file = $request->file('file_bukti');
-            $fileName = auth()->user()->employee->emp_id . '-izin-' . now()->format('YmdHis') . '.' . $file->extension();
+            $fileName = $empId . '-izin-' . now()->format('YmdHis') . '.' . $file->extension();
             $path = $file->storeAs('bukti_izin', $fileName, 'public');
             $filePath = Storage::url($path);
         }
 
+        // 4. SIMPAN KE DATABASE
         Leave::create([
-            'emp_id' => auth()->user()->employee->emp_id,
+            'emp_id' => $empId,
             'tipe_izin' => $request->tipe_izin,
             'tanggal_mulai' => $request->tanggal_mulai,
             'tanggal_selesai' => $request->tanggal_selesai,
@@ -229,11 +259,13 @@ class KaryawanController extends Controller
         $employee = auth()->user()->employee;
 
         $request->validate([
+            'nama' => 'required|string|max:255', 
             'alamat' => 'nullable|string|max:255',
-            'no_telepon' => 'nullable|string|max:20',
+            'no_telepon' => 'nullable|numeric|digits_between:10,15', 
             'foto_profil' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
+        $employee->nama = $request->nama; 
         $employee->alamat = $request->alamat;
         $employee->no_telepon = $request->no_telepon;
 
@@ -269,11 +301,9 @@ class KaryawanController extends Controller
         // =========================================================================
         // LAYER 1: DEVICE LOCK (Anti-Joki)
         // =========================================================================
-        // Cek apakah browser ini sudah "di-tag" oleh karyawan lain.
         $deviceOwner = $request->cookie('device_owner_id');
         $currentUserId = auth()->user()->employee->emp_id;
 
-        // Jika cookie ada, tapi isinya BUKAN ID karyawan yang sedang login -> BLOKIR
         if ($deviceOwner && $deviceOwner != $currentUserId) {
             return redirect()->back()->with('error', 'KEAMANAN: Perangkat ini sudah terdaftar atas nama karyawan lain. Harap gunakan HP Anda sendiri.');
         }
@@ -293,7 +323,6 @@ class KaryawanController extends Controller
         // =========================================================================
         // LAYER 3: CEK DUPLIKASI FILE (Hash)
         // =========================================================================
-        // Mencegah upload ulang foto yang sama persis (Hash Check)
         $fileHash = md5_file($file->getRealPath());
         if (Attendance::where('file_hash', $fileHash)->exists()) {
             return redirect()->back()->with('error', 'Foto ini sudah pernah digunakan sebelumnya. Harap ambil foto baru!');
@@ -302,17 +331,14 @@ class KaryawanController extends Controller
         // =========================================================================
         // LAYER 4: STRICT TIME CHECK (Anti-Drive-By)
         // =========================================================================
-        // Baca EXIF untuk memastikan foto diambil BARU SAJA (Max 2 Menit)
         $exif = @exif_read_data($file->getRealPath());
 
-        // Fallback: Jika EXIF tanggal tidak ada, kita tolak (Force Real Camera)
         if (!isset($exif['DateTimeOriginal'])) {
             return redirect()->back()->with('error', 'Tanggal foto tidak terdeteksi. Pastikan menggunakan kamera langsung (Bukan upload file lama).');
         }
 
         try {
             $fotoTime = Carbon::parse($exif['DateTimeOriginal']);
-            // Batas toleransi hanya 5 menit
             if (now()->diffInMinutes($fotoTime) > 5) {
                 return redirect()->back()->with('error', 'Foto kadaluarsa! Foto harus di-upload segera setelah diambil (Maksimal 5 menit).');
             }
@@ -323,19 +349,17 @@ class KaryawanController extends Controller
         // =========================================================================
         // LAYER 5: SERVER-SIDE GEOFENCING (Hidden Coordinates)
         // =========================================================================
-        // Ambil koordinat kantor dari database (Hidden from user)
         $workArea = WorkArea::select(
             'area_id',
             'radius_geofence',
             DB::raw('ST_X(koordinat_pusat) as latitude'),
             DB::raw('ST_Y(koordinat_pusat) as longitude')
-        )->find(1); // Asumsi ID Kantor = 1
+        )->find(1); 
 
         if (!$workArea) {
             return redirect()->back()->with('error', 'Konfigurasi lokasi kantor belum diset.');
         }
 
-        // Hitung Jarak Browser ke Kantor
         $jarakMeters = $this->haversineDistance(
             $request->browser_lat,
             $request->browser_lng,
@@ -343,16 +367,13 @@ class KaryawanController extends Controller
             $workArea->longitude
         );
 
-        // Validasi Jarak
         if ($jarakMeters > $workArea->radius_geofence) {
             return redirect()->back()->with('error', "Lokasi Anda terlalu jauh dari kantor ($jarakMeters meter). Harap masuk ke area kantor.");
         }
 
-        // (Opsional) Cross-Check Koordinat Foto EXIF jika tersedia
         $exifLat = isset($exif['GPSLatitude']) ? $this->gpsDmsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef'] ?? 'N') : null;
         $exifLng = isset($exif['GPSLongitude']) ? $this->gpsDmsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef'] ?? 'E') : null;
 
-        // Jika foto punya GPS, pastikan konsisten (Toleransi 500m karena akurasi GPS dalam gedung buruk)
         if ($exifLat && $exifLng) {
             $jarakFoto = $this->haversineDistance($exifLat, $exifLng, $workArea->latitude, $workArea->longitude);
             if ($jarakFoto > ($workArea->radius_geofence + 500)) {
@@ -371,7 +392,7 @@ class KaryawanController extends Controller
             'emp_id' => $currentUserId,
             'area_id' => $workArea->area_id,
             'waktu_unggah' => now(),
-            'latitude' => $exifLat ?? $request->browser_lat, // Prioritaskan EXIF untuk bukti, atau Browser jika EXIF null
+            'latitude' => $exifLat ?? $request->browser_lat, 
             'longitude' => $exifLng ?? $request->browser_lng,
             'nama_file_foto' => $publicPath,
             'timestamp_ekstraksi' => $exif['DateTimeOriginal'],

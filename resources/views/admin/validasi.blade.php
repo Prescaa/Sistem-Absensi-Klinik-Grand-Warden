@@ -67,8 +67,41 @@
                                 <small class="text-muted d-block mb-3">{{ $att->employee->nip ?? '-' }}</small>
                                 
                                 <ul class="list-unstyled text-muted small mb-3 bg-light p-3 rounded">
-                                    <li class="mb-1"><i class="bi bi-calendar-event me-2 text-primary"></i> {{ $att->waktu_unggah->format('d M Y, H:i:s') }}</li>
-                                    <li><i class="bi bi-geo-alt me-2 text-danger"></i> {{ number_format($att->latitude, 5) }}, {{ number_format($att->longitude, 5) }}</li>
+                                    <li class="mb-2"><i class="bi bi-calendar-event me-2 text-primary"></i> {{ $att->waktu_unggah->format('d M Y, H:i:s') }}</li>
+                                    
+                                    <li class="d-flex align-items-start">
+                                        <i class="bi bi-geo-alt me-2 text-danger mt-1"></i>
+                                        <div class="w-100">
+                                            {{-- 
+                                                LOGIKA VALIDASI KOORDINAT 0:
+                                                Kita cek nilai absolut latitude & longitude. 
+                                                Jika keduanya sangat kecil (< 0.0001), kita anggap 0 (invalid).
+                                            --}}
+                                            @if(abs($att->latitude) < 0.0001 && abs($att->longitude) < 0.0001)
+                                                <div class="text-danger fw-bold small mb-1">
+                                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Lokasi GPS Hilang
+                                                </div>
+                                                <div class="small text-muted fst-italic" style="font-size: 0.75rem; line-height: 1.2;">
+                                                    Metadata lokasi dihapus oleh browser HP atau GPS mati saat foto diambil.
+                                                </div>
+                                            @else
+                                                {{-- Koordinat Valid --}}
+                                                <a href="https://www.google.com/maps/search/?api=1&query={{ $att->latitude }},{{ $att->longitude }}" target="_blank" class="fw-bold text-decoration-none text-dark hover-primary" title="Buka di Google Maps">
+                                                    {{ number_format($att->latitude, 5) }}, {{ number_format($att->longitude, 5) }}
+                                                    <i class="bi bi-box-arrow-up-right ms-1 small text-primary"></i>
+                                                </a>
+                                                
+                                                {{-- Container Alamat (Diisi otomatis oleh JS) --}}
+                                                <div class="small text-muted fst-italic mt-1 location-address" 
+                                                     data-lat="{{ $att->latitude }}" 
+                                                     data-lng="{{ $att->longitude }}"
+                                                     style="line-height: 1.2;">
+                                                    <span class="spinner-border spinner-border-sm text-secondary" style="width: 0.7rem; height: 0.7rem; border-width: 1px;" role="status"></span>
+                                                    <span class="ms-1">Memuat alamat...</span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </li>
                                 </ul>
 
                                 <form action="{{ route('admin.validasi.submit') }}" method="POST">
@@ -177,3 +210,52 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+        const addressElements = document.querySelectorAll('.location-address');
+
+        async function fetchAddresses() {
+            for (let i = 0; i < addressElements.length; i++) {
+                const el = addressElements[i];
+                const lat = parseFloat(el.getAttribute('data-lat'));
+                const lng = parseFloat(el.getAttribute('data-lng'));
+
+                // Validasi Ekstra di JS: Jika 0 atau NaN, jangan fetch ke API Nominatim
+                if (!lat || !lng || isNaN(lat) || isNaN(lng) || (Math.abs(lat) < 0.0001 && Math.abs(lng) < 0.0001)) {
+                    el.innerHTML = '<span class="text-muted small">- Data lokasi kosong -</span>';
+                    continue;
+                }
+
+                try {
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+                        headers: { 'User-Agent': 'KlinikGrandWardenApp/1.0' }
+                    });
+
+                    if (!response.ok) throw new Error('Network response was not ok');
+
+                    const data = await response.json();
+                    
+                    if (data && data.display_name) {
+                        el.innerHTML = `<i class="bi bi-pin-map-fill text-secondary me-1"></i> ${data.display_name}`;
+                    } else {
+                        throw new Error('Alamat tidak ditemukan');
+                    }
+
+                } catch (error) {
+                    console.error("Gagal memuat alamat:", error);
+                    el.innerHTML = '<span class="text-muted text-decoration-underline" style="cursor:help" title="Server peta tidak merespon.">Gagal memuat alamat</span>';
+                }
+
+                await delay(1200); // Rate limit
+            }
+        }
+
+        if (addressElements.length > 0) {
+            fetchAddresses();
+        }
+    });
+</script>
+@endpush

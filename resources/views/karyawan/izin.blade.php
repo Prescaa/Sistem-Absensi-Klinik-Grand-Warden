@@ -60,7 +60,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="file_bukti" class="form-label fw-semibold">Bukti Pendukung (Opsional)</label>
+                            <label for="file_bukti" class="form-label fw-semibold">Bukti Pendukung (Wajib diunggah jika sakit)</label>
                             <input type="file" name="file_bukti" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
                             <div class="form-text text-muted small">Format: JPG, PNG, PDF. Max: 2MB. (Wajib untuk Sakit)</div>
                         </div>
@@ -130,7 +130,7 @@
                                                 <span class="badge bg-danger mb-1">Ditolak</span>
                                             @endif
 
-                                            {{-- --- BAGIAN BARU: MENAMPILKAN CATATAN ADMIN --- --}}
+                                            {{-- MENAMPILKAN CATATAN ADMIN --}}
                                             @if(!empty($izin->catatan_admin))
                                                 <div class="alert alert-light border p-2 mt-1 mb-0 small text-muted" style="font-size: 0.8rem; line-height: 1.2;">
                                                     <strong class="d-block text-dark"><i class="bi bi-info-circle me-1"></i>Admin:</strong>
@@ -157,3 +157,102 @@
 </div>
 @endsection
 
+@push('styles')
+<style>
+    /* === CSS DARK MODE LENGKAP === */
+    
+    /* Card di Dark Mode */
+    .dark-mode .card {
+        background-color: #1e1e1e !important;
+        border-color: #333 !important;
+        color: #e0e0e0;
+    }
+    .dark-mode .card-header {
+        background-color: #252525 !important;
+        border-bottom-color: #333 !important;
+        color: #fff !important;
+    }
+    .dark-mode .card-body {
+        background-color: #1e1e1e !important;
+    }
+
+    /* Form Control (Input, Select, Textarea) di Dark Mode */
+    .dark-mode .form-control,
+    .dark-mode .form-select {
+        background-color: #2b2b2b !important;
+        border-color: #444 !important;
+        color: #fff !important;
+    }
+    .dark-mode .form-control:focus,
+    .dark-mode .form-select:focus {
+        background-color: #333 !important;
+        border-color: #0d6efd !important;
+        color: #fff !important;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+    /* Placeholder warna */
+    .dark-mode .form-control::placeholder {
+        color: #aaa;
+    }
+    
+    /* File Input: Tombol 'Choose File' */
+    .dark-mode input[type="file"]::file-selector-button {
+        background-color: #444;
+        color: #fff;
+        border: 1px solid #666;
+    }
+    .dark-mode input[type="file"]::file-selector-button:hover {
+        background-color: #555;
+    }
+
+    /* Icon Kalender di Input Date */
+    .dark-mode ::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+    }
+
+    /* Tabel di Dark Mode */
+    .dark-mode .table {
+        color: #e0e0e0;
+        border-color: #444;
+    }
+    /* Header Tabel (thead) agar tidak putih */
+    .dark-mode .bg-light, 
+    .dark-mode .table thead th {
+        background-color: #2b2b2b !important;
+        color: #fff !important;
+        border-color: #444 !important;
+    }
+    /* Hover baris tabel */
+    .dark-mode .table-hover tbody tr:hover {
+        background-color: #2a2a2a !important;
+        color: #fff;
+    }
+    .dark-mode .table tbody tr {
+        border-bottom-color: #333 !important;
+    }
+    .dark-mode .table td {
+        border-bottom-color: #333 !important;
+        background-color: #1e1e1e !important;
+        color: #e0e0e0 !important;
+    }
+    
+    /* Text Utilities untuk Dark Mode */
+    .dark-mode .text-dark { color: #e0e0e0 !important; }
+    .dark-mode .text-muted { color: #a0a0a0 !important; }
+    
+    /* Alert di dalam tabel (Catatan Admin) saat Dark Mode */
+    .dark-mode .alert-light {
+        background-color: #2b2b2b !important;
+        border-color: #444 !important;
+        color: #ccc !important;
+    }
+    .dark-mode .alert-light strong {
+        color: #fff !important;
+    }
+    
+    /* File Input Text Help */
+    .dark-mode .form-text {
+        color: #aaa !important;
+    }
+</style>
+@endpush

@@ -238,7 +238,7 @@
         }
 
         updateClock();
-        setInterval(updateClock, 1000);
+        setInterval(updateClock, 60000);
     });
 </script>
 @endpush

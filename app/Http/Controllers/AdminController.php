@@ -20,7 +20,7 @@ class AdminController extends Controller
     /**
      * Menampilkan halaman dashboard admin.
      */
-        public function dashboard()
+    public function dashboard()
     {
         $today = Carbon::today();
 
@@ -51,12 +51,31 @@ class AdminController extends Controller
             ->take(5)
             ->get();
 
+        // 3. --- FITUR BARU: ANALISIS TREN KEHADIRAN (7 HARI TERAKHIR) ---
+        $chartLabels = [];
+        $chartData = [];
+        
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i);
+            $chartLabels[] = $date->format('d M'); // Label Tanggal (misal: 20 Nov)
+            
+            // Hitung jumlah karyawan yang hadir (masuk) pada tanggal tersebut
+            $count = Attendance::whereDate('waktu_unggah', $date)
+                ->where('type', 'masuk')
+                ->distinct('emp_id')
+                ->count('emp_id');
+            
+            $chartData[] = $count;
+        }
+
         return view('admin.dashboard', [
             'totalEmployees' => $totalEmployees,
             'presentCount' => $presentCount,
             'izinCount' => $izinCount,
             'sakitCount' => $sakitCount,
-            'recentActivities' => $recentActivities
+            'recentActivities' => $recentActivities,
+            'chartLabels' => $chartLabels,
+            'chartData' => $chartData
         ]);
     }
 
@@ -112,6 +131,8 @@ class AdminController extends Controller
             'posisi' => ['nullable', 'string', 'max:100'],
             'username' => ['required', 'string', 'max:100', 'unique:user'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            // ✅ UPDATE: Tambahkan Validasi Role
+            'role' => ['required', 'in:Karyawan,Admin,Manajemen'],
         ]);
 
         DB::beginTransaction();
@@ -120,7 +141,8 @@ class AdminController extends Controller
                 'username' => $request->username,
                 'email' => $request->username . '@klinik.com',
                 'password_hash' => Hash::make($request->password),
-                'role' => 'Karyawan',
+                // ✅ UPDATE: Gunakan role dari input, bukan hardcode
+                'role' => $request->role, 
             ]);
 
             Employee::create([
@@ -133,7 +155,7 @@ class AdminController extends Controller
             ]);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Karyawan baru berhasil ditambahkan.');
+            return redirect()->back()->with('success', 'User baru berhasil ditambahkan sebagai ' . $request->role . '.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -153,11 +175,16 @@ class AdminController extends Controller
             'posisi' => ['nullable', 'string', 'max:100'],
             'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id'],
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
+            // ✅ UPDATE: Validasi Role saat update
+            'role' => ['required', 'in:Karyawan,Admin,Manajemen'],
         ]);
 
         DB::beginTransaction();
         try {
             $user->username = $request->username;
+            // ✅ UPDATE: Simpan perubahan Role
+            $user->role = $request->role;
+            
             if ($request->filled('password')) {
                 $user->password_hash = Hash::make($request->password);
             }
@@ -170,7 +197,7 @@ class AdminController extends Controller
             $employee->save();
 
             DB::commit();
-            return redirect()->back()->with('success', 'Data karyawan berhasil diperbarui.');
+            return redirect()->back()->with('success', 'Data pengguna berhasil diperbarui.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -180,6 +207,11 @@ class AdminController extends Controller
 
     public function destroyKaryawan($id)
     {
+        // Cek apakah user mencoba menghapus diri sendiri
+        if ($id == Auth::user()->user_id) {
+            return redirect()->back()->with('error', 'Tindakan Ditolak: Anda tidak dapat menghapus akun Anda sendiri saat sedang login.');
+        }
+
         $user = User::findOrFail($id);
 
         DB::beginTransaction();
@@ -190,7 +222,7 @@ class AdminController extends Controller
             $user->delete();
 
             DB::commit();
-            return redirect()->back()->with('success', 'Karyawan berhasil dihapus.');
+            return redirect()->back()->with('success', 'Pengguna berhasil dihapus.');
 
         } catch (\Exception $e) {
             DB::rollBack();

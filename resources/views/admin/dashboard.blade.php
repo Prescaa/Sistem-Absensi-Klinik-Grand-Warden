@@ -8,21 +8,21 @@
     <div class="row flex-grow-1">
         
         {{-- KOLOM KIRI --}}
-        <div class="col-lg-6 d-flex flex-column">
+        <div class="col-lg-8 d-flex flex-column">
             
             {{-- STATISTIK CARDS --}}
             <div class="row g-3 mb-4">
                 {{-- Card Karyawan --}}
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <div class="card card-stat bg-success-soft border-0 h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <h6 class="text-success-dark small fw-bold mb-1">Jumlah Karyawan</h6>
+                                    <h6 class="text-success-dark small fw-bold mb-1">Karyawan</h6>
                                     <h3 class="fw-bold mb-0 text-dark-emphasis">{{ $totalEmployees }}</h3>
                                 </div>
                                 <div class="icon-box bg-success text-white rounded-circle">
-                                    <i class="bi bi-people-fill fs-4"></i>
+                                    <i class="bi bi-people-fill fs-5"></i>
                                 </div>
                             </div>
                         </div>
@@ -30,16 +30,16 @@
                 </div>
 
                 {{-- Card Hadir --}}
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <div class="card card-stat bg-primary-soft border-0 h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <h6 class="text-primary-dark small fw-bold mb-1">Hadir Hari Ini</h6>
+                                    <h6 class="text-primary-dark small fw-bold mb-1">Hadir</h6>
                                     <h3 class="fw-bold mb-0 text-dark-emphasis">{{ $presentCount }}</h3>
                                 </div>
                                 <div class="icon-box bg-primary text-white rounded-circle">
-                                    <i class="bi bi-person-check-fill fs-4"></i>
+                                    <i class="bi bi-person-check-fill fs-5"></i>
                                 </div>
                             </div>
                         </div>
@@ -47,16 +47,16 @@
                 </div>
 
                 {{-- Card Izin --}}
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <div class="card card-stat bg-warning-soft border-0 h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <h6 class="text-warning-dark small fw-bold mb-1">Izin</h6>
                                     <h3 class="fw-bold mb-0 text-dark-emphasis">{{ $izinCount }}</h3>
                                 </div>
                                 <div class="icon-box bg-warning text-white rounded-circle">
-                                    <i class="bi bi-calendar-check-fill fs-4"></i>
+                                    <i class="bi bi-calendar-check-fill fs-5"></i>
                                 </div>
                             </div>
                         </div>
@@ -64,16 +64,16 @@
                 </div>
 
                 {{-- Card Sakit --}}
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <div class="card card-stat bg-danger-soft border-0 h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <h6 class="text-danger-dark small fw-bold mb-1">Sakit</h6>
                                     <h3 class="fw-bold mb-0 text-dark-emphasis">{{ $sakitCount }}</h3>
                                 </div>
                                 <div class="icon-box bg-danger text-white rounded-circle">
-                                    <i class="bi bi-heart-pulse-fill fs-4"></i>
+                                    <i class="bi bi-heart-pulse-fill fs-5"></i>
                                 </div>
                             </div>
                         </div>
@@ -81,11 +81,61 @@
                 </div>
             </div> 
             
-            {{-- LIST MENUNGGU VALIDASI --}}
+            {{-- 
+                === FITUR BARU: ANALISIS TREN KEHADIRAN ===
+                Menampilkan grafik batang sederhana menggunakan CSS
+            --}}
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom-0">
+                    <h5 class="card-title fw-bold mb-0 text-dark-emphasis">
+                        <i class="bi bi-graph-up-arrow me-2 text-primary"></i>Analisis Tren Kehadiran
+                    </h5>
+                    <small class="text-muted">7 Hari Terakhir</small>
+                </div>
+                <div class="card-body pt-0 pb-4">
+                    <div class="d-flex align-items-end justify-content-between px-2" style="height: 200px;">
+                        @if(isset($chartData) && count($chartData) > 0)
+                            @foreach($chartData as $index => $data)
+                                <div class="text-center w-100 d-flex flex-column justify-content-end align-items-center h-100 mx-1">
+                                    {{-- Tooltip angka saat hover --}}
+                                    <div class="mb-1 fw-bold text-primary small">{{ $data }}</div>
+                                    
+                                    {{-- Batang Grafik --}}
+                                    @php 
+                                        // Hitung persentase tinggi berdasarkan total karyawan (max 100%)
+                                        $heightPercent = $totalEmployees > 0 ? ($data / $totalEmployees) * 100 : 0;
+                                        // Warna batang: Biru tua jika > 80%, Kuning jika > 50%, Merah jika rendah
+                                        $colorClass = $heightPercent >= 80 ? 'bg-primary' : ($heightPercent >= 50 ? 'bg-warning' : 'bg-danger');
+                                    @endphp
+                                    
+                                    {{-- 
+                                        ✅ PERBAIKAN ERROR VS CODE: 
+                                        Menggunakan CSS Variable (--bar-h) agar VS Code tidak bingung membaca sintaks Blade {{ }} 
+                                        di dalam properti height.
+                                    --}}
+                                    <div class="rounded-top {{ $colorClass }} w-100" 
+                                         style="--bar-h: {{ $heightPercent }}%; height: var(--bar-h); min-height: 4px; opacity: 0.8; transition: height 0.5s ease;"
+                                         title="{{ $data }} Karyawan Hadir">
+                                    </div>
+                                    
+                                    {{-- Label Tanggal --}}
+                                    <small class="d-block mt-2 text-muted fw-bold" style="font-size: 0.7rem;">{{ $chartLabels[$index] }}</small>
+                                </div>
+                            @endforeach
+                        @else
+                            <div class="w-100 h-100 d-flex align-items-center justify-content-center text-muted">
+                                Data kehadiran belum cukup untuk ditampilkan.
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- LIST MENUNGGU VALIDASI (Dipindah ke bawah grafik) --}}
             <div class="card shadow-sm border-0 mb-4 flex-grow-1">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
-                        <h5 class="card-title fw-bold mb-0 me-2">Menunggu Validasi Terbaru</h5>
+                        <h5 class="card-title fw-bold mb-0 me-2 text-dark-emphasis">Menunggu Validasi Terbaru</h5>
                         @if($recentActivities->count() > 0)
                             <span class="badge rounded-pill bg-danger">{{ $recentActivities->count() }}</span>
                         @endif
@@ -93,20 +143,26 @@
                     
                     <div class="list-group list-group-flush">
                         @forelse($recentActivities as $act)
-                            <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-3 border-bottom">
-                                <div>
-                                    <span class="fw-bold text-body">{{ $act->employee->nama ?? 'Karyawan' }}</span>
-                                    <div class="text-muted small mt-1">
-                                        <i class="bi bi-clock me-1"></i> {{ \Carbon\Carbon::parse($act->waktu_unggah)->format('d M Y, H:i') }} 
-                                        &mdash; <span class="text-primary fw-bold">Absen {{ ucfirst($act->type) }}</span>
+                            <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-3 border-bottom bg-transparent">
+                                <div class="d-flex align-items-center">
+                                    {{-- Avatar Kecil --}}
+                                    <div class="rounded-circle bg-secondary bg-opacity-10 text-secondary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                        {{ substr($act->employee->nama ?? 'U', 0, 1) }}
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold text-dark-emphasis d-block">{{ $act->employee->nama ?? 'Karyawan' }}</span>
+                                        <div class="text-muted small">
+                                            <i class="bi bi-clock me-1"></i> {{ \Carbon\Carbon::parse($act->waktu_unggah)->format('d M, H:i') }} 
+                                            &bull; <span class="text-primary fw-bold">Absen {{ ucfirst($act->type) }}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <a href="{{ route('admin.validasi.show') }}" class="btn btn-sm btn-outline-primary">Review</a>
+                                <a href="{{ route('admin.validasi.show') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">Review</a>
                             </div>
                         @empty
-                            <div class="text-center py-5 text-muted">
-                                <i class="bi bi-check-circle-fill fs-1 mb-3 d-block text-success opacity-50"></i>
-                                Tidak ada absensi yang menunggu validasi saat ini.
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-check-circle-fill fs-1 mb-2 d-block text-success opacity-50"></i>
+                                <small>Semua aman! Tidak ada antrian validasi.</small>
                             </div>
                         @endforelse
                     </div>
@@ -115,46 +171,31 @@
         </div>
 
         {{-- KOLOM KANAN --}}
-        <div class="col-lg-6 d-flex flex-column">
+        <div class="col-lg-4 d-flex flex-column">
             
             {{-- WAKTU & TANGGAL --}}
-            <div class="row g-3 mb-4">
-                <div class="col-12">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="card shadow-sm border-0 h-100">
-                                <div class="card-body text-center p-4 d-flex flex-column justify-content-center">
-                                    <small class="text-muted mb-1">Jam Saat Ini</small>
-                                    <h2 class="fw-bold mb-0 tracking-wider text-body" id="realtime-jam">--:--:--</h2>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card shadow-sm border-0 h-100">
-                                <div class="card-body text-center p-4 d-flex flex-column justify-content-center">
-                                    <small class="text-muted mb-1">Tanggal Hari Ini</small>
-                                    <h5 class="fw-bold mb-0 text-body" id="realtime-tanggal">...</h5>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body text-center p-4">
+                    <h6 class="text-muted mb-1 small text-uppercase fw-bold">Waktu Server</h6>
+                    <h2 class="fw-bold mb-0 tracking-wider text-dark-emphasis" id="realtime-jam">--:--:--</h2>
+                    <p class="text-primary fw-bold mb-0 mt-1" id="realtime-tanggal">...</p>
                 </div>
             </div>
             
             {{-- DOWNLOAD LAPORAN --}}
             <div class="card shadow-sm border-0 mb-4 flex-grow-1">
-                <div class="card-body p-5 d-flex flex-column justify-content-center align-items-center text-center">
-                    <div class="mb-4 p-4 bg-success bg-opacity-10 rounded-circle">
-                        <i class="bi bi-file-earmark-spreadsheet-fill text-success display-1"></i>
+                <div class="card-body p-4 d-flex flex-column justify-content-center align-items-center text-center">
+                    <div class="mb-4 p-3 bg-success bg-opacity-10 rounded-circle">
+                        <i class="bi bi-file-earmark-spreadsheet-fill text-success display-4"></i>
                     </div>
                     
-                    <h4 class="fw-bold mb-2 text-body">Download Laporan Absensi</h4>
-                    <p class="text-muted mb-4" style="max-width: 400px;">
-                        Pilih rentang tanggal untuk mengunduh rekapitulasi absensi karyawan dalam format CSV/Excel.
+                    <h5 class="fw-bold mb-2 text-dark-emphasis">Laporan Absensi</h5>
+                    <p class="text-muted mb-4 small">
+                        Unduh rekapitulasi data kehadiran karyawan (Excel/CSV) untuk keperluan arsip bulanan.
                     </p>
 
-                    <button class="btn btn-success btn-lg px-5 py-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#exportModal">
-                        <i class="bi bi-download me-2"></i> Pilih Tanggal & Download
+                    <button class="btn btn-success w-100 py-2 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#exportModal">
+                        <i class="bi bi-download me-2"></i> Download Laporan
                     </button>
                 </div>
             </div>
@@ -167,25 +208,25 @@
 <div class="modal fade" id="exportModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
-      <div class="modal-header border-0">
+      <div class="modal-header border-0 pb-0">
         <h5 class="modal-title fw-bold">Export Data Laporan</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form action="{{ route('admin.laporan.export') }}" method="POST">
           @csrf
-          <div class="modal-body">
+          <div class="modal-body pt-4">
               <div class="mb-3">
-                  <label class="form-label fw-bold">Dari Tanggal</label>
+                  <label class="form-label fw-bold small text-muted">Dari Tanggal</label>
                   <input type="date" name="start_date" class="form-control" required>
               </div>
               <div class="mb-3">
-                  <label class="form-label fw-bold">Sampai Tanggal</label>
+                  <label class="form-label fw-bold small text-muted">Sampai Tanggal</label>
                   <input type="date" name="end_date" class="form-control" required>
               </div>
           </div>
           <div class="modal-footer border-0 bg-light">
             <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-primary px-4">Download CSV</button>
+            <button type="submit" class="btn btn-primary px-4 fw-bold">Download CSV</button>
           </div>
       </form>
     </div>
@@ -210,7 +251,7 @@
     .text-danger-dark { color: #842029; }
 
     .icon-box {
-        width: 48px; height: 48px;
+        width: 40px; height: 40px;
         display: flex; align-items: center; justify-content: center;
     }
     

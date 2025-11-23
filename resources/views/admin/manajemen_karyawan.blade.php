@@ -2,16 +2,16 @@
 @extends('layouts.admin_app')
 
 {{-- Mengatur judul halaman --}}
-@section('page-title', 'Manajemen Karyawan')
+@section('page-title', 'Manajemen Pengguna')
 
 {{-- Konten utama halaman --}}
 @section('content')
 <div class="container-fluid">
     <div class="card shadow-sm border-0">
         <div class="card-header d-flex justify-content-between align-items-center bg-white py-3 border-0">
-            <h5 class="mb-0 fw-bold text-dark-emphasis">Daftar Karyawan</h5>
+            <h5 class="mb-0 fw-bold text-dark-emphasis">Daftar Pengguna (Karyawan & Admin)</h5>
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addKaryawanModal">
-                <i class="bi bi-plus-circle-fill me-2"></i>Tambah Karyawan
+                <i class="bi bi-plus-circle-fill me-2"></i>Tambah Pengguna
             </button>
         </div>
         <div class="card-body p-0">
@@ -33,8 +33,8 @@
                         <tr>
                             <th scope="col" class="ps-4">Nama</th>
                             <th scope="col">NIP</th>
+                            <th scope="col">Role</th>
                             <th scope="col">Departemen</th>
-                            <th scope="col">Posisi</th>
                             <th scope="col">Username</th>
                             <th scope="col">Status</th>
                             <th scope="col" class="text-center pe-4">Aksi</th>
@@ -46,8 +46,20 @@
                         <tr>
                             <td class="ps-4 fw-bold text-dark-emphasis">{{ $emp->nama }}</td>
                             <td class="text-dark-emphasis">{{ $emp->nip }}</td>
+                            
+                            {{-- Menampilkan Badge Role --}}
+                            <td>
+                                @php $role = $emp->user->role ?? 'Karyawan'; @endphp
+                                @if($role == 'Admin')
+                                    <span class="badge bg-primary"><i class="bi bi-shield-lock-fill me-1"></i>Admin</span>
+                                @elseif($role == 'Manajemen')
+                                    <span class="badge bg-info text-dark"><i class="bi bi-graph-up me-1"></i>Manajemen</span>
+                                @else
+                                    <span class="badge bg-secondary"><i class="bi bi-person me-1"></i>Karyawan</span>
+                                @endif
+                            </td>
+
                             <td class="text-dark-emphasis">{{ $emp->departemen ?? '-' }}</td>
-                            <td class="text-dark-emphasis">{{ $emp->posisi ?? '-' }}</td>
                             <td class="text-dark-emphasis">{{ $emp->user->username ?? 'N/A' }}</td>
                             <td>
                                 @if($emp->status_aktif)
@@ -65,24 +77,32 @@
                                         data-nip="{{ $emp->nip }}"
                                         data-departemen="{{ $emp->departemen }}"
                                         data-posisi="{{ $emp->posisi }}"
-                                        data-username="{{ $emp->user->username }}">
+                                        data-username="{{ $emp->user->username }}"
+                                        data-role="{{ $emp->user->role }}">
                                     <i class="bi bi-pencil-fill"></i>
                                 </button>
 
-                                <button type="button" class="btn btn-sm btn-outline-danger"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#deleteKaryawanModal"
-                                        data-id="{{ $emp->user->user_id }}"
-                                        data-nama="{{ $emp->nama }}">
-                                    <i class="bi bi-trash-fill"></i>
-                                </button>
+                                {{-- Logika Tombol Hapus: Disabled untuk Akun Sendiri --}}
+                                @if(Auth::check() && Auth::user()->user_id == $emp->user->user_id)
+                                    <button type="button" class="btn btn-sm btn-secondary" disabled title="Tidak dapat menghapus akun sendiri">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                @else
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteKaryawanModal"
+                                            data-id="{{ $emp->user->user_id }}"
+                                            data-nama="{{ $emp->nama }}">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                @endif
                             </td>
                         </tr>
                         @empty
                         <tr>
                             <td colspan="7" class="text-center text-muted p-5">
                                 <i class="bi bi-people display-1 mb-3 d-block text-secondary"></i>
-                                <span class="fs-5">Belum ada data karyawan.</span>
+                                <span class="fs-5">Belum ada data pengguna.</span>
                             </td>
                         </tr>
                         @endforelse
@@ -94,12 +114,11 @@
     </div>
 </div>
 
-<!-- Modal Tambah Karyawan -->
 <div class="modal fade" id="addKaryawanModal" tabindex="-1" aria-labelledby="addKaryawanModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title fw-bold" id="addKaryawanModalLabel"><i class="bi bi-person-plus-fill me-2"></i>Tambah Karyawan Baru</h5>
+        <h5 class="modal-title fw-bold" id="addKaryawanModalLabel"><i class="bi bi-person-plus-fill me-2"></i>Tambah Pengguna Baru</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form action="{{ route('admin.karyawan.store') }}" method="POST">
@@ -107,7 +126,7 @@
           <div class="modal-body p-4">
               <div class="row">
                   <div class="col-12 mb-3">
-                      <h6 class="text-primary fw-bold border-bottom pb-2 mb-3">Data Karyawan</h6>
+                      <h6 class="text-primary fw-bold border-bottom pb-2 mb-3">Data Pribadi</h6>
                   </div>
                   
                   <div class="col-md-6 mb-3">
@@ -128,38 +147,59 @@
                   </div>
 
                   <div class="col-12 mt-2 mb-3">
-                      <h6 class="text-primary fw-bold border-bottom pb-2 mb-3">Akun Login</h6>
+                      <h6 class="text-primary fw-bold border-bottom pb-2 mb-3">Akun & Akses</h6>
+                  </div>
+
+                  <div class="col-md-12 mb-3">
+                      <label class="form-label fw-bold small text-dark-emphasis">Role (Hak Akses)*</label>
+                      <select name="role" class="form-select" required>
+                          <option value="Karyawan" selected>Karyawan (Absensi & Izin)</option>
+                          <option value="Admin">Admin (Validator & Manajemen User)</option>
+                          <option value="Manajemen">Manajemen (Dashboard & Laporan)</option>
+                      </select>
                   </div>
 
                   <div class="col-md-4 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Username*</label>
                       <input type="text" name="username" class="form-control" value="{{ old('username') }}" required>
                   </div>
+                  
+                  {{-- ✅ UPDATE: Tambah Input Group dengan Toggle Vision (Mata) --}}
                   <div class="col-md-4 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Password*</label>
-                      <input type="password" name="password" class="form-control" required>
+                      <div class="input-group">
+                          <input type="password" name="password" id="addPassword" class="form-control" required>
+                          <span class="input-group-text" style="cursor: pointer;" onclick="togglePassword('addPassword', this)">
+                              <i class="bi bi-eye"></i>
+                          </span>
+                      </div>
                   </div>
+                  
                   <div class="col-md-4 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Konfirmasi Password*</label>
-                      <input type="password" name="password_confirmation" class="form-control" required>
+                      <div class="input-group">
+                          <input type="password" name="password_confirmation" id="addPasswordConfirm" class="form-control" required>
+                          <span class="input-group-text" style="cursor: pointer;" onclick="togglePassword('addPasswordConfirm', this)">
+                              <i class="bi bi-eye"></i>
+                          </span>
+                      </div>
                   </div>
               </div>
           </div>
           <div class="modal-footer bg-light">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-primary px-4 fw-bold">Simpan Karyawan</button>
+            <button type="submit" class="btn btn-primary px-4 fw-bold">Simpan Pengguna</button>
           </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Modal Edit Karyawan -->
 <div class="modal fade" id="editKaryawanModal" tabindex="-1" aria-labelledby="editKaryawanModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <div class="modal-header bg-warning text-dark">
-        <h5 class="modal-title fw-bold" id="editKaryawanModalLabel"><i class="bi bi-pencil-square me-2"></i>Edit Data Karyawan</h5>
+        <h5 class="modal-title fw-bold" id="editKaryawanModalLabel"><i class="bi bi-pencil-square me-2"></i>Edit Data Pengguna</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="editForm" method="POST">
@@ -168,7 +208,7 @@
           <div class="modal-body p-4">
               <div class="row">
                   <div class="col-12 mb-3">
-                      <h6 class="text-warning fw-bold border-bottom pb-2 mb-3 text-dark">Data Karyawan</h6>
+                      <h6 class="text-warning fw-bold border-bottom pb-2 mb-3 text-dark">Data Pribadi</h6>
                   </div>
 
                   <div class="col-md-6 mb-3">
@@ -189,20 +229,43 @@
                   </div>
 
                   <div class="col-12 mt-2 mb-3">
-                      <h6 class="text-warning fw-bold border-bottom pb-2 mb-3 text-dark">Akun Login</h6>
+                      <h6 class="text-warning fw-bold border-bottom pb-2 mb-3 text-dark">Akun & Akses</h6>
                   </div>
 
-                  <div class="col-md-4 mb-3">
+                  <div class="col-md-12 mb-3">
+                      <label class="form-label fw-bold small text-dark-emphasis">Role (Hak Akses)*</label>
+                      <select name="role" id="edit_role" class="form-select" required>
+                          <option value="Karyawan">Karyawan</option>
+                          <option value="Admin">Admin</option>
+                          <option value="Manajemen">Manajemen</option>
+                      </select>
+                  </div>
+
+                  <div class="col-12 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Username*</label>
                       <input type="text" id="edit_username" name="username" class="form-control" required>
                   </div>
-                  <div class="col-md-4 mb-3">
-                      <label class="form-label fw-bold small text-dark-emphasis">Password Baru</label>
-                      <input type="password" name="password" class="form-control" placeholder="(Kosongkan jika tidak diubah)">
+                  
+                  {{-- Reset Password (Toggle View) --}}
+                  <div class="col-md-6 mb-3">
+                      <label class="form-label fw-bold small text-dark-emphasis">Reset Password Baru</label>
+                      <div class="input-group">
+                          <input type="password" name="password" id="editPassword" class="form-control" placeholder="(Biarkan kosong jika tidak diganti)">
+                          <span class="input-group-text" style="cursor: pointer;" onclick="togglePassword('editPassword', this)">
+                              <i class="bi bi-eye"></i>
+                          </span>
+                      </div>
+                      <div class="form-text small text-muted">Isi hanya jika ingin mereset password.</div>
                   </div>
-                  <div class="col-md-4 mb-3">
-                      <label class="form-label fw-bold small text-dark-emphasis">Konf. Password Baru</label>
-                      <input type="password" name="password_confirmation" class="form-control">
+                  
+                  <div class="col-md-6 mb-3">
+                      <label class="form-label fw-bold small text-dark-emphasis">Konfirmasi Password Baru</label>
+                      <div class="input-group">
+                          <input type="password" name="password_confirmation" id="editPasswordConfirm" class="form-control" placeholder="Ketik ulang password baru...">
+                          <span class="input-group-text" style="cursor: pointer;" onclick="togglePassword('editPasswordConfirm', this)">
+                              <i class="bi bi-eye"></i>
+                          </span>
+                      </div>
                   </div>
               </div>
           </div>
@@ -215,12 +278,11 @@
   </div>
 </div>
 
-<!-- Modal Hapus Karyawan -->
 <div class="modal fade" id="deleteKaryawanModal" tabindex="-1" aria-labelledby="deleteKaryawanModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <div class="modal-header bg-danger text-white">
-        <h5 class="modal-title fw-bold" id="deleteKaryawanModalLabel"><i class="bi bi-trash-fill me-2"></i>Hapus Karyawan</h5>
+        <h5 class="modal-title fw-bold" id="deleteKaryawanModalLabel"><i class="bi bi-trash-fill me-2"></i>Hapus Pengguna</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="deleteForm" method="POST">
@@ -228,13 +290,13 @@
           @method('DELETE') 
           <div class="modal-body p-4 text-center">
                 <i class="bi bi-exclamation-circle text-danger display-1 mb-3"></i>
-                <p class="fs-5 text-dark-emphasis">Anda yakin ingin menghapus karyawan:</p>
+                <p class="fs-5 text-dark-emphasis">Anda yakin ingin menghapus pengguna:</p>
                 <h4 class="fw-bold text-dark-emphasis" id="delete_nama"></h4>
-                <p class="text-muted mt-3 small">Tindakan ini <strong>tidak dapat dibatalkan</strong>. Akun login dan semua data absensi karyawan ini juga akan dihapus permanen.</p>
+                <p class="text-muted mt-3 small">Tindakan ini <strong>tidak dapat dibatalkan</strong>. Akun login dan semua data absensi pengguna ini juga akan dihapus permanen.</p>
           </div>
           <div class="modal-footer bg-light justify-content-center">
             <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-danger px-4 fw-bold">Ya, Hapus Karyawan</button>
+            <button type="submit" class="btn btn-danger px-4 fw-bold">Ya, Hapus</button>
           </div>
       </form>
     </div>
@@ -244,142 +306,83 @@
 
 @push('styles')
 <style>
-    /* === CSS KHUSUS UNTUK MEMPERCANTIK TABEL DI DARK MODE === */
-    
     /* Card di Dark Mode */
-    .dark-mode .card {
-        background-color: #1e1e1e !important;
-        border-color: #333 !important;
-    }
-    .dark-mode .card-header {
-        background-color: #252525 !important;
-        border-bottom-color: #333 !important;
-        color: #fff !important;
-    }
-    .dark-mode .card-body {
-        background-color: #1e1e1e !important;
-    }
+    .dark-mode .card { background-color: #1e1e1e !important; border-color: #333 !important; }
+    .dark-mode .card-header { background-color: #252525 !important; border-bottom-color: #333 !important; color: #fff !important; }
+    .dark-mode .card-body { background-color: #1e1e1e !important; }
 
     /* Modal di Dark Mode */
-    .dark-mode .modal-content {
-        background-color: #1e1e1e !important;
-        color: #e0e0e0;
-        border: 1px solid #444;
-    }
-    .dark-mode .modal-header {
-        border-bottom-color: #444;
-    }
-    .dark-mode .modal-footer {
-        background-color: #252525 !important;
-        border-top-color: #444 !important;
-    }
-    .dark-mode .btn-close-white {
-        filter: invert(1) grayscale(100%) brightness(200%);
-    }
+    .dark-mode .modal-content { background-color: #1e1e1e !important; color: #e0e0e0; border: 1px solid #444; }
+    .dark-mode .modal-header { border-bottom-color: #444; }
+    .dark-mode .modal-footer { background-color: #252525 !important; border-top-color: #444 !important; }
+    .dark-mode .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); }
 
     /* Form Control di Dark Mode */
-    .dark-mode .form-control {
-        background-color: #2b2b2b;
-        border-color: #444;
-        color: #fff;
-    }
-    .dark-mode .form-control:focus {
-        background-color: #333;
-        color: #fff;
-        border-color: #0d6efd;
-        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-    }
-    .dark-mode .form-label {
-        color: #ccc;
-    }
+    .dark-mode .form-control, .dark-mode .form-select { background-color: #2b2b2b; border-color: #444; color: #fff; }
+    .dark-mode .form-control:focus, .dark-mode .form-select:focus { background-color: #333; color: #fff; border-color: #0d6efd; }
+    .dark-mode .form-label { color: #ccc; }
+    .dark-mode .input-group-text { background-color: #333; border-color: #444; color: #fff; }
 
     /* Tabel di Dark Mode */
-    .dark-mode .table {
-        color: #e0e0e0;
-        border-color: #444;
-    }
-    .dark-mode .table-light th {
-        background-color: #333 !important;
-        color: #fff !important;
-        border-color: #444 !important;
-    }
-    .dark-mode .table-hover tbody tr:hover {
-        background-color: #2a2a2a !important;
-        color: #fff;
-    }
-    .dark-mode .table tbody tr {
-        border-bottom-color: #333 !important;
-    }
-    .dark-mode .table td {
-        border-bottom-color: #333 !important;
-        background-color: #1e1e1e !important;
-    }
+    .dark-mode .table { color: #e0e0e0; border-color: #444; }
+    .dark-mode .table-light th { background-color: #333 !important; color: #fff !important; border-color: #444 !important; }
+    .dark-mode .table-hover tbody tr:hover { background-color: #2a2a2a !important; color: #fff; }
+    .dark-mode .table tbody tr { border-bottom-color: #333 !important; }
+    .dark-mode .table td { border-bottom-color: #333 !important; background-color: #1e1e1e !important; }
     
-    /* Text utilities override untuk dark mode */
-    .dark-mode .text-dark-emphasis { 
-        color: #e0e0e0 !important; 
-    }
-    .dark-mode .text-muted { 
-        color: #aaa !important; 
-    }
-    .dark-mode .text-secondary {
-        color: #888 !important;
-    }
-    
-    /* Badge di dark mode */
-    .dark-mode .badge.bg-success {
-        background-color: rgba(25, 135, 84, 0.2) !important;
-        color: #75b798 !important;
-        border-color: #75b798 !important;
-    }
-    .dark-mode .badge.bg-danger {
-        background-color: rgba(220, 53, 69, 0.2) !important;
-        color: #e6858f !important;
-        border-color: #e6858f !important;
-    }
-    
-    /* Alert di dark mode */
-    .dark-mode .alert-danger {
-        background-color: rgba(220, 53, 69, 0.1) !important;
-        border-color: #dc3545 !important;
-        color: #e6858f !important;
-    }
-    
-    /* Border utilities untuk dark mode */
-    .dark-mode .border-bottom {
-        border-bottom-color: #444 !important;
-    }
+    .dark-mode .text-dark-emphasis { color: #e0e0e0 !important; }
+    .dark-mode .text-muted { color: #aaa !important; }
+    .dark-mode .alert-danger { background-color: rgba(220, 53, 69, 0.1) !important; border-color: #dc3545 !important; color: #e6858f !important; }
+    .dark-mode .border-bottom { border-bottom-color: #444 !important; }
 </style>
 @endpush
 
 @push('scripts')
 <script>
+    // --- FUNGSI GLOBAL TOGGLE PASSWORD ---
+    function togglePassword(inputId, iconSpan) {
+        const input = document.getElementById(inputId);
+        const icon = iconSpan.querySelector('i');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
 
         // --- Script untuk Modal Edit ---
         var editModal = document.getElementById('editKaryawanModal');
         if(editModal) {
             editModal.addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget; // Tombol yang memicu modal
+                var button = event.relatedTarget; 
 
-                // Ambil data dari atribut data-*
                 var id = button.getAttribute('data-id');
                 var nama = button.getAttribute('data-nama');
                 var nip = button.getAttribute('data-nip');
                 var departemen = button.getAttribute('data-departemen');
                 var posisi = button.getAttribute('data-posisi');
                 var username = button.getAttribute('data-username');
+                var role = button.getAttribute('data-role');
 
-                // Atur action form update
                 var form = document.getElementById('editForm');
                 form.action = '/admin/manajemen-karyawan/update/' + id;
 
-                // Isi field form di dalam modal
                 document.getElementById('edit_nama').value = nama;
                 document.getElementById('edit_nip').value = nip;
                 document.getElementById('edit_departemen').value = departemen;
                 document.getElementById('edit_posisi').value = posisi;
                 document.getElementById('edit_username').value = username;
+                document.getElementById('edit_role').value = role;
+                
+                document.getElementById('editPassword').value = '';
+                document.getElementById('editPasswordConfirm').value = '';
             });
         }
 
@@ -387,17 +390,14 @@
         var deleteModal = document.getElementById('deleteKaryawanModal');
         if(deleteModal) {
             deleteModal.addEventListener('show.bs.modal', function (event) {
-                var button = event.relatedTarget; // Tombol yang memicu modal
+                var button = event.relatedTarget; 
 
-                // Ambil data
                 var id = button.getAttribute('data-id');
                 var nama = button.getAttribute('data-nama');
 
-                // Atur action form delete
                 var form = document.getElementById('deleteForm');
                 form.action = '/admin/manajemen-karyawan/destroy/' + id;
 
-                // Isi nama di modal konfirmasi
                 document.getElementById('delete_nama').textContent = nama;
             });
         }

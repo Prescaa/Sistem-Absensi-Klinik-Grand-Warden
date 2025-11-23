@@ -32,39 +32,29 @@
                 
                 <div class="row align-items-center">
                     
-                    {{-- 
-                       KOLOM KIRI: FOTO PROFIL 
-                       - Foto diperbesar menjadi 280px
-                       - Posisi ditengah vertikal
-                    --}}
+                    {{-- KOLOM KIRI: FOTO PROFIL --}}
                     <div class="col-md-4 text-center d-flex flex-column justify-content-center align-items-center mb-5 mb-md-0" style="border-right: 1px solid #dee2e6; min-height: 400px;">
                         
                         <div class="position-relative mb-4">
                             {{-- Container Preview Foto --}}
                             <div id="foto-preview-container">
                                 @if(isset($employee->foto_profil) && $employee->foto_profil)
-                                    {{-- FOTO DIPERBESAR (280px) --}}
                                     <img src="{{ asset($employee->foto_profil) }}" class="rounded-circle shadow-lg object-fit-cover" alt="Foto Profil" style="width: 280px; height: 280px; border: 5px solid #fff;">
                                 @else
-                                    {{-- INISIAL DIPERBESAR (280px) --}}
                                     <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow-lg" style="width: 280px; height: 280px; font-size: 7rem; border: 5px solid #fff;">
                                         {{ strtoupper(substr(Auth::user()->employee->nama ?? Auth::user()->username, 0, 1)) }}
                                     </div>
                                 @endif
                             </div>
                             
-                            {{-- Input File Tersembunyi --}}
                             <input type="file" id="foto_input" name="foto_profil" class="d-none" accept="image/*">
                         </div>
                         
-                        {{-- Tombol Aksi --}}
                         <div class="d-flex gap-2">
-                            {{-- Tombol Ganti Foto --}}
                             <button type="button" class="btn btn-outline-primary px-4" onclick="document.getElementById('foto_input').click()">
                                 <i class="bi bi-camera-fill me-2"></i> Ganti Foto
                             </button>
 
-                            {{-- Tombol Hapus Foto (Hanya jika ada foto) --}}
                             @if(isset($employee->foto_profil) && $employee->foto_profil)
                                 <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteFotoModal">
                                     <i class="bi bi-trash-fill"></i>
@@ -81,7 +71,8 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">Nama Lengkap</label>
-                                <input type="text" class="form-control bg-light" value="{{ Auth::user()->employee->nama }}" readonly disabled>
+                                {{-- ✅ PERBAIKAN: Hapus 'readonly disabled' agar bisa diedit --}}
+                                <input type="text" name="nama" class="form-control bg-white border" value="{{ Auth::user()->employee->nama }}" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">NIP</label>
@@ -118,8 +109,17 @@
                             <label for="no_telepon" class="form-label fw-bold text-muted small">Nomor Telepon / WhatsApp</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white"><i class="bi bi-telephone"></i></span>
-                                <input type="text" class="form-control" id="no_telepon" name="no_telepon" value="{{ Auth::user()->employee->no_telepon ?? '' }}" placeholder="Contoh: 081234567890">
+                                {{-- 
+                                    ✅ PERBAIKAN: 
+                                    1. type="number" untuk memicu keyboard angka
+                                    2. oninput regex untuk menghapus karakter non-angka secara real-time
+                                --}}
+                                <input type="number" class="form-control" id="no_telepon" name="no_telepon" 
+                                       value="{{ Auth::user()->employee->no_telepon ?? '' }}" 
+                                       placeholder="Contoh: 081234567890"
+                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                             </div>
+                            <div class="form-text small text-muted">Hanya boleh diisi angka.</div>
                         </div>
 
                         <div class="d-flex justify-content-end gap-2 mt-5">
@@ -170,6 +170,13 @@
     .btn-outline-primary:hover { background-color: var(--primary-color); color: white; }
     .bg-primary { background-color: var(--primary-color) !important; }
     
+    /* Menghilangkan spinner di input number */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+        -webkit-appearance: none; 
+        margin: 0; 
+    }
+    
     @media (max-width: 768px) {
         .col-md-4 { border-right: none !important; border-bottom: 1px solid #dee2e6; padding-bottom: 2rem; margin-bottom: 2rem !important; }
         .col-md-4[style*="min-height"] { min-height: auto !important; }
@@ -188,8 +195,8 @@
             const newImg = document.createElement('img');
             newImg.src = URL.createObjectURL(file);
             newImg.className = "rounded-circle shadow-lg object-fit-cover";
-            newImg.style.width = "280px"; // Ukuran diperbesar
-            newImg.style.height = "280px"; // Ukuran diperbesar
+            newImg.style.width = "280px"; 
+            newImg.style.height = "280px"; 
             newImg.style.border = "5px solid #fff";
             container.appendChild(newImg);
         }
