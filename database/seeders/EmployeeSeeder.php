@@ -39,7 +39,20 @@ class EmployeeSeeder extends Seeder
             ]);
         }
 
-        // 3. DATA MANAJEMEN (Ahmad) - DATA BARU
+        $erikaUser = User::where('username', 'KakErika123')->first(); 
+        
+        if ($erikaUser) {
+            Employee::create([
+                'user_id'       => $erikaUser->user_id, // Now uses Erika's unique ID
+                'nama'          => 'Erika',
+                'nip'           => '987655321',
+                'departemen'    => 'Manajemen', 
+                'posisi'        => 'Administrator',
+            ]);
+        }
+
+        // ... (rest of the code)
+        // 4. DATA MANAJEMEN (Ahmad) - DATA BARU
         $manajemenUser = User::where('username', 'manajemen')->first();
         if ($manajemenUser) {
             Employee::create([
