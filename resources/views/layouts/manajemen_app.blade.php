@@ -147,7 +147,7 @@
     <nav class="sidebar vh-100 d-flex flex-column p-3">
         <div>
             <a href="/manajemen/dashboard" class="d-flex align-items-center mb-3 text-white text-decoration-none">
-                <i class="bi bi-graph-up-arrow fs-2 me-2"></i> {{-- Ikon Beda untuk Pembeda --}}
+                <i class="bi bi-graph-up-arrow fs-2 me-2"></i>
                 <span class="fs-4">Manajemen</span>
             </a>
 
@@ -157,11 +157,23 @@
                         <i class="bi bi-grid-fill me-2"></i> Dashboard & Analisis
                     </a>
                 </li>
+                {{-- Menu Laporan --}}
+                <li class="nav-item mb-1">
+                    <a href="/manajemen/laporan" class="nav-link {{ Request::is('manajemen/laporan') ? 'active' : '' }}">
+                        <i class="bi bi-table me-2"></i> Data Laporan
+                    </a>
+                </li>
             </ul>
         </div>
 
         <div class="sidebar-footer mt-auto">
             <ul class="nav nav-pills flex-column">
+                {{-- ✅ FITUR BARU: Menu Profil diubah textnya --}}
+                <li class="nav-item mb-1">
+                    <a href="/manajemen/profil" class="nav-link {{ Request::is('manajemen/profil') ? 'active' : '' }}">
+                        <i class="bi bi-person-circle me-2"></i> Pengaturan Profil
+                    </a>
+                </li>
                 <li class="nav-item mb-1">
                     <a href="/logout" class="nav-link">
                         <i class="bi bi-box-arrow-left me-2"></i> Logout
@@ -182,65 +194,15 @@
                     <i class="bi bi-moon-fill fs-5 hover-primary dark-mode-toggle"></i>
                 </div>
 
+                {{-- Area Notifikasi --}}
                 <div class="dropdown me-3">
                     <div class="position-relative" id="adminNotifToggle" data-bs-toggle="dropdown" style="cursor:pointer;">
                         <i class="bi bi-bell-fill fs-5 hover-primary"></i>
-
-                        @if(($adminNotifCount ?? 0) > 0)
-                            <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="adminNotifBadge">
-                                {{ $adminNotifCount }}
-                            </span>
-                        @endif
                     </div>
-
-                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="width: 360px;">
-                        <li class="dropdown-header fw-bold d-flex justify-content-between align-items-center py-2">
-                            <span class="fs-6">Notifikasi</span>
-                            @if(($adminNotifCount ?? 0) > 0)
-                                <span class="badge bg-primary rounded-pill">{{ $adminNotifCount }} Baru</span>
-                            @endif
-                        </li>
-                        <li><hr class="dropdown-divider my-0"></li>
-
-                        <div style="max-height: 350px; overflow-y: auto;">
-                            @forelse ($adminNotifList ?? [] as $n)
-                                <li>
-                                    <a href="{{ $n['url'] }}" class="dropdown-item p-0" style="white-space: normal;">
-                                        <div class="notif-item">
-                                            @if($n['type'] == 'absensi')
-                                                <div class="notif-icon bg-primary text-white">
-                                                    <i class="bi bi-camera-fill"></i>
-                                                </div>
-                                            @else
-                                                <div class="notif-icon bg-warning text-dark">
-                                                    <i class="bi bi-file-medical-fill"></i>
-                                                </div>
-                                            @endif
-
-                                            <div class="flex-grow-1">
-                                                <div class="notif-title">{{ $n['title'] }}</div>
-                                                <div class="notif-msg">{{ $n['message'] }}</div>
-                                                <div class="notif-time">
-                                                    <i class="bi bi-clock"></i>
-                                                    {{ \Carbon\Carbon::parse($n['time'])->diffForHumans() }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </li>
-                                <li><hr class="dropdown-divider my-0"></li>
-                            @empty
-                                <li class="notif-empty text-center py-4">
-                                    <i class="bi bi-bell-slash fs-3 mb-2 d-block"></i>
-                                    Tidak ada notifikasi baru
-                                </li>
-                            @endforelse
-                        </div>
-                    </ul>
                 </div>
 
                 @php
-                    $name = Auth::user()->username ?? 'Admin';
+                    $name = Auth::user()->username ?? 'Manajemen';
                     $initial = strtoupper(substr($name, 0, 1));
                 @endphp
 
@@ -306,33 +268,6 @@
                 this.classList.toggle('bi-moon-fill');
                 this.classList.toggle('bi-sun-fill');
                 localStorage.setItem('darkMode', isNowDark);
-            });
-        }
-
-        // --- 2. Logika Badge Notifikasi Pintar ---
-        // Badge hilang saat dropdown dibuka, dan tetap hilang sampai ada notif baru (count bertambah)
-        const notifToggle = document.getElementById('adminNotifToggle');
-        const notifBadge = document.getElementById('adminNotifBadge');
-        
-        // Ambil jumlah notifikasi saat ini dari PHP
-        const currentCount = Number('{{ $adminNotifCount ?? 0 }}');
-        
-        // Ambil jumlah terakhir yang "dilihat" dari LocalStorage
-        const seenCount = parseInt(localStorage.getItem('adminNotifSeenCount') || '0');
-
-        // Jika jumlah saat ini <= jumlah yang sudah dilihat, sembunyikan badge
-        if (notifBadge && currentCount <= seenCount) {
-            notifBadge.style.display = 'none';
-        }
-
-        if (notifToggle) {
-            notifToggle.addEventListener('show.bs.dropdown', function() {
-                // Simpan jumlah saat ini sebagai "sudah dilihat"
-                localStorage.setItem('adminNotifSeenCount', currentCount);
-                // Sembunyikan badge secara visual
-                if (notifBadge) {
-                    notifBadge.style.display = 'none';
-                }
             });
         }
     });

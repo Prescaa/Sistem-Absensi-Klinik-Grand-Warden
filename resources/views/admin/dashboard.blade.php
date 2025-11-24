@@ -176,7 +176,7 @@
             {{-- WAKTU & TANGGAL --}}
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body text-center p-4">
-                    <h6 class="text-muted mb-1 small text-uppercase fw-bold">Waktu Server</h6>
+                    <h6 class="text-muted mb-1 small text-uppercase fw-bold">Waktu Saat Ini</h6>
                     <h2 class="fw-bold mb-0 tracking-wider text-dark-emphasis" id="realtime-jam">--:--:--</h2>
                     <p class="text-primary fw-bold mb-0 mt-1" id="realtime-tanggal">...</p>
                 </div>

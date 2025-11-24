@@ -39,7 +39,6 @@ class ManajemenController extends Controller
             ->count();
 
         // 2. Grafik Kehadiran 7 Hari Terakhir (Analisis Tren)
-        // Ini fitur khusus Manajemen sesuai Use Case UC-009
         $labels = [];
         $dataHadir = [];
         
@@ -65,8 +64,28 @@ class ManajemenController extends Controller
     }
 
     /**
-     * Menampilkan Halaman Laporan
+     * ✅ FITUR BARU: Menampilkan Halaman Tabel Laporan
      */
+    public function showLaporanPage(Request $request)
+    {
+        $query = Attendance::with(['employee', 'validation'])
+            ->orderBy('waktu_unggah', 'desc');
+
+        // Filter Tanggal jika ada input
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('waktu_unggah', [
+                Carbon::parse($request->start_date)->startOfDay(),
+                Carbon::parse($request->end_date)->endOfDay()
+            ]);
+        } else {
+            // Default: Tampilkan data bulan ini
+            $query->whereMonth('waktu_unggah', Carbon::now()->month);
+        }
+
+        $attendances = $query->get(); // Bisa diganti ->paginate(10) jika data banyak
+
+        return view('manajemen.laporan', compact('attendances'));
+    }
 
     /**
      * Export CSV Laporan (Sama seperti Admin tapi akses Manajemen)

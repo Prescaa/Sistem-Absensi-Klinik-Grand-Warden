@@ -70,16 +70,23 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/laporan', [AdminController::class, 'showLaporan'])->name('admin.laporan.show'); 
     Route::post('/laporan/export', [AdminController::class, 'exportLaporan'])->name('admin.laporan.export');
 
-    // Profil Admin (Shared Controller)
+    // Profil Admin
     Route::get('/profil', [ProfileController::class, 'index'])->name('admin.profil');
     Route::post('/profil', [ProfileController::class, 'update'])->name('admin.profil.update');
-    
+    Route::delete('/profil/hapus-foto', [ProfileController::class, 'deleteFotoAdmin'])->name('admin.profil.deleteFoto');
 });
 
 // --- GROUP MANAJEMEN ---
 Route::middleware(['auth', 'role:manajemen'])->prefix('manajemen')->group(function () {
     Route::get('/dashboard', [ManajemenController::class, 'dashboard'])->name('manajemen.dashboard');
+    
+    // Halaman Laporan Detail (Tabel)
+    Route::get('/laporan', [ManajemenController::class, 'showLaporanPage'])->name('manajemen.laporan.index');
+    
+    // Export CSV
     Route::post('/laporan/export', [ManajemenController::class, 'exportLaporan'])->name('manajemen.laporan.export');
+    
+    // Profil Manajemen
     Route::get('/profil', [ProfileController::class, 'index'])->name('manajemen.profil');
     Route::post('/profil', [ProfileController::class, 'update'])->name('manajemen.profil.update');
     Route::delete('/profil/hapus-foto', [ProfileController::class, 'deleteFotoAdmin'])->name('manajemen.profil.deleteFoto');
