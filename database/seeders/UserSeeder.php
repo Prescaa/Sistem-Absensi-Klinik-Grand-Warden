@@ -32,7 +32,15 @@ class UserSeeder extends Seeder
             'role'          => 'Admin'
         ]);
 
-        // 3. User Manajemen (Ahmad) - DATA BARU
+        // 3. User Admin (Erika)
+        User::create([
+            'username'      => 'KakErika123',
+            'password_hash' => Hash::make('12345Erika123'), 
+            'email'         => 'adminErika@kgh.com',
+            'role'          => 'Admin'
+        ]);
+
+        // 4. User Manajemen (Ahmad) - DATA BARU
         User::create([
             'username'      => 'manajemen',
             'password_hash' => Hash::make('12345678'), 
