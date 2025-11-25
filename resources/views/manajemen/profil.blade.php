@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.manajemen_app')
 
 @section('page-title', 'Pengaturan Profil')
 
@@ -26,13 +26,13 @@
     <div class="card shadow-sm border-0">
         <div class="card-body p-4 p-md-5">
             {{-- Form Update Profil --}}
-            <form action="{{ route('karyawan.profil.update') }}" method="POST" enctype="multipart/form-data" id="profileForm">
+            <form action="{{ route('manajemen.profil.update') }}" method="POST" enctype="multipart/form-data" id="profileForm">
                 @csrf
-                @method('PUT')
+                @method('POST') 
                 
-                {{-- ✅ PERBAIKAN: Input Hidden untuk Logika Hapus Foto (0=Tidak, 1=Hapus) --}}
+                {{-- Input Hidden untuk Logika Hapus Foto --}}
                 <input type="hidden" name="hapus_foto" id="hapus_foto_input" value="0">
-                
+
                 <div class="row align-items-center">
                     
                     {{-- KOLOM KIRI: FOTO PROFIL --}}
@@ -60,7 +60,7 @@
                                 <i class="bi bi-camera-fill me-2"></i> Ganti Foto
                             </button>
 
-                            {{-- ✅ PERBAIKAN: Tombol Hapus Trigger Modal (Hanya muncul jika ada foto) --}}
+                            {{-- Tombol Trigger Modal Hapus --}}
                             <button type="button" class="btn btn-outline-danger" id="btn-hapus-trigger" 
                                     data-bs-toggle="modal" data-bs-target="#deleteFotoModal"
                                     style="{{ (isset($employee->foto_profil) && $employee->foto_profil) ? '' : 'display:none;' }}">
@@ -123,7 +123,7 @@
                         </div>
 
                         <div class="d-flex justify-content-end gap-2 mt-5">
-                            <a href="{{ route('karyawan.dashboard') }}" class="btn btn-light text-muted px-4">Batalkan</a>
+                            <a href="{{ route('manajemen.dashboard') }}" class="btn btn-light text-muted px-4">Batalkan</a>
                             {{-- Tombol Submit Utama --}}
                             <button type="submit" class="btn btn-warning text-white px-4 fw-bold shadow-sm">
                                 Simpan Perubahan
@@ -136,9 +136,9 @@
     </div>
 
     {{-- 
-        ✅ PERBAIKAN MODAL (SAMA SEPERTI MANAJEMEN):
-        - Menghapus tag <form> agar tidak submit otomatis.
-        - Menambahkan ID pada tombol untuk dikontrol JS.
+        MODAL KONFIRMASI HAPUS 
+        - Tanpa tag <form> agar tidak submit otomatis.
+        - Tombol "Ya, Hapus" memicu JS untuk update tampilan & input hidden.
     --}}
     <div class="modal fade" id="deleteFotoModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-sm modal-dialog-centered">
@@ -154,9 +154,9 @@
                     <p class="text-muted small mb-4">Foto akan dihapus permanen dan diganti dengan inisial nama setelah Anda menyimpan perubahan.</p>
                     
                     <div class="d-grid gap-2">
-                        {{-- Tombol Konfirmasi via JS --}}
+                        {{-- Tombol Konfirmasi JS --}}
                         <button type="button" class="btn btn-danger fw-bold" id="btn-confirm-hapus">Ya, Hapus</button>
-                        {{-- Tombol Batal --}}
+                        {{-- Tombol Batal Manual (Data Dismiss) --}}
                         <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal" id="btn-close-modal-batal">Batal</button>
                     </div>
                 </div>
@@ -225,7 +225,6 @@
 
 @push('scripts')
 <script>
-    // Definisi Elemen
     const fotoInput = document.getElementById('foto_input');
     const container = document.getElementById('foto-preview-container');
     const hapusInput = document.getElementById('hapus_foto_input');
@@ -233,21 +232,21 @@
     const btnConfirmHapus = document.getElementById('btn-confirm-hapus');
     const btnBatal = document.getElementById('btn-close-modal-batal');
 
-    // Template Inisial
+    // Template Inisial (Dipakai saat foto dihapus)
     const initialHTML = `
         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow-lg" style="width: 280px; height: 280px; font-size: 7rem; border: 5px solid #fff;">
             {{ strtoupper(substr(Auth::user()->employee->nama ?? Auth::user()->username, 0, 1)) }}
         </div>
     `;
 
-    // 1. Ganti Foto (Upload Baru)
+    // 1. Event Ganti Foto (Upload Baru)
     fotoInput.addEventListener('change', function(event) {
         const [file] = event.target.files;
         if (file) {
-            // Reset flag hapus
+            // Reset flag hapus (karena user upload foto baru)
             hapusInput.value = "0";
             
-            // Render Image Baru
+            // Render Preview Gambar
             container.innerHTML = ''; 
             const newImg = document.createElement('img');
             newImg.src = URL.createObjectURL(file);
@@ -257,30 +256,32 @@
             newImg.style.border = "5px solid #fff";
             container.appendChild(newImg);
 
-            // Munculkan tombol hapus
+            // Tampilkan tombol hapus (tong sampah)
             if(btnHapusTrigger) btnHapusTrigger.style.display = 'inline-block';
         }
     });
 
-    // 2. Konfirmasi Hapus (JS Only - Defer Submit)
+    // 2. Event Klik "Ya, Hapus" di dalam Modal
     if(btnConfirmHapus) {
         btnConfirmHapus.addEventListener('click', function() {
-            // a. Set Flag Hapus -> 1
+            // a. Set Flag Hapus menjadi 1 (Agar Controller tahu)
             hapusInput.value = "1";
             
-            // b. Reset input file
+            // b. Reset input file (jika ada file terpilih sebelumnya)
             fotoInput.value = '';
 
             // c. Ganti Preview menjadi Inisial
             container.innerHTML = initialHTML;
 
-            // d. Sembunyikan tombol hapus
+            // d. Sembunyikan tombol hapus (tong sampah)
             if(btnHapusTrigger) btnHapusTrigger.style.display = 'none';
 
-            // e. Tutup Modal secara manual
+            // e. Tutup Modal dengan cara "Klik Tombol Batal" secara programatis
+            // Ini solusi paling aman tanpa perlu instance Bootstrap manual
             if(btnBatal) {
                 btnBatal.click();
             } else {
+                // Fallback jika tombol batal tidak ketemu (misal diubah ID-nya)
                 const closeModalX = document.getElementById('btn-close-modal-x');
                 if(closeModalX) closeModalX.click();
             }
