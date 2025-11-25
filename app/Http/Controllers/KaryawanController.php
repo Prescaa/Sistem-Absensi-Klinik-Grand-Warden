@@ -21,7 +21,7 @@ class KaryawanController extends Controller
         $karyawanId = auth()->user()->employee->emp_id;
         $today = Carbon::today();
 
-        // Absen Masuk (Cari yang tidak ditolak/invalid)
+        // Absen Masuk
         $absensiMasuk = Attendance::where('emp_id', $karyawanId)
             ->whereDate('waktu_unggah', $today)
             ->where('type', 'masuk')
@@ -56,12 +56,10 @@ class KaryawanController extends Controller
     }
 
     /**
-     * Endpoint AJAX untuk cek Validitas Foto & EXIF sebelum upload final.
-     * Mencegah "Unexpected end of JSON" dengan penanganan error yang baik.
+     * Endpoint AJAX untuk cek Validitas Foto & EXIF.
      */
     public function checkExif(Request $request)
     {
-        // 1. Validasi Ukuran & Tipe File (Max 10MB)
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:10240',
         ]);
@@ -70,23 +68,19 @@ class KaryawanController extends Controller
             return response()->json(['status' => 'error', 'message' => 'File terlalu besar (>10MB) atau bukan gambar.'], 422);
         }
 
-        // 2. Cek Hash (Duplikasi)
         $file = $request->file('foto_absensi');
         $fileHash = md5_file($file->getRealPath());
+        
         if (Attendance::where('file_hash', $fileHash)->exists()) {
             return response()->json(['status' => 'error', 'message' => 'Foto ini sudah pernah dipakai sebelumnya.'], 400);
         }
 
-        // 3. Cek Ketersediaan Fitur EXIF Server
         if (!function_exists('exif_read_data')) {
-            // Bypass aman jika server tidak support
             return response()->json(['status' => 'success', 'message' => 'Warning: EXIF Server non-aktif, validasi dilewati.']);
         }
 
-        // 4. Baca Data EXIF (Gunakan @ untuk suppress fatal error jika foto korup)
         $exif = @exif_read_data($file->getRealPath());
 
-        // 5. Validasi Koordinat GPS
         if (!$exif || empty($exif['GPSLatitude']) || empty($exif['GPSLongitude'])) {
             return response()->json([
                 'status' => 'error',
@@ -94,8 +88,6 @@ class KaryawanController extends Controller
             ], 400);
         }
 
-        // 6. Validasi Tanggal Foto (Anti-Fake GPS/Galeri Lama)
-        // Toleransi waktu 15 menit dari sekarang
         if (isset($exif['DateTimeOriginal'])) {
             try {
                 $fotoTime = Carbon::parse($exif['DateTimeOriginal']);
@@ -117,7 +109,6 @@ class KaryawanController extends Controller
 
     public function unggah() {
         $data = $this->getTodayAttendance();
-        // Kirim data koordinat kantor untuk validasi jarak di JS
         $data['workArea'] = WorkArea::select(
                 'radius_geofence',
                 DB::raw('ST_X(koordinat_pusat) as latitude'),
@@ -151,7 +142,6 @@ class KaryawanController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Grafik Mingguan
         $chartData = [];
         $chartLabels = ['M1', 'M2', 'M3', 'M4'];
 
@@ -192,7 +182,6 @@ class KaryawanController extends Controller
 
         $empId = auth()->user()->employee->emp_id;
 
-        // Cek Overlapping Izin
         $checkOverlap = Leave::where('emp_id', $empId)
             ->where('status', '!=', 'ditolak')
             ->where(function($q) use ($request) {
@@ -239,53 +228,71 @@ class KaryawanController extends Controller
         return view('karyawan.profil', compact('user', 'employee'));
     }
 
+    // =========================================================================
+    // ✅ FUNGSI UPDATE PROFIL (GABUNGAN PERBAIKAN HAPUS FOTO)
+    // =========================================================================
     public function updateProfil(Request $request)
     {
         $employee = auth()->user()->employee;
+
+        // 1. Validasi (Pastikan 'hapus_foto' termasuk nullable agar terbaca)
         $request->validate([
             'nama' => 'required|string|max:255',
             'alamat' => 'nullable|string|max:255',
             'no_telepon' => 'nullable|numeric|digits_between:10,15',
             'foto_profil' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'hapus_foto' => 'nullable', // WAJIB ADA
         ]);
 
         $employee->nama = $request->nama;
         $employee->alamat = $request->alamat;
         $employee->no_telepon = $request->no_telepon;
 
-        if ($request->hasFile('foto_profil')) {
+        // 2. LOGIKA HAPUS FOTO (Dahulukan sebelum upload baru)
+        // Menggunakan input() dan operator == '1'
+        if ($request->input('hapus_foto') == '1') {
             if ($employee->foto_profil) {
                 $oldPath = str_replace('/storage/', '', $employee->foto_profil);
                 Storage::disk('public')->delete($oldPath);
             }
+            $employee->foto_profil = null;
+        }
+
+        // 3. LOGIKA UPLOAD FOTO BARU
+        if ($request->hasFile('foto_profil')) {
+            // Hapus foto lama jika belum terhapus di langkah 2
+            if ($employee->foto_profil) {
+                $oldPath = str_replace('/storage/', '', $employee->foto_profil);
+                Storage::disk('public')->delete($oldPath);
+            }
+            
             $file = $request->file('foto_profil');
             $fileName = $employee->emp_id . '-profil-' . now()->format('YmdHis') . '.' . $file->extension();
             $path = $file->storeAs('foto_profil', $fileName, 'public');
             $employee->foto_profil = Storage::url($path);
         }
+
         $employee->save();
-        return redirect()->route('karyawan.profil')->with('success', 'Profil berhasil diperbarui.');
+        
+        $successMessage = 'Profil berhasil diperbarui.';
+        if ($request->input('hapus_foto') == '1' && !$request->hasFile('foto_profil')) {
+            $successMessage .= ' Foto profil telah dihapus.';
+        }
+
+        return redirect()->route('karyawan.profil')->with('success', $successMessage);
     }
 
     public function deleteFotoProfil()
     {
-        $employee = auth()->user()->employee;
-        if ($employee->foto_profil) {
-            $oldPath = str_replace('/storage/', '', $employee->foto_profil);
-            Storage::disk('public')->delete($oldPath);
-            $employee->foto_profil = null;
-            $employee->save();
-            return redirect()->back()->with('success', 'Foto profil berhasil dihapus.');
-        }
-        return redirect()->back()->with('error', 'Anda belum memiliki foto profil.');
+        // Method ini dipertahankan untuk kompatibilitas route lama (jika ada)
+        return redirect()->route('karyawan.profil')->with('error', 'Method tidak digunakan. Gunakan tombol hapus dan simpan perubahan.');
     }
 
     // =========================================================================
-    // FUNGSI UTAMA: PROSES SIMPAN ABSENSI (FINAL & ROBUST)
+    // FUNGSI UTAMA: PROSES SIMPAN ABSENSI (Face Detect & GPS)
     // =========================================================================
     public function storeFoto(Request $request)
     {
-        // 1. Validasi Input Dasar & Ukuran File (Max 10MB)
         $request->validate([
             'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:10240',
             'type'         => 'required|in:masuk,pulang',
@@ -295,26 +302,25 @@ class KaryawanController extends Controller
 
         $file = $request->file('foto_absensi');
 
-        // 2. LAYER DETEKSI WAJAH (Python Script)
-        // Pastikan Anda sudah setup Python & OpenCV
+        // --- 1. DETEKSI WAJAH (Python) ---
         if (! $this->detectFace($file->getRealPath())) {
             return redirect()->back()->with('error', 'VALIDASI WAJAH GAGAL: Sistem AI tidak menemukan wajah. Pastikan pencahayaan cukup.');
         }
 
-        // 3. LAYER DEVICE LOCK (Anti-Joki)
+        // --- 2. DEVICE LOCK ---
         $deviceOwner = $request->cookie('device_owner_id');
         $currentUserId = auth()->user()->employee->emp_id;
         if ($deviceOwner && $deviceOwner != $currentUserId) {
             return redirect()->back()->with('error', 'KEAMANAN: Perangkat ini terdaftar atas nama karyawan lain.');
         }
 
-        // 4. LAYER DUPLIKASI FILE
+        // --- 3. DUPLIKASI FILE ---
         $fileHash = md5_file($file->getRealPath());
         if (Attendance::where('file_hash', $fileHash)->exists()) {
             return redirect()->back()->with('error', 'Foto ini sudah pernah digunakan sebelumnya.');
         }
 
-        // 5. LAYER GEOFENCING (Cek Jarak)
+        // --- 4. GEOFENCING ---
         $workArea = WorkArea::select(
             'area_id', 'radius_geofence',
             DB::raw('ST_X(koordinat_pusat) as latitude'),
@@ -329,12 +335,11 @@ class KaryawanController extends Controller
             return redirect()->back()->with('error', "Anda berada di luar jangkauan kantor ($jarak meter).");
         }
 
-        // 6. PROSES SIMPAN FILE & DATA
+        // --- 5. SIMPAN DATA ---
         $fileName = $currentUserId . '-' . now()->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
         $path = $file->storeAs('public/absensi', $fileName);
         $publicPath = Storage::url($path);
 
-        // Ambil data EXIF lagi untuk disimpan di database (jika ada)
         $exif = @exif_read_data($file->getRealPath());
         $exifLat = isset($exif['GPSLatitude']) ? $this->gpsDmsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef'] ?? 'N') : $request->browser_lat;
         $exifLng = isset($exif['GPSLongitude']) ? $this->gpsDmsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef'] ?? 'E') : $request->browser_lng;
@@ -343,7 +348,7 @@ class KaryawanController extends Controller
             'emp_id' => $currentUserId,
             'area_id' => $workArea->area_id,
             'waktu_unggah' => now(),
-            'latitude' => $exifLat, // Prioritas EXIF, fallback ke Browser
+            'latitude' => $exifLat,
             'longitude' => $exifLng,
             'nama_file_foto' => $publicPath,
             'timestamp_ekstraksi' => $exif['DateTimeOriginal'] ?? now(),
@@ -351,7 +356,6 @@ class KaryawanController extends Controller
             'file_hash' => $fileHash
         ]);
 
-        // Set Cookie Device Lock (5 Tahun)
         return redirect()->route('karyawan.dashboard')
             ->with('success', 'Absensi berhasil dicatat!')
             ->withCookie(cookie('device_owner_id', $currentUserId, 2628000));
@@ -363,38 +367,28 @@ class KaryawanController extends Controller
     private function detectFace($imagePath)
     {
         try {
-            // Sesuaikan path script Python Anda
             $scriptPath = base_path('app/Python/detect_face.py');
-
-            // Perintah eksekusi (Gunakan 'python' untuk Windows)
-            // Tambahkan "2>&1" untuk menangkap error message di output jika crash
-            $command = "python " . escapeshellarg($scriptPath) . " " . escapeshellarg($imagePath) . " 2>&1";
-
+            // Gunakan 'python' untuk Windows, 'python3' untuk Linux/Mac
+            $pythonCmd = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'python' : 'python3';
+            
+            $command = "$pythonCmd " . escapeshellarg($scriptPath) . " " . escapeshellarg($imagePath) . " 2>&1";
             $output = shell_exec($command);
             $result = trim($output);
 
-            // Log untuk debugging jika perlu
-            // Log::info("FACE DETECTION DEBUG: " . $result);
-
             if ($result === 'true') return true;
-            if ($result === 'false') return false;
-
-            // Jika output error/aneh (misal script crash),
-            // Return false agar user tidak bisa absen (Strict Mode)
-            // Atau return true jika ingin Fail-Open (Boleh absen meski AI error)
+            
+            // Jika output tidak 'true' (misal 'false' atau error message), anggap gagal
+            Log::warning("Face Detect Failed/Error: " . $result);
             return false;
 
         } catch (\Exception $e) {
-            Log::error("Face Detect Error: " . $e->getMessage());
+            Log::error("Face Detect Exception: " . $e->getMessage());
             return false;
         }
     }
 
-    /**
-     * Helper: Hitung Jarak (Haversine Formula)
-     */
     private function haversineDistance($lat1, $lon1, $lat2, $lon2) {
-        $earthRadius = 6371000; // Meter
+        $earthRadius = 6371000;
         $dLat = deg2rad($lat2 - $lat1);
         $dLon = deg2rad($lon2 - $lon1);
         $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) * sin($dLon / 2);
@@ -402,9 +396,6 @@ class KaryawanController extends Controller
         return $earthRadius * $c;
     }
 
-    /**
-     * Helper: Konversi GPS DMS (EXIF) ke Decimal
-     */
     private function gpsDmsToDecimal($dmsArray, $ref) {
         $evalCoordPart = function ($coordPart) {
             $parts = explode('/', $coordPart);

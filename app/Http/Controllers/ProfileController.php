@@ -18,9 +18,15 @@ class ProfileController extends Controller
         $user = Auth::user();
         $employee = $user->employee;
 
+        // Normalisasi role agar tidak sensitif huruf besar/kecil
+        $role = strtolower(trim($user->role));
+
         // Tentukan view berdasarkan role
-        if ($user->role === 'Admin') {
+        if ($role === 'admin') {
             return view('admin.profil', compact('user', 'employee'));
+        } elseif ($role === 'manajemen') {
+            // ✅ PERBAIKAN: Tambahkan View Manajemen
+            return view('manajemen.profil', compact('user', 'employee'));
         } else {
             return view('karyawan.profil', compact('user', 'employee'));
         }
@@ -31,8 +37,12 @@ class ProfileController extends Controller
         Log::info('=== PROFILE UPDATE START ===');
         Log::info('Request Method: ' . $request->method());
         Log::info('Request Data:', $request->all());
+        Log::info('Files Data:', $request->file() ?: ['no_files' => true]);
+        Log::info('hapus_foto value:', ['hapus_foto' => $request->input('hapus_foto')]);
 
         $user = Auth::user();
+        // ✅ PERBAIKAN: Normalisasi Role
+        $role = strtolower(trim($user->role));
         
         Log::info('User Info:', [
             'user_id' => $user->user_id,
@@ -42,8 +52,12 @@ class ProfileController extends Controller
 
         if (!$user->employee) {
             Log::error('Employee relation not found for user: ' . $user->user_id);
-            if ($user->role === 'Admin') {
+            
+            // ✅ PERBAIKAN: Redirect Error Sesuai Role (Agar tidak logout)
+            if ($role === 'admin') {
                 return redirect()->route('admin.profil')->with('error', 'Data karyawan tidak ditemukan.');
+            } elseif ($role === 'manajemen') {
+                return redirect()->route('manajemen.profil')->with('error', 'Data karyawan tidak ditemukan.');
             } else {
                 return redirect()->route('karyawan.profil')->with('error', 'Data karyawan tidak ditemukan.');
             }
@@ -54,11 +68,12 @@ class ProfileController extends Controller
         Log::info('Employee Info:', [
             'emp_id' => $employee->emp_id,
             'nama' => $employee->nama,
-            'nip' => $employee->nip
+            'nip' => $employee->nip,
+            'current_foto_profil' => $employee->foto_profil
         ]);
 
-        // Validasi untuk admin (lebih lengkap)
-        if ($user->role === 'Admin') {
+        // Validasi
+        if ($role === 'admin') {
             Log::info('Validating Admin data...');
             $validated = $request->validate([
                 'nama' => 'required|string|max:255',
@@ -70,18 +85,18 @@ class ProfileController extends Controller
                 'alamat' => 'nullable|string|max:500',
                 'no_telepon' => 'nullable|string|max:20',
                 'foto_profil' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-                'hapus_foto' => 'sometimes|in:0,1' // ✅ PERBAIKAN: Validasi field hapus_foto
             ]);
             Log::info('Admin validation passed', $validated);
         } else {
-            Log::info('Validating Karyawan data...');
+            // Validasi Karyawan & Manajemen
+            Log::info('Validating User data...');
             $validated = $request->validate([
+                'nama' => 'required|string|max:255', 
                 'alamat' => 'nullable|string|max:500',
                 'no_telepon' => 'nullable|string|max:20',
                 'foto_profil' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-                'hapus_foto' => 'sometimes|in:0,1' // ✅ PERBAIKAN: Validasi field hapus_foto
             ]);
-            Log::info('Karyawan validation passed', $validated);
+            Log::info('User validation passed', $validated);
         }
 
         DB::beginTransaction();
@@ -89,7 +104,7 @@ class ProfileController extends Controller
         try {
             Log::info('Starting database transaction...');
 
-            if ($user->role === 'Admin') {
+            if ($role === 'admin') {
                 Log::info('Processing Admin update...');
                 
                 // Update User data
@@ -112,28 +127,31 @@ class ProfileController extends Controller
                     'no_telepon' => $request->no_telepon,
                 ];
 
-                // ✅ PERBAIKAN: Handle Hapus Foto
-                if ($request->has('hapus_foto') && $request->hapus_foto == '1') {
-                    Log::info('Processing photo deletion...');
+                // ✅ PERBAIKAN UTAMA: Logika Hapus Foto yang Konsisten dan Diperbaiki
+                Log::info('Checking hapus_foto value:', ['hapus_foto' => $request->input('hapus_foto')]);
+                
+                if ($request->input('hapus_foto') == '1') {
+                    Log::info('Processing photo deletion for admin...');
                     
                     if ($employee->foto_profil) {
                         $oldPath = str_replace('/storage/', '', $employee->foto_profil);
-                        Log::info('Deleting old photo:', ['path' => $oldPath]);
-                        Storage::disk('public')->delete($oldPath);
+                        Log::info('Deleting old photo from storage:', ['path' => $oldPath]);
+                        $deleted = Storage::disk('public')->delete($oldPath);
+                        Log::info('Storage deletion result:', ['deleted' => $deleted]);
                     }
                     
                     $employeeData['foto_profil'] = null;
-                    Log::info('Photo marked for deletion');
+                    Log::info('Photo marked for deletion in database');
                 }
 
                 // Handle Upload Foto Baru
                 if ($request->hasFile('foto_profil')) {
-                    Log::info('Processing photo upload...');
+                    Log::info('Processing photo upload for admin...');
                     
                     // Hapus foto lama jika ada
-                    if ($employee->foto_profil) {
+                    if ($employee->foto_profil && $request->input('hapus_foto') != '1') {
                         $oldPath = str_replace('/storage/', '', $employee->foto_profil);
-                        Log::info('Deleting old photo:', ['path' => $oldPath]);
+                        Log::info('Deleting old photo before upload:', ['path' => $oldPath]);
                         Storage::disk('public')->delete($oldPath);
                     }
 
@@ -157,31 +175,39 @@ class ProfileController extends Controller
                 Log::info('Employee update result:', ['affected_rows' => $employeeUpdateResult]);
 
             } else {
-                Log::info('Processing Karyawan update...');
+                // Blok ini untuk Karyawan DAN Manajemen
+                Log::info('Processing User (Karyawan/Manajemen) update...');
                 
-                // Untuk karyawan, update field yang diizinkan
+                // ✅ PERBAIKAN: Update data employee
+                $employee->nama = $request->nama;
                 $employee->alamat = $request->alamat;
                 $employee->no_telepon = $request->no_telepon;
 
-                // ✅ PERBAIKAN: Handle Hapus Foto untuk karyawan
-                if ($request->has('hapus_foto') && $request->hapus_foto == '1') {
-                    Log::info('Processing karyawan photo deletion...');
+                // ✅ PERBAIKAN UTAMA: Logika Hapus Foto yang Konsisten untuk Semua Role
+                Log::info('Checking hapus_foto value for user:', ['hapus_foto' => $request->input('hapus_foto')]);
+                
+                if ($request->input('hapus_foto') == '1') {
+                    Log::info('Processing user photo deletion...');
                     
                     if ($employee->foto_profil) {
                         $oldPath = str_replace('/storage/', '', $employee->foto_profil);
-                        Storage::disk('public')->delete($oldPath);
+                        Log::info('Deleting user old photo from storage:', ['path' => $oldPath]);
+                        $deleted = Storage::disk('public')->delete($oldPath);
+                        Log::info('Storage deletion result:', ['deleted' => $deleted]);
                     }
                     
                     $employee->foto_profil = null;
-                    Log::info('Karyawan photo marked for deletion');
+                    Log::info('User photo marked for deletion in database');
                 }
 
-                // Handle Upload Foto untuk karyawan
+                // Handle Upload Foto
                 if ($request->hasFile('foto_profil')) {
-                    Log::info('Processing karyawan photo upload...');
+                    Log::info('Processing user photo upload...');
                     
-                    if ($employee->foto_profil) {
+                    // Hanya hapus foto lama jika tidak dalam mode hapus
+                    if ($employee->foto_profil && $request->input('hapus_foto') != '1') {
                         $oldPath = str_replace('/storage/', '', $employee->foto_profil);
+                        Log::info('Deleting user old photo before upload:', ['path' => $oldPath]);
                         Storage::disk('public')->delete($oldPath);
                     }
 
@@ -190,12 +216,11 @@ class ProfileController extends Controller
                     $path = $file->storeAs('foto_profil', $fileName, 'public');
                     $employee->foto_profil = Storage::url($path);
                     
-                    Log::info('Karyawan photo stored:', ['path' => $path]);
+                    Log::info('User photo stored:', ['path' => $path]);
                 }
 
-                // Untuk karyawan, gunakan save() karena field yang diupdate sudah di fillable
                 $employeeSaved = $employee->save();
-                Log::info('Karyawan save result:', ['saved' => $employeeSaved]);
+                Log::info('User save result:', ['saved' => $employeeSaved]);
             }
             
             DB::commit();
@@ -203,16 +228,17 @@ class ProfileController extends Controller
 
             $successMessage = 'Profil berhasil diperbarui.';
             
-            // ✅ PERBAIKAN: Tambahkan pesan khusus jika foto dihapus
-            if ($request->has('hapus_foto') && $request->hapus_foto == '1') {
+            if ($request->input('hapus_foto') == '1') {
                 $successMessage .= ' Foto profil telah dihapus.';
             }
             
             Log::info('Update successful: ' . $successMessage);
 
-            // Redirect ke route yang benar berdasarkan role
-            if ($user->role === 'Admin') {
+            // ✅ PERBAIKAN UTAMA: Redirect Benar agar TIDAK Logout
+            if ($role === 'admin') {
                 return redirect()->route('admin.profil')->with('success', $successMessage);
+            } elseif ($role === 'manajemen') {
+                return redirect()->route('manajemen.profil')->with('success', $successMessage);
             } else {
                 return redirect()->route('karyawan.profil')->with('success', $successMessage);
             }
@@ -227,9 +253,11 @@ class ProfileController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            // Redirect ke route yang benar berdasarkan role
-            if ($user->role === 'Admin') {
+            // Redirect error juga harus benar
+            if ($role === 'admin') {
                 return redirect()->route('admin.profil')->with('error', $errorMessage);
+            } elseif ($role === 'manajemen') {
+                return redirect()->route('manajemen.profil')->with('error', $errorMessage);
             } else {
                 return redirect()->route('karyawan.profil')->with('error', $errorMessage);
             }
@@ -238,21 +266,13 @@ class ProfileController extends Controller
         }
     }
 
-    /**
-     * Hapus foto profil admin (method lama - bisa dihapus jika tidak digunakan)
-     */
     public function deleteFotoAdmin()
     {
-        // Method ini bisa dihapus karena sekarang hapus foto dilakukan melalui form update
-        return redirect()->route('admin.profil')->with('error', 'Method tidak digunakan. Gunakan tombol "Simpan Perubahan" setelah memilih hapus foto.');
+        return redirect()->route('admin.profil')->with('error', 'Method tidak digunakan.');
     }
 
-    /**
-     * Hapus foto profil karyawan (method lama - bisa dihapus jika tidak digunakan)
-     */
     public function deleteFotoKaryawan()
     {
-        // Method ini bisa dihapus karena sekarang hapus foto dilakukan melalui form update
-        return redirect()->route('karyawan.profil')->with('error', 'Method tidak digunakan. Gunakan tombol "Simpan Perubahan" setelah memilih hapus foto.');
+        return redirect()->route('karyawan.profil')->with('error', 'Method tidak digunakan.');
     }
 }

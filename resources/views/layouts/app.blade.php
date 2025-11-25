@@ -25,7 +25,7 @@
             overflow-x: hidden;
         }
 
-        /* === SIDEBAR STYLE === */
+        /* === SIDEBAR STYLE (DIPERBAIKI) === */
         .sidebar {
             width: var(--sidebar-width);
             min-width: var(--sidebar-width);
@@ -38,15 +38,18 @@
             left: 0;
             z-index: 1000;
             overflow-y: auto;
+            /* Mencegah scroll horizontal jika konten sidebar lebar */
+            overflow-x: hidden; 
         }
 
-        /* === MAIN WRAPPER === */
+        /* === MAIN WRAPPER (FOOTER FIX) === */
         .main-wrapper {
             margin-left: var(--sidebar-width);
             width: calc(100% - var(--sidebar-width));
-            min-height: 100vh;
+            /* Kunci agar footer terdorong ke bawah */
+            min-height: 100vh; 
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* Susunan vertikal */
             transition: margin-left 0.3s ease, width 0.3s ease;
         }
 
@@ -74,10 +77,25 @@
             body.sidebar-open .sidebar { margin-left: 0; box-shadow: 5px 0 15px rgba(0,0,0,0.2); }
         }
 
-        .sidebar .nav-link { color: #adb5bd; padding: 0.75rem 1.5rem; font-size: 0.95rem; transition: all 0.2s; }
-        .sidebar .nav-link:hover { color: #fff; background-color: rgba(255,255,255,0.1); }
-        .sidebar .nav-link.active { color: #fff; background-color: var(--primary-color); border-radius: 0.25rem; }
-        .sidebar-footer { margin-top: auto; padding-bottom: 1rem; }
+        .sidebar .nav-link { 
+            color: #adb5bd; 
+            padding: 0.75rem 1.5rem; 
+            font-size: 0.95rem; 
+            transition: all 0.2s; 
+        }
+        .sidebar .nav-link:hover { 
+            color: #fff; 
+            background-color: rgba(255,255,255,0.1); 
+        }
+        .sidebar .nav-link.active { 
+            color: #fff; 
+            background-color: var(--primary-color); 
+            border-radius: 0.25rem; 
+        }
+        .sidebar-footer { 
+            margin-top: auto; 
+            padding-bottom: 1rem; 
+        }
 
         /* === TOPBAR & FOOTER === */
         .topbar {
@@ -89,22 +107,24 @@
             position: sticky; top: 0; z-index: 999;
         }
         
+        /* PERBAIKAN FOOTER: Push Bottom (Bukan Sticky/Fixed) */
         .main-footer {
             background-color: #e9ecef;
             color: #6c757d;
             border-top: 1px solid #dee2e6;
-            margin-top: auto;
+            /* margin-top: auto akan mendorong footer ke paling bawah sisa ruang */
+            margin-top: auto; 
             transition: all 0.3s ease;
+            padding: 1rem; /* Tambahkan padding agar rapi */
         }
 
         /* === DARK MODE STYLES === */
         .hover-primary:hover { color: var(--primary-color) !important; transition: color 0.3s ease; }
         
-        /* Badge diset default display none, JS yang akan nyalakan */
         .notification-badge { 
             font-size: 0.6rem; 
             padding: 0.25em 0.4em; 
-            display: none; 
+            display: none; /* Default hidden */
         }
 
         .dark-mode { background-color: #121212 !important; color: #e0e0e0; }
@@ -191,6 +211,7 @@
         </div>
     </nav>
 
+    {{-- Main Wrapper (Perbaikan Flex Column) --}}
     <div class="main-wrapper">
         
         <header class="topbar d-flex justify-content-between align-items-center p-3">
@@ -208,7 +229,7 @@
                 <div class="position-relative me-3">
                     <i class="bi bi-bell-fill fs-5 hover-primary notification-bell text-dark" style="cursor: pointer;"></i>
                     
-                    {{-- Badge Notif (Awalnya Hidden) --}}
+                    {{-- Badge Notif --}}
                     <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge">0</span>
                     
                     <div class="notification-dropdown" style="width: 320px;">
@@ -220,7 +241,6 @@
                         <div style="max-height: 300px; overflow-y: auto;" id="notificationList">
                             @if(isset($globalNotifications) && count($globalNotifications) > 0)
                                 @foreach($globalNotifications as $notif)
-                                    {{-- PENTING: Tambah data-notification-id untuk JS --}}
                                     <a href="{{ $notif['url'] }}" class="text-decoration-none text-dark notification-link" data-notification-id="{{ $notif['id'] ?? '' }}">
                                         <div class="notification-item">
                                             <div class="d-flex align-items-start">
@@ -281,6 +301,7 @@
             </div>
         </header>
 
+        {{-- Main Content: Flex Grow untuk mengisi ruang kosong --}}
         <main class="p-4 flex-grow-1 overflow-auto">
             @yield('content')
         </main>
@@ -291,20 +312,9 @@
                 <span class="text-muted d-none d-md-inline">Jl. Medan Merdeka Timur No.11-13 Clash Universe</span>
             </div>
             <div class="d-flex">
-                {{-- Facebook --}}
-                <a href="https://www.facebook.com" target="_blank" class="text-decoration-none me-3">
-                    <i class="bi bi-facebook fs-6 text-muted hover-primary"></i>
-                </a>
-                
-                {{-- Twitter / X --}}
-                <a href="https://twitter.com" target="_blank" class="text-decoration-none me-3">
-                    <i class="bi bi-twitter-x fs-6 text-muted hover-primary"></i>
-                </a>
-                
-                {{-- Instagram --}}
-                <a href="https://www.instagram.com" target="_blank" class="text-decoration-none">
-                    <i class="bi bi-instagram fs-6 text-muted hover-primary"></i>
-                </a>
+                <i class="bi bi-facebook fs-6 me-3 text-muted hover-primary"></i>
+                <i class="bi bi-twitter-x fs-6 me-3 text-muted hover-primary"></i>
+                <i class="bi bi-instagram fs-6 text-muted hover-primary"></i>
             </div>
         </footer>
     </div>
@@ -315,108 +325,172 @@
             const toggleBtn = document.getElementById('sidebarToggle');
             const body = document.body;
             const sidebar = document.getElementById('sidebar');
+            
             function isMobile() { return window.innerWidth <= 992; }
+
             if(toggleBtn) {
                 toggleBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    isMobile() ? (body.classList.toggle('sidebar-open'), body.classList.remove('sidebar-collapsed')) : (body.classList.toggle('sidebar-collapsed'), body.classList.remove('sidebar-open'));
+                    if (isMobile()) {
+                        body.classList.toggle('sidebar-open');
+                        body.classList.remove('sidebar-collapsed');
+                    } else {
+                        body.classList.toggle('sidebar-collapsed');
+                        body.classList.remove('sidebar-open');
+                    }
                 });
             }
+            
             document.addEventListener('click', function(e) {
                 if (isMobile() && body.classList.contains('sidebar-open') && !sidebar.contains(e.target) && !toggleBtn.contains(e.target)) {
                     body.classList.remove('sidebar-open');
                 }
             });
+
             const darkToggle = document.querySelector('.dark-mode-toggle');
             const isDarkMode = localStorage.getItem('darkMode') === 'true';
+            
             if (isDarkMode) {
                 body.classList.add('dark-mode');
-                if(darkToggle) { darkToggle.classList.remove('bi-moon-fill'); darkToggle.classList.add('bi-sun-fill'); }
+                if(darkToggle) {
+                    darkToggle.classList.remove('bi-moon-fill');
+                    darkToggle.classList.add('bi-sun-fill');
+                }
             }
+            
             if(darkToggle) {
                 darkToggle.addEventListener('click', function() {
                     body.classList.toggle('dark-mode');
                     const isNowDark = body.classList.contains('dark-mode');
-                    this.classList.toggle('bi-moon-fill'); this.classList.toggle('bi-sun-fill');
+                    this.classList.toggle('bi-moon-fill');
+                    this.classList.toggle('bi-sun-fill');
                     localStorage.setItem('darkMode', isNowDark);
                 });
             }
 
             // --- NOTIFICATION SYSTEM (FIXED) ---
+            
+            const serverNotifCount = parseInt("{{ $notifCount ?? 0 }}");
+
             const notifBell = document.querySelector('.notification-bell');
             const notifDrop = document.querySelector('.notification-dropdown');
             const notifBadge = document.getElementById('notificationBadge');
             const notifCountBadge = document.getElementById('notificationCountBadge');
             const notifLinks = document.querySelectorAll('.notification-link');
             
-            // 1. Baca Cookie 'seen_notifications'
             function getSeenNotifications() {
-                const match = document.cookie.match(new RegExp('(^| )seen_notifications=([^;]+)'));
-                if (match) {
-                    try {
-                        return JSON.parse(decodeURIComponent(match[2]));
-                    } catch (e) { return []; }
+                try {
+                    const cookieValue = document.cookie
+                        .split('; ')
+                        .find(row => row.startsWith('seen_notifications='));
+                        
+                    return cookieValue ? JSON.parse(decodeURIComponent(cookieValue.split('=')[1])) : [];
+                } catch (error) {
+                    console.error('Error reading seen notifications:', error);
+                    return [];
                 }
-                return [];
             }
 
-            // 2. Simpan Cookie
-            function saveSeenNotifications(ids) {
-                const d = new Date();
-                d.setTime(d.getTime() + (30*24*60*60*1000));
-                const expires = "expires="+ d.toUTCString();
-                document.cookie = "seen_notifications=" + encodeURIComponent(JSON.stringify(ids)) + ";" + expires + ";path=/";
+            function markNotificationsAsSeen(notificationIds) {
+                try {
+                    const seenNotifications = getSeenNotifications();
+                    const updatedSeenNotifications = [...new Set([...seenNotifications, ...notificationIds])];
+                    
+                    const expires = new Date();
+                    expires.setDate(expires.getDate() + 30);
+                    document.cookie = 'seen_notifications=' + encodeURIComponent(JSON.stringify(updatedSeenNotifications)) + '; expires=' + expires.toUTCString() + '; path=/';
+                    
+                    const remainingCount = Math.max(0, serverNotifCount - updatedSeenNotifications.length);
+
+                    if (notifBadge) {
+                        if (remainingCount <= 0) {
+                            notifBadge.style.display = 'none';
+                        } else {
+                            notifBadge.textContent = remainingCount;
+                            notifBadge.style.display = 'inline-block';
+                        }
+                    }
+                    
+                    if (notifCountBadge) {
+                        if (remainingCount <= 0) {
+                            notifCountBadge.style.display = 'none';
+                        } else {
+                            notifCountBadge.textContent = remainingCount + ' Baru';
+                            notifCountBadge.style.display = 'inline-block';
+                        }
+                    }
+                    return true;
+                } catch (error) {
+                    console.error('Error marking notifications as seen:', error);
+                    return false;
+                }
             }
 
-            // 3. Hitung Unread saat Load
-            const seenIds = getSeenNotifications();
-            const currentIds = Array.from(notifLinks).map(link => link.getAttribute('data-notification-id'));
-            
-            // Filter: ID yang ada di halaman tapi belum ada di cookie
-            const unreadIds = currentIds.filter(id => !seenIds.includes(id));
-            const unreadCount = unreadIds.length;
-
-            // Tampilkan Badge jika ada unread
-            if (unreadCount > 0) {
-                if(notifBadge) {
-                    notifBadge.style.display = 'inline-block';
-                    notifBadge.textContent = unreadCount;
-                }
-                if(notifCountBadge) {
-                    notifCountBadge.style.display = 'inline-block';
-                    notifCountBadge.textContent = unreadCount + ' Baru';
-                }
-            } else {
-                if(notifBadge) notifBadge.style.display = 'none';
-                if(notifCountBadge) notifCountBadge.style.display = 'none';
-            }
-
-            // 4. Event Click Lonceng -> Tandai Semua "Seen"
             if(notifBell) {
                 notifBell.addEventListener('click', function(e) {
                     e.stopPropagation();
                     const isVisible = notifDrop.style.display === 'block';
                     notifDrop.style.display = isVisible ? 'none' : 'block';
                     
-                    if (!isVisible) { // Artinya sekarang jadi visible (dibuka)
-                        // Tambahkan semua ID yang ada sekarang ke cookie seen
-                        const updatedSeen = [...new Set([...seenIds, ...currentIds])];
-                        saveSeenNotifications(updatedSeen);
-
-                        // Sembunyikan Badge
-                        if(notifBadge) notifBadge.style.display = 'none';
-                        if(notifCountBadge) notifCountBadge.style.display = 'none';
+                    if (!isVisible) {
+                        const notificationIds = [];
+                        notifLinks.forEach(function(link) {
+                            const notifId = link.getAttribute('data-notification-id');
+                            if (notifId) notificationIds.push(notifId);
+                        });
+                        
+                        if (notificationIds.length > 0) {
+                            markNotificationsAsSeen(notificationIds);
+                        }
                     }
                 });
             }
 
-            // Tutup Dropdown saat klik luar
-            document.addEventListener('click', function() {
-                if(notifDrop) notifDrop.style.display = 'none';
+            notifLinks.forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    const notifId = this.getAttribute('data-notification-id');
+                    if (notifId) {
+                        markNotificationsAsSeen([notifId]);
+                    }
+                });
             });
+
+            document.addEventListener('click', function() {
+                if(notifDrop) {
+                    notifDrop.style.display = 'none';
+                }
+            });
+            
             if(notifDrop) {
-                notifDrop.addEventListener('click', function(e) { e.stopPropagation(); });
+                notifDrop.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
             }
+
+            function initializeNotificationBadge() {
+                const seenNotifications = getSeenNotifications();
+                const remainingCount = Math.max(0, serverNotifCount - seenNotifications.length);
+                
+                if (notifBadge) {
+                    if (remainingCount <= 0) {
+                        notifBadge.style.display = 'none';
+                    } else {
+                        notifBadge.textContent = remainingCount;
+                        notifBadge.style.display = 'inline-block';
+                    }
+                }
+                
+                if (notifCountBadge) {
+                    if (remainingCount <= 0) {
+                        notifCountBadge.style.display = 'none';
+                    } else {
+                        notifCountBadge.textContent = remainingCount + ' Baru';
+                        notifCountBadge.style.display = 'inline-block';
+                    }
+                }
+            }
+
+            initializeNotificationBadge();
         });
     </script>
 
