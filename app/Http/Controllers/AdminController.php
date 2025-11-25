@@ -26,47 +26,38 @@ class AdminController extends Controller
     {
         $today = Carbon::today();
 
-        // 1. Statistik Utama
+        // 1. Statistik Utama (TETAP)
         $totalEmployees = Employee::count();
+        $presentCount = Attendance::whereDate('waktu_unggah', $today)->where('type', 'masuk')->distinct('emp_id')->count('emp_id');
+        $izinCount = Leave::where('tipe_izin', 'izin')->where('status', 'disetujui')->whereDate('tanggal_mulai', '<=', $today)->whereDate('tanggal_selesai', '>=', $today)->count();
+        $sakitCount = Leave::where('tipe_izin', 'sakit')->where('status', 'disetujui')->whereDate('tanggal_mulai', '<=', $today)->whereDate('tanggal_selesai', '>=', $today)->count();
 
-        $presentCount = Attendance::whereDate('waktu_unggah', $today)
-            ->where('type', 'masuk')
-            ->distinct('emp_id')
-            ->count('emp_id');
+        // 2. RIWAYAT AKTIVITAS TERBARU (GABUNGAN ABSENSI & IZIN)
 
-        $izinCount = Leave::where('tipe_izin', 'izin')
-            ->where('status', 'disetujui')
-            ->whereDate('tanggal_mulai', '<=', $today)
-            ->whereDate('tanggal_selesai', '>=', $today)
-            ->count();
-
-        $sakitCount = Leave::where('tipe_izin', 'sakit')
-            ->where('status', 'disetujui')
-            ->whereDate('tanggal_mulai', '<=', $today)
-            ->whereDate('tanggal_selesai', '>=', $today)
-            ->count();
-
-        // 2. RIWAYAT ABSENSI TERBARU (Update: Mengambil Semua Status)
-        // Sebelumnya: whereDoesntHave('validation') -> Hanya pending
-        // Sekarang: Mengambil semua agar menjadi "Riwayat", bukan "Review"
-        $recentActivities = Attendance::with(['employee', 'validation'])
+        // Ambil 5 Absensi Terakhir
+        $recentAtt = Attendance::with(['employee', 'validation'])
             ->orderBy('waktu_unggah', 'desc')
             ->take(5)
             ->get();
 
-        // 3. Grafik Tren Kehadiran (7 Hari)
+        // Ambil 5 Izin Terakhir
+        $recentLeave = Leave::with('employee')
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+
+        // Gabung dan Urutkan berdasarkan waktu (Terbaru di atas)
+        $recentActivities = $recentAtt->concat($recentLeave)->sortByDesc(function($item) {
+            return $item->waktu_unggah ?? $item->created_at;
+        })->take(6); // Ambil 6 item teratas dari gabungan
+
+        // 3. Grafik Tren (TETAP)
         $chartLabels = [];
         $chartData = [];
-
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
             $chartLabels[] = $date->format('d M');
-
-            $count = Attendance::whereDate('waktu_unggah', $date)
-                ->where('type', 'masuk')
-                ->distinct('emp_id')
-                ->count('emp_id');
-
+            $count = Attendance::whereDate('waktu_unggah', $date)->where('type', 'masuk')->distinct('emp_id')->count('emp_id');
             $chartData[] = $count;
         }
 
@@ -333,7 +324,7 @@ class AdminController extends Controller
             return redirect()->back()->with('error', 'Gagal hapus: ' . $e->getMessage());
         }
     }
-    
+
     public function showManajemenKaryawan()
     {
         // Ambil data karyawan beserta relasi user

@@ -131,39 +131,83 @@
                 </div>
             </div>
 
-            {{-- LIST RIWAYAT ABSENSI (Updated Title) --}}
             <div class="card shadow-sm border-0 mb-4 flex-grow-1">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
-                        {{-- ✅ JUDUL DIUBAH SESUAI PERMINTAAN --}}
-                        <h5 class="card-title fw-bold mb-0 me-2 text-dark-emphasis">Riwayat Absensi</h5>
-
-                        @if($recentActivities->count() > 0)
-                            <span class="badge rounded-pill bg-danger">{{ $recentActivities->count() }}</span>
-                        @endif
+                        {{-- Judul Disesuaikan --}}
+                        <h5 class="card-title fw-bold mb-0 me-2 text-dark-emphasis">Riwayat Aktivitas Terbaru</h5>
                     </div>
 
                     <div class="list-group list-group-flush">
                         @forelse($recentActivities as $act)
                             <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-3 border-bottom bg-transparent">
                                 <div class="d-flex align-items-center">
-                                    {{-- Avatar Kecil --}}
-                                    <div class="rounded-circle bg-secondary bg-opacity-10 text-secondary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                                        {{ substr($act->employee->nama ?? 'U', 0, 1) }}
-                                    </div>
-                                    <div>
-                                        <span class="fw-bold text-dark-emphasis d-block">{{ $act->employee->nama ?? 'Karyawan' }}</span>
-                                        <div class="text-muted small">
-                                            <i class="bi bi-clock me-1"></i> {{ \Carbon\Carbon::parse($act->waktu_unggah)->format('d M, H:i') }}
-                                            &bull; <span class="text-primary fw-bold">Absen {{ ucfirst($act->type) }}</span>
+
+                                    {{-- LOGIKA TAMPILAN: ABSENSI vs IZIN --}}
+                                    @if(class_basename($act) == 'Attendance')
+                                        {{-- === TAMPILAN ABSENSI === --}}
+
+                                        {{-- Avatar --}}
+                                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                            <i class="bi bi-camera-fill"></i>
                                         </div>
-                                    </div>
+
+                                        <div>
+                                            <span class="fw-bold text-dark-emphasis d-block">{{ $act->employee->nama ?? 'Karyawan' }}</span>
+                                            <div class="text-muted small">
+                                                <span class="text-primary fw-bold">Absen {{ ucfirst($act->type) }}</span>
+                                                &bull; {{ $act->waktu_unggah->format('d M, H:i') }}
+                                            </div>
+                                        </div>
+
+                                    @else
+                                        {{-- === TAMPILAN IZIN === --}}
+
+                                        {{-- Icon Izin --}}
+                                        <div class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                            <i class="bi bi-file-earmark-text-fill"></i>
+                                        </div>
+
+                                        <div>
+                                            <span class="fw-bold text-dark-emphasis d-block">{{ $act->employee->nama ?? 'Karyawan' }}</span>
+                                            <div class="text-muted small">
+                                                <span class="text-warning fw-bold">Pengajuan {{ ucfirst($act->tipe_izin) }}</span>
+                                                &bull; {{ $act->created_at->format('d M, H:i') }}
+                                            </div>
+                                        </div>
+                                    @endif
+
                                 </div>
+
+                                {{-- BADGE STATUS --}}
+                                <div>
+                                    @if(class_basename($act) == 'Attendance')
+                                        {{-- Status Absensi --}}
+                                        @if($act->validation)
+                                            @if($act->validation->status_validasi_final == 'Valid')
+                                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Valid</span>
+                                            @else
+                                                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2">Invalid</span>
+                                            @endif
+                                        @else
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Pending</span>
+                                        @endif
+                                    @else
+                                        {{-- Status Izin --}}
+                                        @if($act->status == 'disetujui')
+                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Disetujui</span>
+                                        @elseif($act->status == 'ditolak')
+                                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2">Ditolak</span>
+                                        @else
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Pending</span>
+                                        @endif
+                                    @endif
                                 </div>
+                            </div>
                         @empty
                             <div class="text-center py-4 text-muted">
-                                <i class="bi bi-check-circle-fill fs-1 mb-2 d-block text-success opacity-50"></i>
-                                <small>Belum ada aktivitas absensi.</small>
+                                <i class="bi bi-inbox fs-1 mb-2 d-block opacity-25"></i>
+                                <small>Belum ada aktivitas terbaru.</small>
                             </div>
                         @endforelse
                     </div>
