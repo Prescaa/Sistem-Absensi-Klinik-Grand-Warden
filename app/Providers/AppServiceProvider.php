@@ -24,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
         // ==============================
         View::composer('layouts.app', function ($view) {
             $notifications = [];
-            
+
             // Hapus logika cookie di sini, biarkan JS yang handle visual badgenya
             // Kita kirim semua notifikasi 7 hari terakhir agar dropdown tidak kosong
 
@@ -43,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
 
                     foreach($rejectedAbsensi as $absen) {
                         $notificationId = 'absensi_' . $absen->att_id;
-                        
+
                         $notifications[] = [
                             'id' => $notificationId,
                             'type' => 'absensi',
@@ -51,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
                             'message' => 'Absensi ' . ucfirst($absen->type) . ' tanggal ' .
                                 \Carbon\Carbon::parse($absen->waktu_unggah)->format('d M') . ' ditolak.',
                             'time' => $absen->waktu_unggah,
-                            'url' => route('karyawan.riwayat') . '#absensi' 
+                            'url' => route('karyawan.riwayat') . '#absensi'
                         ];
                     }
 
@@ -64,7 +64,7 @@ class AppServiceProvider extends ServiceProvider
 
                     foreach($processedLeaves as $leave) {
                         $notificationId = 'izin_' . $leave->leave_id;
-                        
+
                         $statusMsg = $leave->status == 'disetujui' ? 'Disetujui' : 'Ditolak';
                         $notifications[] = [
                             'id' => $notificationId,
@@ -72,7 +72,7 @@ class AppServiceProvider extends ServiceProvider
                             'title' => 'Pengajuan Izin ' . $statusMsg,
                             'message' => 'Izin ' . ucfirst($leave->tipe_izin) . ' Anda telah ' . $statusMsg . '.',
                             'time' => $leave->updated_at,
-                            'url' => route('karyawan.riwayat') . '#izin' 
+                            'url' => route('karyawan.riwayat') . '#izin'
                         ];
                     }
 
@@ -89,55 +89,59 @@ class AppServiceProvider extends ServiceProvider
         // ==============================
         View::composer('layouts.admin_app', function ($view) {
             $notifications = [];
-            
+
             if (Auth::check() && strtolower(Auth::user()->role) == 'admin') {
-                
-                // 1. ABSENSI BARU 
-                $pendingAbsensi = Attendance::whereDoesntHave('validation')
-                    ->orWhereHas('validation', function($q) {
-                        $q->where('status_validasi_final', 'Pending');
-                    })
-                    ->with('employee')
-                    ->orderBy('waktu_unggah', 'desc')
+
+                // 1. RIWAYAT ABSENSI (YANG SUDAH DIVALIDASI MANAJEMEN)
+                $processedAbsensi = Attendance::whereHas('validation')
+                    ->with(['employee', 'validation'])
+                    ->where('waktu_unggah', '>=', now()->subDays(3))
+                    ->orderBy('waktu_unggah', 'desc') // ✅ PERBAIKAN: Ganti updated_at -> waktu_unggah
                     ->get();
 
-                foreach($pendingAbsensi as $absen) {
+                foreach($processedAbsensi as $absen) {
                     $nama = $absen->employee->nama ?? 'Karyawan';
-                    $tipe = ucfirst($absen->type); 
-                    
-                    // ID Unik untuk cookie
-                    $notificationId = 'adm_abs_' . $absen->att_id;
+                    $tipe = ucfirst($absen->type);
+                    $status = $absen->validation->status_validasi_final;
+
+                    if ($status == 'Valid') {
+                        $title = "Absensi Disetujui";
+                        $msg   = "Absen $tipe $nama telah disetujui.";
+                    } else {
+                        $title = "Absensi Ditolak";
+                        $msg   = "Absen $tipe $nama dinyatakan Invalid.";
+                    }
 
                     $notifications[] = [
-                        'id'      => $notificationId,
+                        'id'      => 'adm_hist_' . $absen->att_id,
                         'type'    => 'absensi',
-                        'title'   => 'Validasi Absensi Baru',
-                        'message' => "$nama melakukan absen $tipe",
-                        'time'    => $absen->waktu_unggah, 
-                        'url'     => url('/admin/validasi#absensi'), 
+                        'title'   => $title,
+                        'message' => $msg,
+                        // ✅ PERBAIKAN: Fallback ke waktu_unggah jika timestamp validasi null
+                        'time'    => $absen->validation->timestamp_validasi ?? $absen->waktu_unggah,
+                        'url'     => route('admin.absensi.index'),
                     ];
                 }
 
-                // 2. IZIN BARU
-                $pendingIzin = Leave::where('status', 'pending')
+                // 2. RIWAYAT IZIN
+                $processedIzin = Leave::whereIn('status', ['disetujui', 'ditolak'])
                     ->with('employee')
-                    ->orderBy('created_at', 'desc')
+                    ->where('updated_at', '>=', now()->subDays(3))
+                    ->orderBy('updated_at', 'desc') // ✅ Aman: Leave punya timestamps
                     ->get();
 
-                foreach($pendingIzin as $izin) {
+                foreach($processedIzin as $izin) {
                     $nama = $izin->employee->nama ?? 'Karyawan';
                     $tipe = ucfirst($izin->tipe_izin);
-
-                    // ID Unik untuk cookie
-                    $notificationId = 'adm_izin_' . $izin->leave_id;
+                    $status = ucfirst($izin->status);
 
                     $notifications[] = [
-                        'id'      => $notificationId,
+                        'id'      => 'adm_izin_hist_' . $izin->leave_id,
                         'type'    => 'izin',
-                        'title'   => "Pengajuan $tipe",
-                        'message' => "$nama mengajukan $tipe",
-                        'time'    => $izin->created_at, 
-                        'url'     => url('/admin/validasi#izin'),
+                        'title'   => "Izin $status",
+                        'message' => "Pengajuan $tipe $nama telah $status.",
+                        'time'    => $izin->updated_at,
+                        'url'     => route('admin.absensi.index'),
                     ];
                 }
 

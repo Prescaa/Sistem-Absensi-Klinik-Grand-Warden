@@ -71,6 +71,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/profil', [ProfileController::class, 'index'])->name('admin.profil');
     Route::post('/profil', [ProfileController::class, 'update'])->name('admin.profil.update');
     Route::delete('/profil/hapus-foto', [ProfileController::class, 'deleteFotoAdmin'])->name('admin.profil.deleteFoto');
+
+    Route::get('/manajemen-absensi', [AdminController::class, 'showManajemenAbsensi'])->name('admin.absensi.index');
+    Route::post('/manajemen-absensi/store', [AdminController::class, 'storeAbsensi'])->name('admin.absensi.store');
+    Route::put('/manajemen-absensi/update/{id}', [AdminController::class, 'updateAbsensi'])->name('admin.absensi.update');
+    Route::delete('/manajemen-absensi/destroy/{id}', [AdminController::class, 'destroyAbsensi'])->name('admin.absensi.destroy');
 });
 
 // --- GROUP MANAJEMEN ---

@@ -169,6 +169,11 @@
                     </a>
                 </li>
                 <li class="nav-item mb-1">
+                    <a href="{{ route('admin.absensi.index') }}" class="nav-link {{ Request::is('admin/manajemen-absensi') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-check-fill me-2"></i> Manajemen Absensi
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
                     <a href="/admin/geofencing" class="nav-link {{ Request::is('admin/geofencing') ? 'active' : '' }}">
                         <i class="bi bi-geo-alt-fill me-2"></i> Lokasi Geofencing
                     </a>

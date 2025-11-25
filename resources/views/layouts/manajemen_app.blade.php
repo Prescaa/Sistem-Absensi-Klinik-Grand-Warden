@@ -151,11 +151,17 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('manajemen.validasi.show') }}" class="nav-link {{ Request::is('manajemen/validasi*') ? 'active' : '' }}">
+                        <i class="bi bi-check-circle-fill me-2"></i> Validasi Absensi
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="/manajemen/laporan" class="nav-link {{ Request::is('manajemen/laporan') ? 'active' : '' }}">
                         <i class="bi bi-table me-2"></i> Data Laporan
                     </a>
                 </li>
             </ul>
+
 
         </div>
 

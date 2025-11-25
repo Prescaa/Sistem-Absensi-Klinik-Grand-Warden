@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
@@ -45,22 +46,22 @@ class AdminController extends Controller
             ->whereDate('tanggal_selesai', '>=', $today)
             ->count();
 
-        // 2. Data untuk "Menunggu Validasi Terbaru"
-        $recentActivities = Attendance::whereDoesntHave('validation')
-            ->with('employee')
+        // 2. RIWAYAT ABSENSI TERBARU (Update: Mengambil Semua Status)
+        // Sebelumnya: whereDoesntHave('validation') -> Hanya pending
+        // Sekarang: Mengambil semua agar menjadi "Riwayat", bukan "Review"
+        $recentActivities = Attendance::with(['employee', 'validation'])
             ->orderBy('waktu_unggah', 'desc')
             ->take(5)
             ->get();
 
-        // 3. --- FITUR BARU: ANALISIS TREN KEHADIRAN (7 HARI TERAKHIR) ---
+        // 3. Grafik Tren Kehadiran (7 Hari)
         $chartLabels = [];
         $chartData = [];
 
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
-            $chartLabels[] = $date->format('d M'); // Label Tanggal (misal: 20 Nov)
+            $chartLabels[] = $date->format('d M');
 
-            // Hitung jumlah karyawan yang hadir (masuk) pada tanggal tersebut
             $count = Attendance::whereDate('waktu_unggah', $date)
                 ->where('type', 'masuk')
                 ->distinct('emp_id')
@@ -80,6 +81,140 @@ class AdminController extends Controller
         ]);
     }
 
+    // -----------------------------------------------------------------
+    // --- FUNGSI CRUD ABSENSI ---
+    // -----------------------------------------------------------------
+
+    public function showManajemenAbsensi()
+    {
+        // Ambil data absensi + relasi karyawan & validasi
+        $attendances = Attendance::with(['employee', 'validation'])
+            ->orderBy('waktu_unggah', 'desc')
+            ->get(); // Atau gunakan ->paginate(20) jika data sangat banyak
+
+        // Ambil list karyawan untuk dropdown di Modal Tambah/Edit
+        $employees = Employee::orderBy('nama')->get();
+
+        return view('admin.manajemen_absensi', [
+            'attendances' => $attendances,
+            'employees' => $employees
+        ]);
+    }
+
+    public function storeAbsensi(Request $request)
+    {
+        $request->validate([
+            'emp_id' => 'required|exists:EMPLOYEE,emp_id',
+            'waktu_unggah' => 'required|date',
+            'type' => 'required|in:masuk,pulang',
+            // Validasi foto opsional
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Handle Upload Foto (Jika ada)
+            $fotoPath = null;
+            if ($request->hasFile('foto')) {
+                $path = $request->file('foto')->store('public/absensi');
+                $fotoPath = str_replace('public/', 'storage/', $path);
+            }
+
+            // 2. Simpan Data Absensi
+            $attendance = Attendance::create([
+                'emp_id' => $request->emp_id,
+                'waktu_unggah' => Carbon::parse($request->waktu_unggah),
+                'type' => $request->type,
+                'latitude' => 0, // 0 menandakan input manual/admin
+                'longitude' => 0,
+                'nama_file_foto' => $fotoPath ?? 'images/placeholder-absensi.jpg',
+            ]);
+
+            // 3. ✅ OTOMATIS VALIDASI (DISETUJUI)
+            // Karena Admin yang input, kita anggap ini valid mutlak.
+
+            // Ambil ID Karyawan milik Admin yang sedang login
+            $adminEmpId = Auth::user()->employee->emp_id ?? null;
+
+            if ($adminEmpId) {
+                Validation::create([
+                    'att_id' => $attendance->att_id,
+                    'admin_id' => $adminEmpId, // Admin tercatat sebagai validator
+                    'status_validasi_otomatis' => 'Valid',
+                    'status_validasi_final' => 'Valid', // Langsung Valid
+                    'catatan_admin' => 'Ditambahkan secara manual oleh Admin (Auto-Approve).',
+                    'timestamp_validasi' => now(),
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Data absensi berhasil ditambahkan dan otomatis disetujui.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+        }
+    }
+
+    public function updateAbsensi(Request $request, $id)
+    {
+        $att = Attendance::findOrFail($id);
+
+        $request->validate([
+            'waktu_unggah' => 'required|date',
+            'type' => 'required|in:masuk,pulang',
+            'foto' => 'nullable|image|max:2048',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $att->waktu_unggah = Carbon::parse($request->waktu_unggah);
+            $att->type = $request->type;
+
+            if ($request->hasFile('foto')) {
+                // Hapus foto lama jika bukan placeholder/default
+                if ($att->nama_file_foto && file_exists(public_path($att->nama_file_foto)) && !str_contains($att->nama_file_foto, 'placeholder')) {
+                   // unlink(public_path($att->nama_file_foto)); // Opsional: Hapus file fisik
+                }
+
+                $path = $request->file('foto')->store('public/absensi');
+                $att->nama_file_foto = str_replace('public/', 'storage/', $path);
+            }
+
+            $att->save();
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Data absensi berhasil diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal update: ' . $e->getMessage());
+        }
+    }
+
+    public function destroyAbsensi($id)
+    {
+        $att = Attendance::findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            // Hapus data validasi terkait dulu (jika ada relasi cascade di DB, ini otomatis. Jika tidak, manual)
+            if ($att->validation) {
+                $att->validation->delete();
+            }
+
+            // Hapus file foto
+            if ($att->nama_file_foto && file_exists(public_path($att->nama_file_foto))) {
+                // unlink(public_path($att->nama_file_foto));
+            }
+
+            $att->delete();
+            DB::commit();
+            return redirect()->back()->with('success', 'Data absensi berhasil dihapus.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal hapus: ' . $e->getMessage());
+        }
+    }
     // -----------------------------------------------------------------
     // --- FUNGSI CRUD KARYAWAN ---
     // -----------------------------------------------------------------
