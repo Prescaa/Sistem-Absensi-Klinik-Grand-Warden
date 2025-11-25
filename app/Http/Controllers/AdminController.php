@@ -219,6 +219,121 @@ class AdminController extends Controller
     // --- FUNGSI CRUD KARYAWAN ---
     // -----------------------------------------------------------------
 
+    public function showManajemenIzin()
+    {
+        $leaves = Leave::with('employee')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $employees = Employee::orderBy('nama')->get();
+
+        return view('admin.manajemen_izin', [
+            'leaves' => $leaves,
+            'employees' => $employees
+        ]);
+    }
+
+    public function storeIzin(Request $request)
+    {
+        $request->validate([
+            'emp_id' => 'required|exists:EMPLOYEE,emp_id',
+            'tipe_izin' => 'required|in:sakit,izin,cuti',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'deskripsi' => 'nullable|string',
+            'file_bukti' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'status' => 'required|in:pending,disetujui,ditolak'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $buktiPath = null;
+            if ($request->hasFile('file_bukti')) {
+                $path = $request->file('file_bukti')->store('public/bukti_izin');
+                $buktiPath = str_replace('public/', 'storage/', $path);
+            }
+
+            Leave::create([
+                'emp_id' => $request->emp_id,
+                'tipe_izin' => $request->tipe_izin,
+                'tanggal_mulai' => $request->tanggal_mulai,
+                'tanggal_selesai' => $request->tanggal_selesai,
+                'deskripsi' => $request->deskripsi,
+                'file_bukti' => $buktiPath,
+                'status' => $request->status,
+                'catatan_admin' => $request->status == 'disetujui' ? 'Diinput oleh Admin (Auto-Approve)' : null,
+            ]);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Data izin berhasil ditambahkan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+        }
+    }
+
+    public function updateIzin(Request $request, $id)
+    {
+        $leave = Leave::findOrFail($id);
+
+        $request->validate([
+            'tipe_izin' => 'required|in:sakit,izin,cuti',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'deskripsi' => 'nullable|string',
+            'status' => 'required|in:pending,disetujui,ditolak',
+            'catatan_admin' => 'nullable|string',
+            'file_bukti' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $leave->tipe_izin = $request->tipe_izin;
+            $leave->tanggal_mulai = $request->tanggal_mulai;
+            $leave->tanggal_selesai = $request->tanggal_selesai;
+            $leave->deskripsi = $request->deskripsi;
+            $leave->status = $request->status;
+            $leave->catatan_admin = $request->catatan_admin;
+
+            if ($request->hasFile('file_bukti')) {
+                // Hapus file lama jika ada
+                /* if ($leave->file_bukti && file_exists(public_path($leave->file_bukti))) {
+                    unlink(public_path($leave->file_bukti));
+                } */
+
+                $path = $request->file('file_bukti')->store('public/bukti_izin');
+                $leave->file_bukti = str_replace('public/', 'storage/', $path);
+            }
+
+            $leave->save();
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Data izin berhasil diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal update: ' . $e->getMessage());
+        }
+    }
+
+    public function destroyIzin($id)
+    {
+        $leave = Leave::findOrFail($id);
+        DB::beginTransaction();
+        try {
+            // Hapus file bukti jika ada
+            /* if ($leave->file_bukti && file_exists(public_path($leave->file_bukti))) {
+                unlink(public_path($leave->file_bukti));
+            } */
+
+            $leave->delete();
+            DB::commit();
+            return redirect()->back()->with('success', 'Data izin berhasil dihapus.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal hapus: ' . $e->getMessage());
+        }
+    }
+    
     public function showManajemenKaryawan()
     {
         // Ambil data karyawan beserta relasi user

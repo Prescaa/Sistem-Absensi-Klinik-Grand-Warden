@@ -164,13 +164,18 @@
                     </a>
                 </li>
                 <li class="nav-item mb-1">
-                    <a href="/admin/manajemen-karyawan" class="nav-link {{ Request::is('admin/manajemen-karyawan') ? 'active' : '' }}">
-                        <i class="bi bi-people-fill me-2"></i> Manajemen Karyawan
+                    <a href="{{ route('admin.absensi.index') }}" class="nav-link {{ Request::is('admin/manajemen-absensi') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-check-fill me-2"></i> Manajemen Absensi
                     </a>
                 </li>
                 <li class="nav-item mb-1">
-                    <a href="{{ route('admin.absensi.index') }}" class="nav-link {{ Request::is('admin/manajemen-absensi') ? 'active' : '' }}">
-                        <i class="bi bi-calendar-check-fill me-2"></i> Manajemen Absensi
+                    <a href="{{ route('admin.izin.index') }}" class="nav-link {{ Request::is('admin/manajemen-izin') ? 'active' : '' }}">
+                        <i class="bi bi-envelope-paper-fill me-2"></i> Manajemen Izin
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a href="/admin/manajemen-karyawan" class="nav-link {{ Request::is('admin/manajemen-karyawan') ? 'active' : '' }}">
+                        <i class="bi bi-people-fill me-2"></i> Manajemen Karyawan
                     </a>
                 </li>
                 <li class="nav-item mb-1">

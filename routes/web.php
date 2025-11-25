@@ -76,6 +76,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('/manajemen-absensi/store', [AdminController::class, 'storeAbsensi'])->name('admin.absensi.store');
     Route::put('/manajemen-absensi/update/{id}', [AdminController::class, 'updateAbsensi'])->name('admin.absensi.update');
     Route::delete('/manajemen-absensi/destroy/{id}', [AdminController::class, 'destroyAbsensi'])->name('admin.absensi.destroy');
+
+    // --- MANAJEMEN IZIN (CRUD) ---
+    Route::get('/manajemen-izin', [AdminController::class, 'showManajemenIzin'])->name('admin.izin.index');
+    Route::post('/manajemen-izin/store', [AdminController::class, 'storeIzin'])->name('admin.izin.store');
+    Route::put('/manajemen-izin/update/{id}', [AdminController::class, 'updateIzin'])->name('admin.izin.update');
+    Route::delete('/manajemen-izin/destroy/{id}', [AdminController::class, 'destroyIzin'])->name('admin.izin.destroy');
 });
 
 // --- GROUP MANAJEMEN ---
