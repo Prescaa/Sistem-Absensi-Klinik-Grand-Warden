@@ -92,7 +92,7 @@
             border-top-color: #444;
             color: #aaa;
         }
-        
+
         /* Dark Mode: Card */
         .dark-mode .card {
             background-color: #2d2d2d;
@@ -104,7 +104,7 @@
             border-color: #444;
             color: #fff;
         }
-        
+
         /* Dark Mode: Dropdown & Notif */
         .dark-mode .dropdown-menu {
             background-color: #2d2d2d;
@@ -114,7 +114,7 @@
         .dark-mode .dropdown-item:hover { background-color: #3a3a3a; }
         .dark-mode .dropdown-header { color: #fff; }
         .dark-mode .dropdown-divider { border-top-color: #444; }
-        
+
         .dark-mode .notif-title { color: #fff; }
         .dark-mode .notif-msg { color: #ccc; }
         .dark-mode .notif-item:hover { background: #3a3a3a; }
@@ -123,7 +123,7 @@
         .dark-mode .table { color: #e0e0e0; border-color: #444; }
         .dark-mode .table-light th { background-color: #333; color: #fff; border-color: #444; }
         .dark-mode .table-hover tbody tr:hover { background-color: #3a3a3a; color: #fff; }
-        
+
         .dark-mode .form-control, .dark-mode .form-select {
             background-color: #2b2b2b;
             border-color: #444;
@@ -151,19 +151,21 @@
                 <span class="fs-4">Manajemen</span>
             </a>
 
-            <ul class="nav nav-pills flex-column">
-                <li class="nav-item mb-1">
-                    <a href="/manajemen/dashboard" class="nav-link {{ Request::is('manajemen/dashboard') ? 'active' : '' }}">
-                        <i class="bi bi-grid-fill me-2"></i> Dashboard & Analisis
-                    </a>
-                </li>
-                {{-- Menu Laporan --}}
-                <li class="nav-item mb-1">
-                    <a href="/manajemen/laporan" class="nav-link {{ Request::is('manajemen/laporan') ? 'active' : '' }}">
-                        <i class="bi bi-table me-2"></i> Data Laporan
-                    </a>
-                </li>
-            </ul>
+            <li class="nav-item">
+                <a href="/manajemen/dashboard" class="nav-link {{ Request::is('manajemen/dashboard') ? 'active' : '' }}">
+                    <i class="bi bi-grid-fill me-2"></i> Dashboard & Analisis
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ route('manajemen.validasi.show') }}" class="nav-link {{ Request::is('manajemen/validasi*') ? 'active' : '' }}">
+                    <i class="bi bi-check-circle-fill me-2"></i> Validasi Absensi
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/manajemen/laporan" class="nav-link {{ Request::is('manajemen/laporan') ? 'active' : '' }}">
+                    <i class="bi bi-table me-2"></i> Data Laporan
+                </a>
+            </li>
         </div>
 
         <div class="sidebar-footer mt-auto">
@@ -242,12 +244,12 @@
                 <a href="https://www.facebook.com" target="_blank" class="text-decoration-none me-3">
                     <i class="bi bi-facebook fs-6 text-muted hover-primary"></i>
                 </a>
-                
+
                 {{-- Twitter / X --}}
                 <a href="https://twitter.com" target="_blank" class="text-decoration-none me-3">
                     <i class="bi bi-twitter-x fs-6 text-muted hover-primary"></i>
                 </a>
-                
+
                 {{-- Instagram --}}
                 <a href="https://www.instagram.com" target="_blank" class="text-decoration-none">
                     <i class="bi bi-instagram fs-6 text-muted hover-primary"></i>
@@ -259,7 +261,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        
+
         // --- 1. Dark Mode ---
         const darkToggle = document.querySelector('.dark-mode-toggle');
         const body = document.body;

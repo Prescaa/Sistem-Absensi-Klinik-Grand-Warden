@@ -15,7 +15,7 @@
             background-color: #F8F9FA;
             transition: background-color 0.3s ease;
         }
-        
+
         /* === SIDEBAR STYLE === */
         .sidebar {
             width: 280px;
@@ -78,7 +78,7 @@
             margin-top: auto;
             padding-bottom: 1rem;
         }
-        
+
         .topbar {
             background-color: #fff;
             border-bottom: 1px solid #dee2e6;
@@ -164,11 +164,6 @@
                     </a>
                 </li>
                 <li class="nav-item mb-1">
-                    <a href="/admin/validasi" class="nav-link {{ Request::is('admin/validasi') ? 'active' : '' }}">
-                        <i class="bi bi-check-circle-fill me-2"></i> Validasi Absensi
-                    </a>
-                </li>
-                <li class="nav-item mb-1">
                     <a href="/admin/manajemen-karyawan" class="nav-link {{ Request::is('admin/manajemen-karyawan') ? 'active' : '' }}">
                         <i class="bi bi-people-fill me-2"></i> Manajemen Karyawan
                     </a>
@@ -216,7 +211,7 @@
                 <div class="dropdown me-3">
                     <div class="position-relative" id="adminNotifToggle" data-bs-toggle="dropdown" style="cursor:pointer;">
                         <i class="bi bi-bell-fill fs-5 hover-primary"></i>
-                        
+
                         {{-- Badge Default Hidden --}}
                         <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="adminNotifBadge">0</span>
                     </div>
@@ -314,12 +309,12 @@
                 <a href="https://www.facebook.com" target="_blank" class="text-decoration-none me-3">
                     <i class="bi bi-facebook fs-6 text-muted hover-primary"></i>
                 </a>
-                
+
                 {{-- Twitter / X --}}
                 <a href="https://twitter.com" target="_blank" class="text-decoration-none me-3">
                     <i class="bi bi-twitter-x fs-6 text-muted hover-primary"></i>
                 </a>
-                
+
                 {{-- Instagram --}}
                 <a href="https://www.instagram.com" target="_blank" class="text-decoration-none">
                     <i class="bi bi-instagram fs-6 text-muted hover-primary"></i>
@@ -408,7 +403,7 @@
         // 1. Hitung Unread saat load
         const seenIds = getSeenIds();
         const currentIds = Array.from(notifLinks).map(el => el.getAttribute('data-id'));
-        
+
         // Filter ID yang BELUM ada di cookie
         const unreadIds = currentIds.filter(id => !seenIds.includes(id));
         const unreadCount = unreadIds.length;

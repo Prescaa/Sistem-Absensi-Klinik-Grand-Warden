@@ -51,10 +51,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
-    // Validasi
-    Route::get('/validasi', [AdminController::class, 'showValidasiPage'])->name('admin.validasi.show');
-    Route::post('/validasi/simpan', [AdminController::class, 'submitValidasi'])->name('admin.validasi.submit');
-    Route::post('/validasi/izin/simpan', [AdminController::class, 'submitValidasiIzin'])->name('admin.validasi.izin.submit');
+    // ❌ Rute Validasi DIHAPUS dari sini (Dipindah ke Manajemen)
 
     // CRUD Karyawan
     Route::get('/manajemen-karyawan', [AdminController::class, 'showManajemenKaryawan'])->name('admin.karyawan.index');
@@ -79,6 +76,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 // --- GROUP MANAJEMEN ---
 Route::middleware(['auth', 'role:manajemen'])->prefix('manajemen')->group(function () {
     Route::get('/dashboard', [ManajemenController::class, 'dashboard'])->name('manajemen.dashboard');
+
+    // ✅ FITUR VALIDASI (Dipindahkan ke sini)
+    Route::get('/validasi', [ManajemenController::class, 'showValidasiPage'])->name('manajemen.validasi.show');
+    Route::post('/validasi/simpan', [ManajemenController::class, 'submitValidasi'])->name('manajemen.validasi.submit');
+    Route::post('/validasi/izin/simpan', [ManajemenController::class, 'submitValidasiIzin'])->name('manajemen.validasi.izin.submit');
 
     // Halaman Laporan Detail (Tabel)
     Route::get('/laporan', [ManajemenController::class, 'showLaporanPage'])->name('manajemen.laporan.index');

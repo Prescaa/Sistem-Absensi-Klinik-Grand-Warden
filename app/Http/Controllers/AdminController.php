@@ -54,17 +54,17 @@ class AdminController extends Controller
         // 3. --- FITUR BARU: ANALISIS TREN KEHADIRAN (7 HARI TERAKHIR) ---
         $chartLabels = [];
         $chartData = [];
-        
+
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
             $chartLabels[] = $date->format('d M'); // Label Tanggal (misal: 20 Nov)
-            
+
             // Hitung jumlah karyawan yang hadir (masuk) pada tanggal tersebut
             $count = Attendance::whereDate('waktu_unggah', $date)
                 ->where('type', 'masuk')
                 ->distinct('emp_id')
                 ->count('emp_id');
-            
+
             $chartData[] = $count;
         }
 
@@ -82,25 +82,7 @@ class AdminController extends Controller
     /**
      * Menampilkan halaman validasi absensi.
      */
-    public function showValidasiPage()
-    {
-        // 1. Ambil Absensi Pending
-        $pendingAttendances = Attendance::whereDoesntHave('validation')
-            ->with('employee')
-            ->orderBy('waktu_unggah', 'desc')
-            ->get();
 
-        // 2. Ambil Pengajuan Izin Pending
-        $pendingLeaves = Leave::with('employee')
-            ->where('status', 'pending')
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        return view('admin.validasi', [
-            'attendances' => $pendingAttendances,
-            'leaves' => $pendingLeaves
-        ]);
-    }
 
     public function handleApprove(Request $request)
     {
@@ -142,7 +124,7 @@ class AdminController extends Controller
                 'email' => $request->username . '@klinik.com',
                 'password_hash' => Hash::make($request->password),
                 // ✅ UPDATE: Gunakan role dari input, bukan hardcode
-                'role' => $request->role, 
+                'role' => $request->role,
             ]);
 
             Employee::create([
@@ -184,7 +166,7 @@ class AdminController extends Controller
             $user->username = $request->username;
             // ✅ UPDATE: Simpan perubahan Role
             $user->role = $request->role;
-            
+
             if ($request->filled('password')) {
                 $user->password_hash = Hash::make($request->password);
             }
@@ -262,7 +244,7 @@ class AdminController extends Controller
 
         $callback = function() use ($listKaryawan, $startDate, $endDate) {
             $file = fopen('php://output', 'w');
-            
+
             // Helper Sanitasi untuk mencegah CSV Injection
             $sanitize = function ($value) {
                 if (is_string($value) && preg_match('/^[\=\+\-\@]/', $value)) {
@@ -280,7 +262,7 @@ class AdminController extends Controller
                     ->get();
 
                 $totalHadir = $kehadiran->count();
-                
+
                 $totalTerlambat = $kehadiran->filter(function ($att) {
                     return $att->waktu_unggah->format('H:i:s') > '08:00:00';
                 })->count();
@@ -355,45 +337,4 @@ class AdminController extends Controller
         return redirect()->route('admin.geofencing.show')->with('success', 'Lokasi berhasil diperbarui!');
     }
 
-    public function submitValidasi(Request $request)
-    {
-        $request->validate([
-            'att_id' => 'required|exists:ATTENDANCE,att_id',
-            'status_validasi' => 'required|in:Valid,Invalid',
-            'catatan_validasi' => 'nullable|string|max:500'
-        ]);
-
-        $adminEmpId = Auth::user()->employee->emp_id;
-
-        Validation::create([
-            'att_id' => $request->att_id,
-            'admin_id' => $adminEmpId,
-            'status_validasi_otomatis' => $request->status_validasi,
-            'status_validasi_final' => $request->status_validasi,
-            'catatan_admin' => $request->catatan_validasi,
-            'timestamp_validasi' => now()
-        ]);
-
-        return redirect()->route('admin.validasi.show')
-                         ->with('success', 'Validasi absensi berhasil disimpan.');
-    }
-
-    public function submitValidasiIzin(Request $request)
-    {
-        $request->validate([
-            'leave_id' => 'required|exists:leaves,leave_id',
-            'status' => 'required|in:disetujui,ditolak',
-            'catatan_admin' => 'nullable|string|max:500',
-        ]);
-
-        $leave = Leave::findOrFail($request->leave_id);
-        $leave->status = $request->status;
-        $leave->catatan_admin = $request->catatan_admin;
-        $leave->save();
-
-        $pesan = $request->status == 'disetujui' ? 'Izin berhasil disetujui.' : 'Izin telah ditolak.';
-
-        return redirect()->route('admin.validasi.show')
-                         ->with('success', $pesan);
-    }
 }

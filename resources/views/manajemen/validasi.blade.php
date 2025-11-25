@@ -1,4 +1,4 @@
-@extends('layouts.admin_app')
+@extends('layouts.manajemen_app') {{-- ✅ Menggunakan layout Manajemen --}}
 
 @section('page-title', 'Validasi & Persetujuan')
 
@@ -41,7 +41,6 @@
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card shadow-sm h-100 border-0">
                             <div class="position-relative">
-                                {{-- Link ke Foto --}}
                                 <a href="{{ $att->nama_file_foto }}" target="_blank">
                                     <img src="{{ $att->nama_file_foto }}" class="card-img-top" alt="Foto Absensi" style="height: 250px; object-fit: cover;">
                                 </a>
@@ -50,35 +49,24 @@
                             <div class="card-body">
                                 <h5 class="card-title fw-bold mb-1">{{ $att->employee->nama ?? 'Karyawan' }}</h5>
                                 <small class="text-muted d-block mb-3">{{ $att->employee->nip ?? '-' }}</small>
-                                
+
                                 <ul class="list-unstyled text-muted small mb-3 bg-light p-3 rounded">
                                     <li class="mb-2"><i class="bi bi-calendar-event me-2 text-primary"></i> {{ $att->waktu_unggah->format('d M Y, H:i:s') }}</li>
-                                    
+
                                     <li class="d-flex align-items-start">
                                         <i class="bi bi-geo-alt me-2 text-danger mt-1"></i>
                                         <div class="w-100">
-                                            {{-- 
-                                                LOGIKA VALIDASI KOORDINAT 0:
-                                                Kita cek nilai absolut latitude & longitude. 
-                                                Jika keduanya sangat kecil (< 0.0001), kita anggap 0 (invalid).
-                                            --}}
                                             @if(abs($att->latitude) < 0.0001 && abs($att->longitude) < 0.0001)
                                                 <div class="text-danger fw-bold small mb-1">
                                                     <i class="bi bi-exclamation-triangle-fill me-1"></i> Lokasi GPS Hilang
                                                 </div>
-                                                <div class="small text-muted fst-italic" style="font-size: 0.75rem; line-height: 1.2;">
-                                                    Metadata lokasi dihapus oleh browser HP atau GPS mati saat foto diambil.
-                                                </div>
                                             @else
-                                                {{-- Koordinat Valid --}}
                                                 <a href="https://www.google.com/maps/search/?api=1&query={{ $att->latitude }},{{ $att->longitude }}" target="_blank" class="fw-bold text-decoration-none text-dark hover-primary" title="Buka di Google Maps">
                                                     {{ number_format($att->latitude, 5) }}, {{ number_format($att->longitude, 5) }}
                                                     <i class="bi bi-box-arrow-up-right ms-1 small text-primary"></i>
                                                 </a>
-                                                
-                                                {{-- Container Alamat (Diisi otomatis oleh JS) --}}
-                                                <div class="small text-muted fst-italic mt-1 location-address" 
-                                                     data-lat="{{ $att->latitude }}" 
+                                                <div class="small text-muted fst-italic mt-1 location-address"
+                                                     data-lat="{{ $att->latitude }}"
                                                      data-lng="{{ $att->longitude }}"
                                                      style="line-height: 1.2;">
                                                     <span class="spinner-border spinner-border-sm text-secondary" style="width: 0.7rem; height: 0.7rem; border-width: 1px;" role="status"></span>
@@ -89,15 +77,17 @@
                                     </li>
                                 </ul>
 
-                                <form action="{{ route('admin.validasi.submit') }}" method="POST">
+                                {{-- ✅ FORM ACTION DIUBAH KE MANAJEMEN --}}
+                                <form action="{{ route('manajemen.validasi.submit') }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="att_id" value="{{ $att->att_id }}">
 
                                     <div class="mb-3">
-                                        <textarea name="catatan_validasi" class="form-control form-control-sm" rows="2" placeholder="Catatan admin (opsional)..."></textarea>
+                                        <textarea name="catatan_validasi" class="form-control form-control-sm" rows="2" placeholder="Catatan validasi (opsional)..."></textarea>
                                     </div>
 
                                     <div class="d-flex gap-2">
+                                        {{-- TOMBOL TERIMA / TOLAK --}}
                                         <button type="submit" name="status_validasi" value="Valid" class="btn btn-success flex-fill btn-sm fw-bold py-2">
                                             <i class="bi bi-check-lg"></i> Terima
                                         </button>
@@ -132,13 +122,7 @@
                                     <h6 class="fw-bold mb-0">{{ $leave->employee->nama ?? 'Nama Tidak Ditemukan' }}</h6>
                                     <small class="text-muted">{{ $leave->employee->nip ?? '-' }}</small>
                                 </div>
-                                @if($leave->tipe_izin == 'sakit')
-                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger">Sakit</span>
-                                @elseif($leave->tipe_izin == 'cuti')
-                                    <span class="badge bg-info bg-opacity-10 text-info border border-info">Cuti</span>
-                                @else
-                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Izin</span>
-                                @endif
+                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">{{ ucfirst($leave->tipe_izin) }}</span>
                             </div>
                             <div class="card-body">
                                 <div class="row mb-3">
@@ -167,7 +151,8 @@
 
                                 <hr>
 
-                                <form action="{{ route('admin.validasi.izin.submit') }}" method="POST">
+                                {{-- ✅ FORM ACTION DIUBAH KE MANAJEMEN --}}
+                                <form action="{{ route('manajemen.validasi.izin.submit') }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="leave_id" value="{{ $leave->leave_id }}">
 
@@ -176,6 +161,7 @@
                                     </div>
 
                                     <div class="d-flex gap-2">
+                                        {{-- TOMBOL SETUJUI / TOLAK IZIN --}}
                                         <button type="submit" name="status" value="disetujui" class="btn btn-success flex-fill fw-bold">
                                             <i class="bi bi-check-circle me-2"></i>Setujui
                                         </button>
@@ -191,56 +177,35 @@
                 </div>
             @endif
         </div>
-
     </div>
 </div>
 @endsection
-
 @push('scripts')
 <script>
+    // Script JS untuk peta (sama seperti admin)
     document.addEventListener('DOMContentLoaded', function() {
         const delay = ms => new Promise(res => setTimeout(res, ms));
         const addressElements = document.querySelectorAll('.location-address');
-
         async function fetchAddresses() {
             for (let i = 0; i < addressElements.length; i++) {
                 const el = addressElements[i];
                 const lat = parseFloat(el.getAttribute('data-lat'));
                 const lng = parseFloat(el.getAttribute('data-lng'));
-
-                // Validasi Ekstra di JS: Jika 0 atau NaN, jangan fetch ke API Nominatim
                 if (!lat || !lng || isNaN(lat) || isNaN(lng) || (Math.abs(lat) < 0.0001 && Math.abs(lng) < 0.0001)) {
                     el.innerHTML = '<span class="text-muted small">- Data lokasi kosong -</span>';
                     continue;
                 }
-
                 try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
-                        headers: { 'User-Agent': 'KlinikGrandWardenApp/1.0' }
-                    });
-
+                    const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, { headers: { 'User-Agent': 'KlinikGrandWardenApp/1.0' } });
                     if (!response.ok) throw new Error('Network response was not ok');
-
                     const data = await response.json();
-                    
-                    if (data && data.display_name) {
-                        el.innerHTML = `<i class="bi bi-pin-map-fill text-secondary me-1"></i> ${data.display_name}`;
-                    } else {
-                        throw new Error('Alamat tidak ditemukan');
-                    }
-
-                } catch (error) {
-                    console.error("Gagal memuat alamat:", error);
-                    el.innerHTML = '<span class="text-muted text-decoration-underline" style="cursor:help" title="Server peta tidak merespon.">Gagal memuat alamat</span>';
-                }
-
-                await delay(1200); // Rate limit
+                    if (data && data.display_name) { el.innerHTML = `<i class="bi bi-pin-map-fill text-secondary me-1"></i> ${data.display_name}`; }
+                    else { throw new Error('Alamat tidak ditemukan'); }
+                } catch (error) { el.innerHTML = '<span class="text-muted text-decoration-underline" style="cursor:help" title="Server peta tidak merespon.">Gagal memuat alamat</span>'; }
+                await delay(1200);
             }
         }
-
-        if (addressElements.length > 0) {
-            fetchAddresses();
-        }
+        if (addressElements.length > 0) { fetchAddresses(); }
     });
 </script>
 @endpush

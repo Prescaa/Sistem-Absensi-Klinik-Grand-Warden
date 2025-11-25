@@ -6,8 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\Leave;
+use App\Models\Validation;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class ManajemenController extends Controller
 {
@@ -16,7 +17,7 @@ class ManajemenController extends Controller
      */
     public function dashboard()
     {
-        $today = Carbon::today(); 
+        $today = Carbon::today();
 
         // 1. Statistik Utama
         $totalEmployees = Employee::count();
@@ -41,11 +42,11 @@ class ManajemenController extends Controller
         // 2. Grafik Kehadiran 7 Hari Terakhir (Analisis Tren)
         $labels = [];
         $dataHadir = [];
-        
+
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
             $labels[] = $date->format('d M');
-            
+
             $count = Attendance::whereDate('waktu_unggah', $date)
                 ->where('type', 'masuk')
                 ->distinct('emp_id')
@@ -61,6 +62,70 @@ class ManajemenController extends Controller
             'chartLabels' => $labels,
             'chartData' => $dataHadir
         ]);
+    }
+
+    public function showValidasiPage()
+    {
+        // 1. Ambil Absensi Pending
+        $pendingAttendances = Attendance::whereDoesntHave('validation')
+            ->with('employee')
+            ->orderBy('waktu_unggah', 'desc')
+            ->get();
+
+        // 2. Ambil Pengajuan Izin Pending
+        $pendingLeaves = Leave::with('employee')
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Mengembalikan view khusus manajemen
+        return view('manajemen.validasi', [
+            'attendances' => $pendingAttendances,
+            'leaves' => $pendingLeaves
+        ]);
+    }
+
+    public function submitValidasi(Request $request)
+    {
+        $request->validate([
+            'att_id' => 'required|exists:ATTENDANCE,att_id',
+            'status_validasi' => 'required|in:Valid,Invalid',
+            'catatan_validasi' => 'nullable|string|max:500'
+        ]);
+
+        // Ambil ID Karyawan dari user Manajemen yang sedang login
+        $manajemenEmpId = Auth::user()->employee->emp_id;
+
+        Validation::create([
+            'att_id' => $request->att_id,
+            'admin_id' => $manajemenEmpId, // Disimpan sebagai validator
+            'status_validasi_otomatis' => $request->status_validasi,
+            'status_validasi_final' => $request->status_validasi,
+            'catatan_admin' => $request->catatan_validasi,
+            'timestamp_validasi' => now()
+        ]);
+
+        return redirect()->route('manajemen.validasi.show')
+                         ->with('success', 'Validasi absensi berhasil disimpan.');
+    }
+
+    public function submitValidasiIzin(Request $request)
+    {
+        $request->validate([
+            'leave_id' => 'required|exists:leaves,leave_id',
+            'status' => 'required|in:disetujui,ditolak',
+            'catatan_admin' => 'nullable|string|max:500',
+        ]);
+
+        $leave = Leave::findOrFail($request->leave_id);
+        $leave->status = $request->status;
+        $leave->catatan_admin = $request->catatan_admin;
+        $leave->save();
+
+        $pesan = $request->status == 'disetujui' ? 'Izin berhasil disetujui.' : 'Izin telah ditolak.';
+
+        return redirect()->route('manajemen.validasi.show')
+                         ->with('success', $pesan);
     }
 
     /**
@@ -113,7 +178,7 @@ class ManajemenController extends Controller
 
         $callback = function() use ($listKaryawan, $startDate, $endDate) {
             $file = fopen('php://output', 'w');
-            
+
             // Helper Sanitasi
             $sanitize = function ($value) {
                 if (is_string($value) && preg_match('/^[\=\+\-\@]/', $value)) {
@@ -131,7 +196,7 @@ class ManajemenController extends Controller
                     ->get();
 
                 $totalHadir = $kehadiran->count();
-                
+
                 $totalTerlambat = $kehadiran->filter(function ($att) {
                     return $att->waktu_unggah->format('H:i:s') > '08:00:00';
                 })->count();
