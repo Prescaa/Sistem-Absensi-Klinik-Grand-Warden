@@ -173,6 +173,22 @@
                         <i class="bi bi-geo-alt-fill me-2"></i> Lokasi Geofencing
                     </a>
                 </li>
+
+                <li class="nav-item mb-1">
+                    <a class="nav-link {{ request()->routeIs('admin.absensi.unggah') ? 'active' : '' }}" href="{{ route('admin.absensi.unggah') }}">
+                        <i class="bi bi-cloud-arrow-up-fill me-2"></i> Unggah Absensi
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a class="nav-link {{ request()->routeIs('admin.absensi.riwayat') ? 'active' : '' }}" href="{{ route('admin.absensi.riwayat') }}">
+                        <i class="bi bi-clock-history me-2"></i> Riwayat Absensi
+                    </a>
+                </li>
+                <li class="nav-item mb-1">
+                    <a class="nav-link {{ request()->routeIs('admin.izin.show') ? 'active' : '' }}" href="{{ route('admin.izin.show') }}">
+                        <i class="bi bi-calendar-check-fill me-2"></i> Ajukan Izin
+                    </a>
+                </li>
             </ul>
         </div>
 

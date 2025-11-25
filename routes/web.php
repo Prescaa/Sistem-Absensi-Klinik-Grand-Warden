@@ -71,6 +71,15 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/profil', [ProfileController::class, 'index'])->name('admin.profil');
     Route::post('/profil', [ProfileController::class, 'update'])->name('admin.profil.update');
     Route::delete('/profil/hapus-foto', [ProfileController::class, 'deleteFotoAdmin'])->name('admin.profil.deleteFoto');
+
+    // TAMBAHKAN INI:
+    Route::get('/absensi/unggah', [AdminController::class, 'showUnggah'])->name('admin.absensi.unggah');
+    Route::post('/absensi/simpan', [AdminController::class, 'storeFoto'])->name('admin.absensi.storeFoto');
+    
+    Route::get('/absensi/riwayat', [AdminController::class, 'showRiwayat'])->name('admin.absensi.riwayat');
+    
+    Route::get('/izin', [AdminController::class, 'showIzin'])->name('admin.izin.show');
+    Route::post('/izin/simpan', [AdminController::class, 'storeIzin'])->name('admin.izin.store');
 });
 
 // --- GROUP MANAJEMEN ---
@@ -92,7 +101,44 @@ Route::middleware(['auth', 'role:manajemen'])->prefix('manajemen')->group(functi
     Route::get('/profil', [ProfileController::class, 'index'])->name('manajemen.profil');
     Route::post('/profil', [ProfileController::class, 'update'])->name('manajemen.profil.update');
     Route::delete('/profil/hapus-foto', [ProfileController::class, 'deleteFotoAdmin'])->name('manajemen.profil.deleteFoto');
+
+    // TAMBAHKAN INI:
+    Route::get('/absensi/unggah', [ManajemenController::class, 'showUnggah'])->name('manajemen.absensi.unggah');
+    Route::post('/absensi/simpan', [ManajemenController::class, 'storeFoto'])->name('manajemen.absensi.storeFoto');
+    
+    Route::get('/absensi/riwayat', [ManajemenController::class, 'showRiwayat'])->name('manajemen.absensi.riwayat');
+    
+    Route::get('/izin', [ManajemenController::class, 'showIzin'])->name('manajemen.izin.show');
+    Route::post('/izin/simpan', [ManajemenController::class, 'storeIzin'])->name('manajemen.izin.store');
 });
+
+
+// ... (kode route login/logout yang sudah ada) ...
+
+// ====================================================
+//  ROUTE ABSENSI UNIVERSAL (Admin, Manajemen, Karyawan)
+// ====================================================
+// Route::middleware(['auth', 'role:admin,manajemen,karyawan'])->group(function () {
+    
+//     // Halaman Absen (Form Upload)
+//     Route::get('/absensi/buat', [AbsensiController::class, 'create'])
+//         ->name('absensi.create');
+
+//     // Proses Simpan Absen
+//     Route::post('/absensi/simpan', [AbsensiController::class, 'store'])
+//         ->name('absensi.store');
+
+//     // Halaman Riwayat Absensi
+//     Route::get('/absensi/riwayat', [AbsensiController::class, 'riwayat'])
+//         ->name('absensi.riwayat');
+        
+//     // Cek EXIF (Ajax)
+//     Route::post('/absensi/check-exif', [AbsensiController::class, 'checkExif'])
+//         ->name('absensi.check-exif');
+// });
+
+// Catatan: Jika ada route lama 'karyawan/unggah' yang konflik, 
+// sebaiknya dikomentari (disable) agar tidak bingung.
 
 Route::get('/debug-python', function () {
     // 1. Cek apakah fungsi shell_exec aktif

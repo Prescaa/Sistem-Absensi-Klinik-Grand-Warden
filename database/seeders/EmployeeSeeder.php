@@ -39,6 +39,7 @@ class EmployeeSeeder extends Seeder
             ]);
         }
 
+        // 3. DATA ADMIN (Erika)
         $erikaUser = User::where('username', 'KakErika123')->first(); 
         
         if ($erikaUser) {

@@ -145,14 +145,30 @@
             </a>
 
             <ul class="nav nav-pills flex-column">
-                <li class="nav-item">
+                <li class="nav-item mb-1">
                     <a href="/manajemen/dashboard" class="nav-link {{ Request::is('manajemen/dashboard') ? 'active' : '' }}">
                         <i class="bi bi-grid-fill me-2"></i> Dashboard & Analisis
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item mb-1">
                     <a href="/manajemen/laporan" class="nav-link {{ Request::is('manajemen/laporan') ? 'active' : '' }}">
                         <i class="bi bi-table me-2"></i> Data Laporan
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('manajemen.absensi.unggah') ? 'active' : '' }}" href="{{ route('manajemen.absensi.unggah') }}">
+                        <i class="bi bi-cloud-arrow-up-fill me-2"></i> Unggah Absensi
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('manajemen.absensi.riwayat') ? 'active' : '' }}" href="{{ route('manajemen.absensi.riwayat') }}">
+                        <i class="bi bi-clock-history me-2"></i> Riwayat Absensi
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('manajemen.izin.show') ? 'active' : '' }}" href="{{ route('manajemen.izin.show') }}">
+                        <i class="bi bi-calendar-check-fill me-2"></i> Ajukan Izin
                     </a>
                 </li>
             </ul>
