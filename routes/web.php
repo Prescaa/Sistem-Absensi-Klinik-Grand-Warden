@@ -72,14 +72,22 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('/profil', [ProfileController::class, 'update'])->name('admin.profil.update');
     Route::delete('/profil/hapus-foto', [ProfileController::class, 'deleteFotoAdmin'])->name('admin.profil.deleteFoto');
 
+    Route::get('/manajemen-absensi', [AdminController::class, 'showManajemenAbsensi'])->name('admin.absensi.index');
+    Route::post('/manajemen-absensi/store', [AdminController::class, 'storeAbsensi'])->name('admin.absensi.store');
+    Route::put('/manajemen-absensi/update/{id}', [AdminController::class, 'updateAbsensi'])->name('admin.absensi.update');
+    Route::delete('/manajemen-absensi/destroy/{id}', [AdminController::class, 'destroyAbsensi'])->name('admin.absensi.destroy');
+
+    // --- MANAJEMEN IZIN (CRUD) ---
+    Route::get('/manajemen-izin', [AdminController::class, 'showManajemenIzin'])->name('admin.izin.index');
+    Route::post('/manajemen-izin/store', [AdminController::class, 'storeIzin'])->name('admin.izin.store');
+    Route::put('/manajemen-izin/update/{id}', [AdminController::class, 'updateIzin'])->name('admin.izin.update');
+    Route::delete('/manajemen-izin/destroy/{id}', [AdminController::class, 'destroyIzin'])->name('admin.izin.destroy');
+
     // TAMBAHKAN INI:
     Route::get('/absensi/unggah', [AdminController::class, 'showUnggah'])->name('admin.absensi.unggah');
     Route::post('/absensi/simpan', [AdminController::class, 'storeFoto'])->name('admin.absensi.storeFoto');
-    
     Route::get('/absensi/riwayat', [AdminController::class, 'showRiwayat'])->name('admin.absensi.riwayat');
-    
     Route::get('/izin', [AdminController::class, 'showIzin'])->name('admin.izin.show');
-    Route::post('/izin/simpan', [AdminController::class, 'storeIzin'])->name('admin.izin.store');
 });
 
 // --- GROUP MANAJEMEN ---

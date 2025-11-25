@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
@@ -25,47 +26,38 @@ class AdminController extends Controller
     {
         $today = Carbon::today();
 
-        // 1. Statistik Utama
+        // 1. Statistik Utama (TETAP)
         $totalEmployees = Employee::count();
+        $presentCount = Attendance::whereDate('waktu_unggah', $today)->where('type', 'masuk')->distinct('emp_id')->count('emp_id');
+        $izinCount = Leave::where('tipe_izin', 'izin')->where('status', 'disetujui')->whereDate('tanggal_mulai', '<=', $today)->whereDate('tanggal_selesai', '>=', $today)->count();
+        $sakitCount = Leave::where('tipe_izin', 'sakit')->where('status', 'disetujui')->whereDate('tanggal_mulai', '<=', $today)->whereDate('tanggal_selesai', '>=', $today)->count();
 
-        $presentCount = Attendance::whereDate('waktu_unggah', $today)
-            ->where('type', 'masuk')
-            ->distinct('emp_id')
-            ->count('emp_id');
+        // 2. RIWAYAT AKTIVITAS TERBARU (GABUNGAN ABSENSI & IZIN)
 
-        $izinCount = Leave::where('tipe_izin', 'izin')
-            ->where('status', 'disetujui')
-            ->whereDate('tanggal_mulai', '<=', $today)
-            ->whereDate('tanggal_selesai', '>=', $today)
-            ->count();
-
-        $sakitCount = Leave::where('tipe_izin', 'sakit')
-            ->where('status', 'disetujui')
-            ->whereDate('tanggal_mulai', '<=', $today)
-            ->whereDate('tanggal_selesai', '>=', $today)
-            ->count();
-
-        // 2. Data untuk "Menunggu Validasi Terbaru"
-        $recentActivities = Attendance::whereDoesntHave('validation')
-            ->with('employee')
+        // Ambil 5 Absensi Terakhir
+        $recentAtt = Attendance::with(['employee', 'validation'])
             ->orderBy('waktu_unggah', 'desc')
             ->take(5)
             ->get();
 
-        // 3. --- FITUR BARU: ANALISIS TREN KEHADIRAN (7 HARI TERAKHIR) ---
+        // Ambil 5 Izin Terakhir
+        $recentLeave = Leave::with('employee')
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+
+        // Gabung dan Urutkan berdasarkan waktu (Terbaru di atas)
+        $recentActivities = $recentAtt->concat($recentLeave)->sortByDesc(function($item) {
+            return $item->waktu_unggah ?? $item->created_at;
+        })->take(6); // Ambil 6 item teratas dari gabungan
+
+        // 3. Grafik Tren (TETAP)
         $chartLabels = [];
         $chartData = [];
-
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
-            $chartLabels[] = $date->format('d M'); // Label Tanggal (misal: 20 Nov)
-
-            // Hitung jumlah karyawan yang hadir (masuk) pada tanggal tersebut
-            $count = Attendance::whereDate('waktu_unggah', $date)
-                ->where('type', 'masuk')
-                ->distinct('emp_id')
-                ->count('emp_id');
-
+            $chartLabels[] = $date->format('d M');
+            $count = Attendance::whereDate('waktu_unggah', $date)->where('type', 'masuk')->distinct('emp_id')->count('emp_id');
             $chartData[] = $count;
         }
 
@@ -81,8 +73,257 @@ class AdminController extends Controller
     }
 
     // -----------------------------------------------------------------
+    // --- FUNGSI CRUD ABSENSI ---
+    // -----------------------------------------------------------------
+
+    public function showManajemenAbsensi()
+    {
+        // Ambil data absensi + relasi karyawan & validasi
+        $attendances = Attendance::with(['employee', 'validation'])
+            ->orderBy('waktu_unggah', 'desc')
+            ->get(); // Atau gunakan ->paginate(20) jika data sangat banyak
+
+        // Ambil list karyawan untuk dropdown di Modal Tambah/Edit
+        $employees = Employee::orderBy('nama')->get();
+
+        return view('admin.manajemen_absensi', [
+            'attendances' => $attendances,
+            'employees' => $employees
+        ]);
+    }
+
+    public function storeAbsensi(Request $request)
+    {
+        $request->validate([
+            'emp_id' => 'required|exists:EMPLOYEE,emp_id',
+            'waktu_unggah' => 'required|date',
+            'type' => 'required|in:masuk,pulang',
+            // Validasi foto opsional
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Handle Upload Foto (Jika ada)
+            $fotoPath = null;
+            if ($request->hasFile('foto')) {
+                $path = $request->file('foto')->store('public/absensi');
+                $fotoPath = str_replace('public/', 'storage/', $path);
+            }
+
+            // 2. Simpan Data Absensi
+            $attendance = Attendance::create([
+                'emp_id' => $request->emp_id,
+                'waktu_unggah' => Carbon::parse($request->waktu_unggah),
+                'type' => $request->type,
+                'latitude' => 0, // 0 menandakan input manual/admin
+                'longitude' => 0,
+                'nama_file_foto' => $fotoPath ?? 'images/placeholder-absensi.jpg',
+            ]);
+
+            // 3. ✅ OTOMATIS VALIDASI (DISETUJUI)
+            // Karena Admin yang input, kita anggap ini valid mutlak.
+
+            // Ambil ID Karyawan milik Admin yang sedang login
+            $adminEmpId = Auth::user()->employee->emp_id ?? null;
+
+            if ($adminEmpId) {
+                Validation::create([
+                    'att_id' => $attendance->att_id,
+                    'admin_id' => $adminEmpId, // Admin tercatat sebagai validator
+                    'status_validasi_otomatis' => 'Valid',
+                    'status_validasi_final' => 'Valid', // Langsung Valid
+                    'catatan_admin' => 'Ditambahkan secara manual oleh Admin (Auto-Approve).',
+                    'timestamp_validasi' => now(),
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Data absensi berhasil ditambahkan dan otomatis disetujui.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+        }
+    }
+
+    public function updateAbsensi(Request $request, $id)
+    {
+        $att = Attendance::findOrFail($id);
+
+        $request->validate([
+            'waktu_unggah' => 'required|date',
+            'type' => 'required|in:masuk,pulang',
+            'foto' => 'nullable|image|max:2048',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $att->waktu_unggah = Carbon::parse($request->waktu_unggah);
+            $att->type = $request->type;
+
+            if ($request->hasFile('foto')) {
+                // Hapus foto lama jika bukan placeholder/default
+                if ($att->nama_file_foto && file_exists(public_path($att->nama_file_foto)) && !str_contains($att->nama_file_foto, 'placeholder')) {
+                   // unlink(public_path($att->nama_file_foto)); // Opsional: Hapus file fisik
+                }
+
+                $path = $request->file('foto')->store('public/absensi');
+                $att->nama_file_foto = str_replace('public/', 'storage/', $path);
+            }
+
+            $att->save();
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Data absensi berhasil diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal update: ' . $e->getMessage());
+        }
+    }
+
+    public function destroyAbsensi($id)
+    {
+        $att = Attendance::findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            // Hapus data validasi terkait dulu (jika ada relasi cascade di DB, ini otomatis. Jika tidak, manual)
+            if ($att->validation) {
+                $att->validation->delete();
+            }
+
+            // Hapus file foto
+            if ($att->nama_file_foto && file_exists(public_path($att->nama_file_foto))) {
+                // unlink(public_path($att->nama_file_foto));
+            }
+
+            $att->delete();
+            DB::commit();
+            return redirect()->back()->with('success', 'Data absensi berhasil dihapus.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal hapus: ' . $e->getMessage());
+        }
+    }
+    // -----------------------------------------------------------------
     // --- FUNGSI CRUD KARYAWAN ---
     // -----------------------------------------------------------------
+
+    public function showManajemenIzin()
+    {
+        $leaves = Leave::with('employee')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $employees = Employee::orderBy('nama')->get();
+
+        return view('admin.manajemen_izin', [
+            'leaves' => $leaves,
+            'employees' => $employees
+        ]);
+    }
+
+    public function storeIzin(Request $request)
+    {
+        $request->validate([
+            'emp_id' => 'required|exists:EMPLOYEE,emp_id',
+            'tipe_izin' => 'required|in:sakit,izin,cuti',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'deskripsi' => 'nullable|string',
+            'file_bukti' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'status' => 'required|in:pending,disetujui,ditolak'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $buktiPath = null;
+            if ($request->hasFile('file_bukti')) {
+                $path = $request->file('file_bukti')->store('public/bukti_izin');
+                $buktiPath = str_replace('public/', 'storage/', $path);
+            }
+
+            Leave::create([
+                'emp_id' => $request->emp_id,
+                'tipe_izin' => $request->tipe_izin,
+                'tanggal_mulai' => $request->tanggal_mulai,
+                'tanggal_selesai' => $request->tanggal_selesai,
+                'deskripsi' => $request->deskripsi,
+                'file_bukti' => $buktiPath,
+                'status' => $request->status,
+                'catatan_admin' => $request->status == 'disetujui' ? 'Diinput oleh Admin (Auto-Approve)' : null,
+            ]);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Data izin berhasil ditambahkan.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+        }
+    }
+
+    public function updateIzin(Request $request, $id)
+    {
+        $leave = Leave::findOrFail($id);
+
+        $request->validate([
+            'tipe_izin' => 'required|in:sakit,izin,cuti',
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'deskripsi' => 'nullable|string',
+            'status' => 'required|in:pending,disetujui,ditolak',
+            'catatan_admin' => 'nullable|string',
+            'file_bukti' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $leave->tipe_izin = $request->tipe_izin;
+            $leave->tanggal_mulai = $request->tanggal_mulai;
+            $leave->tanggal_selesai = $request->tanggal_selesai;
+            $leave->deskripsi = $request->deskripsi;
+            $leave->status = $request->status;
+            $leave->catatan_admin = $request->catatan_admin;
+
+            if ($request->hasFile('file_bukti')) {
+                // Hapus file lama jika ada
+                /* if ($leave->file_bukti && file_exists(public_path($leave->file_bukti))) {
+                    unlink(public_path($leave->file_bukti));
+                } */
+
+                $path = $request->file('file_bukti')->store('public/bukti_izin');
+                $leave->file_bukti = str_replace('public/', 'storage/', $path);
+            }
+
+            $leave->save();
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Data izin berhasil diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal update: ' . $e->getMessage());
+        }
+    }
+
+    public function destroyIzin($id)
+    {
+        $leave = Leave::findOrFail($id);
+        DB::beginTransaction();
+        try {
+            // Hapus file bukti jika ada
+            /* if ($leave->file_bukti && file_exists(public_path($leave->file_bukti))) {
+                unlink(public_path($leave->file_bukti));
+            } */
+
+            $leave->delete();
+            DB::commit();
+            return redirect()->back()->with('success', 'Data izin berhasil dihapus.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal hapus: ' . $e->getMessage());
+        }
+    }
 
     public function showManajemenKaryawan()
     {

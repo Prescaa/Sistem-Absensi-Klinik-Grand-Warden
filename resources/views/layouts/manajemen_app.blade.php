@@ -150,7 +150,7 @@
                         <i class="bi bi-grid-fill me-2"></i> Dashboard & Analisis
                     </a>
                 </li>
-                <li class="nav-item mb-1">
+                <li class="nav-item">
                     <a href="/manajemen/laporan" class="nav-link {{ Request::is('manajemen/laporan') ? 'active' : '' }}">
                         <i class="bi bi-table me-2"></i> Data Laporan
                     </a>
@@ -172,6 +172,7 @@
                     </a>
                 </li>
             </ul>
+
 
         </div>
 

@@ -6,10 +6,10 @@
 <div class="d-flex flex-column h-100">
 
     <div class="row flex-grow-1">
-        
+
         {{-- KOLOM KIRI --}}
         <div class="col-lg-8 d-flex flex-column">
-            
+
             {{-- STATISTIK CARDS --}}
             <div class="row g-3 mb-4">
                 {{-- Card Karyawan --}}
@@ -79,9 +79,9 @@
                         </div>
                     </div>
                 </div>
-            </div> 
-            
-            {{-- 
+            </div>
+
+            {{--
                 === FITUR BARU: ANALISIS TREN KEHADIRAN ===
                 Menampilkan grafik batang sederhana menggunakan CSS
             --}}
@@ -99,25 +99,25 @@
                                 <div class="text-center w-100 d-flex flex-column justify-content-end align-items-center h-100 mx-1">
                                     {{-- Tooltip angka saat hover --}}
                                     <div class="mb-1 fw-bold text-primary small">{{ $data }}</div>
-                                    
+
                                     {{-- Batang Grafik --}}
-                                    @php 
+                                    @php
                                         // Hitung persentase tinggi berdasarkan total karyawan (max 100%)
                                         $heightPercent = $totalEmployees > 0 ? ($data / $totalEmployees) * 100 : 0;
                                         // Warna batang: Biru tua jika > 80%, Kuning jika > 50%, Merah jika rendah
                                         $colorClass = $heightPercent >= 80 ? 'bg-primary' : ($heightPercent >= 50 ? 'bg-warning' : 'bg-danger');
                                     @endphp
-                                    
-                                    {{-- 
-                                        ✅ PERBAIKAN ERROR VS CODE: 
-                                        Menggunakan CSS Variable (--bar-h) agar VS Code tidak bingung membaca sintaks Blade {{ }} 
+
+                                    {{--
+                                        ✅ PERBAIKAN ERROR VS CODE:
+                                        Menggunakan CSS Variable (--bar-h) agar VS Code tidak bingung membaca sintaks Blade {{ }}
                                         di dalam properti height.
                                     --}}
-                                    <div class="rounded-top {{ $colorClass }} w-100" 
+                                    <div class="rounded-top {{ $colorClass }} w-100"
                                          style="--bar-h: {{ $heightPercent }}%; height: var(--bar-h); min-height: 4px; opacity: 0.8; transition: height 0.5s ease;"
                                          title="{{ $data }} Karyawan Hadir">
                                     </div>
-                                    
+
                                     {{-- Label Tanggal --}}
                                     <small class="d-block mt-2 text-muted fw-bold" style="font-size: 0.7rem;">{{ $chartLabels[$index] }}</small>
                                 </div>
@@ -131,38 +131,83 @@
                 </div>
             </div>
 
-            {{-- LIST MENUNGGU VALIDASI (Dipindah ke bawah grafik) --}}
             <div class="card shadow-sm border-0 mb-4 flex-grow-1">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
-                        <h5 class="card-title fw-bold mb-0 me-2 text-dark-emphasis">Menunggu Validasi Terbaru</h5>
-                        @if($recentActivities->count() > 0)
-                            <span class="badge rounded-pill bg-danger">{{ $recentActivities->count() }}</span>
-                        @endif
+                        {{-- Judul Disesuaikan --}}
+                        <h5 class="card-title fw-bold mb-0 me-2 text-dark-emphasis">Riwayat Aktivitas Terbaru</h5>
                     </div>
-                    
+
                     <div class="list-group list-group-flush">
                         @forelse($recentActivities as $act)
                             <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-3 border-bottom bg-transparent">
                                 <div class="d-flex align-items-center">
-                                    {{-- Avatar Kecil --}}
-                                    <div class="rounded-circle bg-secondary bg-opacity-10 text-secondary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                                        {{ substr($act->employee->nama ?? 'U', 0, 1) }}
-                                    </div>
-                                    <div>
-                                        <span class="fw-bold text-dark-emphasis d-block">{{ $act->employee->nama ?? 'Karyawan' }}</span>
-                                        <div class="text-muted small">
-                                            <i class="bi bi-clock me-1"></i> {{ \Carbon\Carbon::parse($act->waktu_unggah)->format('d M, H:i') }} 
-                                            &bull; <span class="text-primary fw-bold">Absen {{ ucfirst($act->type) }}</span>
+
+                                    {{-- LOGIKA TAMPILAN: ABSENSI vs IZIN --}}
+                                    @if(class_basename($act) == 'Attendance')
+                                        {{-- === TAMPILAN ABSENSI === --}}
+
+                                        {{-- Avatar --}}
+                                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                            <i class="bi bi-camera-fill"></i>
                                         </div>
-                                    </div>
+
+                                        <div>
+                                            <span class="fw-bold text-dark-emphasis d-block">{{ $act->employee->nama ?? 'Karyawan' }}</span>
+                                            <div class="text-muted small">
+                                                <span class="text-primary fw-bold">Absen {{ ucfirst($act->type) }}</span>
+                                                &bull; {{ $act->waktu_unggah->format('d M, H:i') }}
+                                            </div>
+                                        </div>
+
+                                    @else
+                                        {{-- === TAMPILAN IZIN === --}}
+
+                                        {{-- Icon Izin --}}
+                                        <div class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                            <i class="bi bi-file-earmark-text-fill"></i>
+                                        </div>
+
+                                        <div>
+                                            <span class="fw-bold text-dark-emphasis d-block">{{ $act->employee->nama ?? 'Karyawan' }}</span>
+                                            <div class="text-muted small">
+                                                <span class="text-warning fw-bold">Pengajuan {{ ucfirst($act->tipe_izin) }}</span>
+                                                &bull; {{ $act->created_at->format('d M, H:i') }}
+                                            </div>
+                                        </div>
+                                    @endif
+
                                 </div>
-                                <a href="{{ route('admin.validasi.show') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">Review</a>
+
+                                {{-- BADGE STATUS --}}
+                                <div>
+                                    @if(class_basename($act) == 'Attendance')
+                                        {{-- Status Absensi --}}
+                                        @if($act->validation)
+                                            @if($act->validation->status_validasi_final == 'Valid')
+                                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Valid</span>
+                                            @else
+                                                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2">Invalid</span>
+                                            @endif
+                                        @else
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Pending</span>
+                                        @endif
+                                    @else
+                                        {{-- Status Izin --}}
+                                        @if($act->status == 'disetujui')
+                                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Disetujui</span>
+                                        @elseif($act->status == 'ditolak')
+                                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2">Ditolak</span>
+                                        @else
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Pending</span>
+                                        @endif
+                                    @endif
+                                </div>
                             </div>
                         @empty
                             <div class="text-center py-4 text-muted">
-                                <i class="bi bi-check-circle-fill fs-1 mb-2 d-block text-success opacity-50"></i>
-                                <small>Semua aman! Tidak ada antrian validasi.</small>
+                                <i class="bi bi-inbox fs-1 mb-2 d-block opacity-25"></i>
+                                <small>Belum ada aktivitas terbaru.</small>
                             </div>
                         @endforelse
                     </div>
@@ -172,7 +217,7 @@
 
         {{-- KOLOM KANAN --}}
         <div class="col-lg-4 d-flex flex-column">
-            
+
             {{-- WAKTU & TANGGAL --}}
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body text-center p-4">
@@ -181,14 +226,14 @@
                     <p class="text-primary fw-bold mb-0 mt-1" id="realtime-tanggal">...</p>
                 </div>
             </div>
-            
+
             {{-- DOWNLOAD LAPORAN --}}
             <div class="card shadow-sm border-0 mb-4 flex-grow-1">
                 <div class="card-body p-4 d-flex flex-column justify-content-center align-items-center text-center">
                     <div class="mb-4 p-3 bg-success bg-opacity-10 rounded-circle">
                         <i class="bi bi-file-earmark-spreadsheet-fill text-success display-4"></i>
                     </div>
-                    
+
                     <h5 class="fw-bold mb-2 text-dark-emphasis">Laporan Absensi</h5>
                     <p class="text-muted mb-4 small">
                         Unduh rekapitulasi data kehadiran karyawan (Excel/CSV) untuk keperluan arsip bulanan.
@@ -200,7 +245,7 @@
                 </div>
             </div>
         </div>
-        
+
     </div>
 </div>
 
@@ -240,13 +285,13 @@
     /* === WARNA KARTU SOFT (LIGHT MODE) === */
     .bg-success-soft { background-color: #d1e7dd; }
     .text-success-dark { color: #0f5132; }
-    
+
     .bg-primary-soft { background-color: #cfe2ff; }
     .text-primary-dark { color: #084298; }
-    
+
     .bg-warning-soft { background-color: #fff3cd; }
     .text-warning-dark { color: #664d03; }
-    
+
     .bg-danger-soft { background-color: #f8d7da; }
     .text-danger-dark { color: #842029; }
 
@@ -254,7 +299,7 @@
         width: 40px; height: 40px;
         display: flex; align-items: center; justify-content: center;
     }
-    
+
     .card-stat {
         transition: transform 0.2s;
         border-radius: 12px;
@@ -264,20 +309,20 @@
     /* === DARK MODE OVERRIDES === */
     .dark-mode .bg-success-soft { background-color: #052c1e !important; border: 1px solid #0f5132; }
     .dark-mode .text-success-dark { color: #75b798 !important; }
-    
+
     .dark-mode .bg-primary-soft { background-color: #031633 !important; border: 1px solid #084298; }
     .dark-mode .text-primary-dark { color: #6ea8fe !important; }
-    
+
     .dark-mode .bg-warning-soft { background-color: #332701 !important; border: 1px solid #664d03; }
     .dark-mode .text-warning-dark { color: #ffda6a !important; }
-    
+
     .dark-mode .bg-danger-soft { background-color: #2c0b0e !important; border: 1px solid #842029; }
     .dark-mode .text-danger-dark { color: #ea868f !important; }
 
     .dark-mode .text-dark-emphasis { color: #e0e0e0 !important; }
     .dark-mode .text-body { color: #e0e0e0 !important; }
     .dark-mode .card { background-color: #1e1e1e !important; border: 1px solid #333; }
-    
+
     /* Modal di Dark Mode */
     .dark-mode .modal-content { background-color: #1e1e1e; color: #fff; }
     .dark-mode .modal-footer.bg-light { background-color: #252525 !important; }
@@ -292,9 +337,9 @@
         function updateClock() {
             const timeEl = document.getElementById('realtime-jam');
             const dateEl = document.getElementById('realtime-tanggal');
-            
+
             const now = new Date();
-            
+
             if (timeEl) {
                 const hours = String(now.getHours()).padStart(2, '0');
                 const minutes = String(now.getMinutes()).padStart(2, '0');
