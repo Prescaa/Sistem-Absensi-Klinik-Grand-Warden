@@ -40,7 +40,7 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
     Route::get('/absensi/unggah/{type}', [KaryawanController::class, 'showUploadForm'])->name('karyawan.absensi.unggah');
     Route::post('/karyawan/absensi/check-exif', [KaryawanController::class, 'checkExif'])->name('karyawan.absensi.checkExif');
     Route::post('/absensi/simpan-foto', [KaryawanController::class, 'storeFoto'])->middleware('throttle:5,1')->name('karyawan.absensi.storeFoto');
-    
+
     // Rute Izin
     Route::post('/izin/simpan', [KaryawanController::class, 'storeIzin'])->name('karyawan.izin.store');
 });
@@ -48,9 +48,9 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
 
 // --- GROUP ADMIN (Fokus Operasional) ---
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    
-    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard'); 
-    
+
+    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+
     // Validasi
     Route::get('/validasi', [AdminController::class, 'showValidasiPage'])->name('admin.validasi.show');
     Route::post('/validasi/simpan', [AdminController::class, 'submitValidasi'])->name('admin.validasi.submit');
@@ -67,7 +67,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('/geofencing/save', [AdminController::class, 'saveGeofencing'])->name('admin.geofencing.save');
 
     // Laporan
-    Route::get('/laporan', [AdminController::class, 'showLaporan'])->name('admin.laporan.show'); 
+    Route::get('/laporan', [AdminController::class, 'showLaporan'])->name('admin.laporan.show');
     Route::post('/laporan/export', [AdminController::class, 'exportLaporan'])->name('admin.laporan.export');
 
     // Profil Admin
@@ -79,15 +79,43 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 // --- GROUP MANAJEMEN ---
 Route::middleware(['auth', 'role:manajemen'])->prefix('manajemen')->group(function () {
     Route::get('/dashboard', [ManajemenController::class, 'dashboard'])->name('manajemen.dashboard');
-    
+
     // Halaman Laporan Detail (Tabel)
     Route::get('/laporan', [ManajemenController::class, 'showLaporanPage'])->name('manajemen.laporan.index');
-    
+
     // Export CSV
     Route::post('/laporan/export', [ManajemenController::class, 'exportLaporan'])->name('manajemen.laporan.export');
-    
+
     // Profil Manajemen
     Route::get('/profil', [ProfileController::class, 'index'])->name('manajemen.profil');
     Route::post('/profil', [ProfileController::class, 'update'])->name('manajemen.profil.update');
     Route::delete('/profil/hapus-foto', [ProfileController::class, 'deleteFotoAdmin'])->name('manajemen.profil.deleteFoto');
+});
+
+Route::get('/debug-python', function () {
+    // 1. Cek apakah fungsi shell_exec aktif
+    if (!function_exists('shell_exec')) {
+        return "ERROR: Fungsi shell_exec dimatikan di php.ini. Harap hapus shell_exec dari disable_functions.";
+    }
+
+    // 2. Cek Versi Python (Apakah perintah 'python' dikenali?)
+    $version = shell_exec("python --version 2>&1");
+    if (empty($version)) {
+        return "ERROR: Perintah 'python' tidak dikenali. Coba gunakan path lengkap (misal: C:\\Users\\acer\\...\\python.exe) atau tambahkan ke Environment Variables Windows.";
+    }
+
+    // 3. Cek Script Deteksi Wajah
+    $scriptPath = base_path('app/Python/detect_face.py');
+    if (!file_exists($scriptPath)) {
+        return "ERROR: File script tidak ditemukan di: $scriptPath";
+    }
+
+    // 4. Simulasi Jalankan Script (Tanpa Gambar)
+    // Script kita harusnya print "error" jika tanpa argumen, bukan crash/blank.
+    $output = shell_exec("python " . escapeshellarg($scriptPath) . " 2>&1");
+
+    return "<h1>Status Diagnosa:</h1>" .
+           "<p><b>Python Version:</b> <pre>$version</pre></p>" .
+           "<p><b>Script Path:</b> $scriptPath</p>" .
+           "<p><b>Output Script (Test Run):</b> <pre>$output</pre></p>";
 });
