@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
 
 class AdminController extends Controller
 {
@@ -79,27 +80,13 @@ class AdminController extends Controller
         ]);
     }
 
-    /**
-     * Menampilkan halaman validasi absensi.
-     */
-
-
-    public function handleApprove(Request $request)
-    {
-        return redirect()->back()->with('success', 'Absensi telah disetujui.');
-    }
-
-    public function handleReject(Request $request)
-    {
-        return redirect()->back()->with('success', 'Absensi telah ditolak.');
-    }
-
     // -----------------------------------------------------------------
     // --- FUNGSI CRUD KARYAWAN ---
     // -----------------------------------------------------------------
 
     public function showManajemenKaryawan()
     {
+        // Ambil data karyawan beserta relasi user
         $employee = Employee::with('user')->get();
         return view('admin.manajemen_karyawan', ['employee' => $employee]);
     }
@@ -113,35 +100,51 @@ class AdminController extends Controller
             'posisi' => ['nullable', 'string', 'max:100'],
             'username' => ['required', 'string', 'max:100', 'unique:user'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            // ✅ UPDATE: Tambahkan Validasi Role
             'role' => ['required', 'in:Karyawan,Admin,Manajemen'],
+            'no_telepon' => ['nullable', 'string', 'max:20'],
+            'alamat' => ['nullable', 'string', 'max:500'],
+            // ✅ VALIDASI FOTO BARU
+            'foto_profil' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ]);
 
         DB::beginTransaction();
         try {
+            // 1. Buat User
             $user = User::create([
                 'username' => $request->username,
                 'email' => $request->username . '@klinik.com',
                 'password_hash' => Hash::make($request->password),
-                // ✅ UPDATE: Gunakan role dari input, bukan hardcode
                 'role' => $request->role,
             ]);
 
+            // 2. Handle Upload Foto (Jika ada)
+            $fotoPath = null;
+            if ($request->hasFile('foto_profil')) {
+                // Simpan di folder: public/storage/photos
+                $path = $request->file('foto_profil')->store('public/photos');
+                // Ubah path agar bisa diakses via asset(): public/photos/namafile.jpg -> storage/photos/namafile.jpg
+                $fotoPath = str_replace('public/', 'storage/', $path);
+            }
+
+            // 3. Buat Employee
             Employee::create([
                 'user_id' => $user->user_id,
                 'nama' => $request->nama,
                 'nip' => $request->nip,
                 'departemen' => $request->departemen,
                 'posisi' => $request->posisi,
+                'no_telepon' => $request->no_telepon,
+                'alamat' => $request->alamat,
+                'foto_profil' => $fotoPath, // ✅ SIMPAN PATH FOTO
                 'status_aktif' => true,
             ]);
 
             DB::commit();
-            return redirect()->back()->with('success', 'User baru berhasil ditambahkan sebagai ' . $request->role . '.');
+            return redirect()->back()->with('success', 'User baru berhasil ditambahkan.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
@@ -157,25 +160,42 @@ class AdminController extends Controller
             'posisi' => ['nullable', 'string', 'max:100'],
             'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id'],
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
-            // ✅ UPDATE: Validasi Role saat update
             'role' => ['required', 'in:Karyawan,Admin,Manajemen'],
+            'no_telepon' => ['nullable', 'string', 'max:20'],
+            'alamat' => ['nullable', 'string', 'max:500'],
+            // ✅ VALIDASI FOTO UPDATE
+            'foto_profil' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ]);
 
         DB::beginTransaction();
         try {
+            // Update User
             $user->username = $request->username;
-            // ✅ UPDATE: Simpan perubahan Role
             $user->role = $request->role;
-
             if ($request->filled('password')) {
                 $user->password_hash = Hash::make($request->password);
             }
             $user->save();
 
+            // Handle Upload Foto Baru
+            if ($request->hasFile('foto_profil')) {
+                // (Opsional) Hapus foto lama jika ada & bukan default
+                if ($employee->foto_profil && file_exists(public_path($employee->foto_profil))) {
+                    // Logika hapus file lama bisa ditambahkan di sini jika perlu hemat storage
+                    // unlink(public_path($employee->foto_profil));
+                }
+
+                $path = $request->file('foto_profil')->store('public/photos');
+                $employee->foto_profil = str_replace('public/', 'storage/', $path);
+            }
+
+            // Update Employee
             $employee->nama = $request->nama;
             $employee->nip = $request->nip;
             $employee->departemen = $request->departemen;
             $employee->posisi = $request->posisi;
+            $employee->no_telepon = $request->no_telepon;
+            $employee->alamat = $request->alamat;
             $employee->save();
 
             DB::commit();
@@ -189,9 +209,8 @@ class AdminController extends Controller
 
     public function destroyKaryawan($id)
     {
-        // Cek apakah user mencoba menghapus diri sendiri
         if ($id == Auth::user()->user_id) {
-            return redirect()->back()->with('error', 'Tindakan Ditolak: Anda tidak dapat menghapus akun Anda sendiri saat sedang login.');
+            return redirect()->back()->with('error', 'Tindakan Ditolak: Anda tidak dapat menghapus akun sendiri.');
         }
 
         $user = User::findOrFail($id);
@@ -216,10 +235,7 @@ class AdminController extends Controller
     // --- FUNGSI LAPORAN & GEOFENCING ---
     // -----------------------------------------------------------------
 
-    public function showLaporan()
-    {
-        return view('admin.laporan');
-    }
+
 
     public function exportLaporan(Request $request)
     {
