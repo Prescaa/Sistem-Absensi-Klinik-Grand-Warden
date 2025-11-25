@@ -26,16 +26,29 @@ class AdminController extends Controller
     {
         $today = Carbon::today();
 
-        // 1. Statistik Utama (TETAP)
+        // 1. Statistik Utama
         $totalEmployees = Employee::count();
-        $presentCount = Attendance::whereDate('waktu_unggah', $today)->where('type', 'masuk')->distinct('emp_id')->count('emp_id');
-        $izinCount = Leave::where('tipe_izin', 'izin')->where('status', 'disetujui')->whereDate('tanggal_mulai', '<=', $today)->whereDate('tanggal_selesai', '>=', $today)->count();
-        $sakitCount = Leave::where('tipe_izin', 'sakit')->where('status', 'disetujui')->whereDate('tanggal_mulai', '<=', $today)->whereDate('tanggal_selesai', '>=', $today)->count();
 
-        // 2. RIWAYAT AKTIVITAS TERBARU (GABUNGAN ABSENSI & IZIN)
+        $presentCount = Attendance::whereDate('waktu_unggah', $today)
+            ->where('type', 'masuk')
+            ->distinct('emp_id')
+            ->count('emp_id');
 
-        // Ambil 5 Absensi Terakhir
-        $recentAtt = Attendance::with(['employee', 'validation'])
+        $izinCount = Leave::where('tipe_izin', 'izin')
+            ->where('status', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_selesai', '>=', $today)
+            ->count();
+
+        $sakitCount = Leave::where('tipe_izin', 'sakit')
+            ->where('status', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_selesai', '>=', $today)
+            ->count();
+
+        // 2. Data untuk "Menunggu Validasi Terbaru"
+        $recentActivities = Attendance::whereDoesntHave('validation')
+            ->with('employee')
             ->orderBy('waktu_unggah', 'desc')
             ->take(5)
             ->get();
@@ -47,7 +60,7 @@ class AdminController extends Controller
             ->get();
 
         // Gabung dan Urutkan berdasarkan waktu (Terbaru di atas)
-        $recentActivities = $recentAtt->concat($recentLeave)->sortByDesc(function($item) {
+        $recentActivities = $recentActivities->concat($recentLeave)->sortByDesc(function($item) {
             return $item->waktu_unggah ?? $item->created_at;
         })->take(6); // Ambil 6 item teratas dari gabungan
 
@@ -733,58 +746,6 @@ public function showRiwayat()
             ->get();
 
         return view('admin.absensi.izin', compact('riwayatIzin'));
-    }
-
-        public function storeIzin(Request $request)
-    {
-        $request->validate([
-            'tipe_izin' => 'required|in:sakit,izin,cuti',
-            'tanggal_mulai' => 'required|date',
-            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'deskripsi' => 'required|string|max:500',
-            'file_bukti' => 'required_if:tipe_izin,sakit|file|mimes:jpg,jpeg,png,pdf|max:2048',
-        ], [
-            'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.'
-        ]);
-
-        $empId = auth()->user()->employee->emp_id;
-
-        $checkOverlap = Leave::where('emp_id', $empId)
-            ->where('status', '!=', 'ditolak')
-            ->where(function($q) use ($request) {
-                $start = $request->tanggal_mulai;
-                $end = $request->tanggal_selesai;
-                $q->whereBetween('tanggal_mulai', [$start, $end])
-                  ->orWhereBetween('tanggal_selesai', [$start, $end])
-                  ->orWhere(function($sub) use ($start, $end) {
-                      $sub->where('tanggal_mulai', '<=', $start)->where('tanggal_selesai', '>=', $end);
-                  });
-            })
-            ->first();
-
-        if ($checkOverlap) {
-            return redirect()->back()->withInput()->withErrors(['tanggal_mulai' => 'Anda sudah memiliki pengajuan pada tanggal tersebut.']);
-        }
-
-        $filePath = null;
-        if ($request->hasFile('file_bukti')) {
-            $file = $request->file('file_bukti');
-            $fileName = $empId . '-izin-' . now()->format('YmdHis') . '.' . $file->extension();
-            $path = $file->storeAs('bukti_izin', $fileName, 'public');
-            $filePath = Storage::url($path);
-        }
-
-        Leave::create([
-            'emp_id' => $empId,
-            'tipe_izin' => $request->tipe_izin,
-            'tanggal_mulai' => $request->tanggal_mulai,
-            'tanggal_selesai' => $request->tanggal_selesai,
-            'deskripsi' => $request->deskripsi,
-            'file_bukti' => $filePath,
-            'status' => 'pending'
-        ]);
-
-        return redirect()->route('admin.izin.show')->with('success', 'Pengajuan izin berhasil dikirim.');
     }
 
 }
