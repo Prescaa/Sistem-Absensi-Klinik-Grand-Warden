@@ -557,12 +557,14 @@ class AdminController extends Controller
     {
         $location = WorkArea::select(
             'area_id', 'nama_area', 'radius_geofence', 'jam_kerja',
-            DB::raw('ST_X(koordinat_pusat) as latitude'),
-            DB::raw('ST_Y(koordinat_pusat) as longitude')
+            // BENAR: ST_Y mengambil Latitude (Y), ST_X mengambil Longitude (X)
+            DB::raw('ST_Y(koordinat_pusat) as latitude'),
+            DB::raw('ST_X(koordinat_pusat) as longitude')
         )->where('area_id', self::WORK_AREA_ID)->first();
 
-        return view('admin.geofencing', compact('location'));
-    }
+                // Samakan nama variabel yang dikirim ke view menjadi 'lokasi'
+        return view('admin.geofencing', ['lokasi' => $location]);
+            }
 
     public function saveGeofencing(Request $request): \Illuminate\Http\RedirectResponse
     {
@@ -580,7 +582,7 @@ class AdminController extends Controller
         $workArea->fill([
             'nama_area' => $validated['nama_area'],
             'radius_geofence' => $validated['radius'],
-            'koordinat_pusat' => DB::raw("POINT({$validated['latitude']}, {$validated['longitude']})"),
+           'koordinat_pusat' => DB::raw("POINT({$validated['longitude']}, {$validated['latitude']})"),
             'jam_kerja' => [
                 'masuk' => $validated['jam_masuk'],
                 'pulang' => $validated['jam_pulang'],

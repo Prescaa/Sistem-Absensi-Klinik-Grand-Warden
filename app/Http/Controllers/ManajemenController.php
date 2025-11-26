@@ -26,13 +26,9 @@ class ManajemenController extends Controller
         // 1. Statistik Utama
         $totalEmployees = Employee::count();
 
-        // FIX: Hitung 'Hadir' tapi KECUALIKAN yang statusnya 'Invalid'
+        // FIX: Remove 'where type = masuk' to count anyone who has uploaded ANY attendance today
         $presentCount = Attendance::whereDate('waktu_unggah', $today)
-            ->where('type', 'masuk')
-            ->whereDoesntHave('validation', function ($q) {
-                $q->where('status_validasi_final', 'Invalid');
-            })
-            ->distinct('emp_id')
+            ->distinct('emp_id') // Keep distinct to count people, not photos
             ->count('emp_id');
 
         $izinCount = Leave::where('tipe_izin', 'izin')
