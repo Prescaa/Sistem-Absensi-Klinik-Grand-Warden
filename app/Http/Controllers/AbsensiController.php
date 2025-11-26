@@ -21,12 +21,12 @@ class AbsensiController extends Controller
     public function create()
     {
         $data = $this->getTodayAttendance();
-        
+
         // Mengambil data area kantor (Latitude/Longitude Pusat & Radius)
         $data['workArea'] = WorkArea::select(
                 'radius_geofence',
-                DB::raw('ST_X(koordinat_pusat) as latitude'),
-                DB::raw('ST_Y(koordinat_pusat) as longitude')
+                DB::raw('ST_Y(koordinat_pusat) as latitude'),  // ST_Y adalah Latitude
+                DB::raw('ST_X(koordinat_pusat) as longitude')  // ST_X adalah Longitude
             )->find(1); // Asumsi ID area kantor utama adalah 1
 
         // Kita arahkan ke view baru yang akan kita buat nanti (absensi.create)
@@ -48,7 +48,7 @@ class AbsensiController extends Controller
         ]);
 
         $user = auth()->user();
-        
+
         // Pastikan User terhubung dengan data Employee (Sesuai Fase 1)
         if (!$user->employee) {
             return redirect()->back()->with('error', 'Akun Anda belum terhubung dengan data karyawan. Hubungi IT.');
@@ -80,8 +80,8 @@ class AbsensiController extends Controller
         // 4. GEOFENCING (Cek Jarak)
         $workArea = WorkArea::select(
             'area_id', 'radius_geofence',
-            DB::raw('ST_X(koordinat_pusat) as latitude'),
-            DB::raw('ST_Y(koordinat_pusat) as longitude')
+            DB::raw('ST_Y(koordinat_pusat) as latitude'),  // ST_Y adalah Latitude
+            DB::raw('ST_X(koordinat_pusat) as longitude')
         )->find(1);
 
         if (!$workArea) {
@@ -101,7 +101,7 @@ class AbsensiController extends Controller
 
         // Baca Metadata EXIF (GPS dari Foto) jika ada
         $exif = @exif_read_data($file->getRealPath());
-        
+
         // Gunakan GPS Browser sebagai fallback jika GPS Foto tidak terbaca
         $exifLat = isset($exif['GPSLatitude']) ? $this->gpsDmsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef'] ?? 'N') : $request->browser_lat;
         $exifLng = isset($exif['GPSLongitude']) ? $this->gpsDmsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef'] ?? 'E') : $request->browser_lng;
@@ -142,7 +142,7 @@ class AbsensiController extends Controller
             ->where('emp_id', $karyawan->emp_id)
             ->orderBy('waktu_unggah', 'desc')
             ->get();
-        
+
         // Hitung statistik cuti/izin/sakit
         $izinCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'izin')->where('status', 'disetujui')->count();
         $sakitCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'sakit')->where('status', 'disetujui')->count();
@@ -165,7 +165,7 @@ class AbsensiController extends Controller
         }
 
         $file = $request->file('foto_absensi');
-        
+
         // Cek hash duplikasi
         $fileHash = md5_file($file->getRealPath());
         if (Attendance::where('file_hash', $fileHash)->exists()) {
@@ -233,16 +233,16 @@ class AbsensiController extends Controller
         try {
             // Path ke script Python Anda (Sesuai struktur file yang ada)
             $scriptPath = base_path('app/Python/detect_face.py');
-            
+
             // Deteksi OS untuk perintah python yang tepat
             $pythonCmd = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'python' : 'python3';
-            
+
             $command = "$pythonCmd " . escapeshellarg($scriptPath) . " " . escapeshellarg($imagePath) . " 2>&1";
             $output = shell_exec($command);
             $result = trim($output);
 
             if ($result === 'true') return true;
-            
+
             Log::warning("Face Detect Failed: " . $result);
             return false;
 
