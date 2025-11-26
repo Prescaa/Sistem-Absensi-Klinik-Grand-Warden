@@ -6,9 +6,13 @@ use Illuminate\Http\Request;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\Leave;
-use App\Models\WorkArea; // ✅ Pastikan Model ini di-import
+use App\Models\WorkArea;
+use App\Models\Validation; // Tambahkan ini
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth; // Tambahkan ini
+use Illuminate\Support\Facades\Storage; // Tambahkan ini
+use Illuminate\Support\Facades\Log; // Tambahkan ini
 
 class ManajemenController extends Controller
 {
@@ -64,8 +68,72 @@ class ManajemenController extends Controller
         ]);
     }
 
+    public function showValidasiPage()
+    {
+        // 1. Ambil Absensi Pending
+        $pendingAttendances = Attendance::whereDoesntHave('validation')
+            ->with('employee')
+            ->orderBy('waktu_unggah', 'desc')
+            ->get();
+
+        // 2. Ambil Pengajuan Izin Pending
+        $pendingLeaves = Leave::with('employee')
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Mengembalikan view khusus manajemen
+        return view('manajemen.validasi', [
+            'attendances' => $pendingAttendances,
+            'leaves' => $pendingLeaves
+        ]);
+    }
+
+    public function submitValidasi(Request $request)
+    {
+        $request->validate([
+            'att_id' => 'required|exists:ATTENDANCE,att_id',
+            'status_validasi' => 'required|in:Valid,Invalid',
+            'catatan_validasi' => 'nullable|string|max:500'
+        ]);
+
+        // Ambil ID Karyawan dari user Manajemen yang sedang login
+        $manajemenEmpId = Auth::user()->employee->emp_id;
+
+        Validation::create([
+            'att_id' => $request->att_id,
+            'admin_id' => $manajemenEmpId, // Disimpan sebagai validator
+            'status_validasi_otomatis' => $request->status_validasi,
+            'status_validasi_final' => $request->status_validasi,
+            'catatan_admin' => $request->catatan_validasi,
+            'timestamp_validasi' => now()
+        ]);
+
+        return redirect()->route('manajemen.validasi.show')
+                         ->with('success', 'Validasi absensi berhasil disimpan.');
+    }
+
+    public function submitValidasiIzin(Request $request)
+    {
+        $request->validate([
+            'leave_id' => 'required|exists:leaves,leave_id',
+            'status' => 'required|in:disetujui,ditolak',
+            'catatan_admin' => 'nullable|string|max:500',
+        ]);
+
+        $leave = Leave::findOrFail($request->leave_id);
+        $leave->status = $request->status;
+        $leave->catatan_admin = $request->catatan_admin;
+        $leave->save();
+
+        $pesan = $request->status == 'disetujui' ? 'Izin berhasil disetujui.' : 'Izin telah ditolak.';
+
+        return redirect()->route('manajemen.validasi.show')
+                         ->with('success', $pesan);
+    }
+
     /**
-     * Menampilkan Halaman Laporan
+     * Menampilkan Halaman Tabel Laporan
      */
     public function showLaporanPage(Request $request)
     {
@@ -89,7 +157,7 @@ class ManajemenController extends Controller
     }
 
     /**
-     * Export CSV Laporan (Sama seperti Admin tapi akses Manajemen)
+     * Export CSV Laporan
      */
     public function exportLaporan(Request $request)
     {
@@ -110,10 +178,10 @@ class ManajemenController extends Controller
             "Expires" => "0"
         ];
 
-        // ✅ UPDATE: Ambil Pengaturan Jam Kerja dari Database
+        // Ambil Pengaturan Jam Kerja dari DB
         $workArea = WorkArea::find(1);
-        $jamMasukBatas = '08:00:00'; // Default Fallback
-        $hariKerjaAktif = [1, 2, 3, 4, 5]; // Default Senin-Jumat
+        $jamMasukBatas = '08:00:00'; 
+        $hariKerjaAktif = [1, 2, 3, 4, 5];
 
         if ($workArea && !empty($workArea->jam_kerja)) {
             $config = $workArea->jam_kerja;
@@ -126,7 +194,6 @@ class ManajemenController extends Controller
         $callback = function() use ($listKaryawan, $startDate, $endDate, $jamMasukBatas, $hariKerjaAktif) {
             $file = fopen('php://output', 'w');
             
-            // Helper Sanitasi
             $sanitize = function ($value) {
                 if (is_string($value) && preg_match('/^[\=\+\-\@]/', $value)) {
                     return "'" . $value;
@@ -144,9 +211,7 @@ class ManajemenController extends Controller
 
                 $totalHadir = $kehadiran->count();
                 
-                // ✅ UPDATE: Hitung Terlambat Dinamis
                 $totalTerlambat = $kehadiran->filter(function ($att) use ($jamMasukBatas) {
-                    // Bandingkan jam unggah dengan jam masuk dari DB
                     return $att->waktu_unggah->format('H:i:s') > $jamMasukBatas;
                 })->count();
 
@@ -157,11 +222,9 @@ class ManajemenController extends Controller
                           ->orWhereBetween('tanggal_selesai', [$startDate, $endDate]);
                     })->count();
 
-                // ✅ UPDATE: Hitung Hari Kerja Dinamis
                 $countDays = 0;
                 $curr = $startDate->copy();
                 while ($curr->lte($endDate)) {
-                    // Cek apakah hari ini (0-6) ada dalam daftar hari kerja aktif
                     if (in_array($curr->dayOfWeek, $hariKerjaAktif)) {
                         $countDays++;
                     }
@@ -184,25 +247,29 @@ class ManajemenController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
-<<<<<<< HEAD
-}
-=======
 
-    // 1. HALAMAN UNGGAH
+    // 1. HALAMAN UNGGAH (MANAJEMEN JUGA BISA ABSEN)
     public function showUnggah()
     {
         $user = auth()->user();
-        if (!$user->employee) return back()->with('error', 'Akun Admin ini belum terhubung ke data Karyawan.');
+        if (!$user->employee) return back()->with('error', 'Akun Manajemen ini belum terhubung ke data Karyawan.');
 
         $today = Carbon::today();
         $absensiMasuk = Attendance::where('emp_id', $user->employee->emp_id)->whereDate('waktu_unggah', $today)->where('type', 'masuk')->first();
         $absensiPulang = Attendance::where('emp_id', $user->employee->emp_id)->whereDate('waktu_unggah', $today)->where('type', 'pulang')->first();
         
-        $workArea = WorkArea::select('radius_geofence', DB::raw('ST_X(koordinat_pusat) as latitude'), DB::raw('ST_Y(koordinat_pusat) as longitude'))->first();
+        // Ambil work area lengkap dengan jam kerja
+        $workArea = WorkArea::select(
+            'radius_geofence', 
+            'jam_kerja', // ✅ Penting untuk tampilan
+            DB::raw('ST_X(koordinat_pusat) as latitude'), 
+            DB::raw('ST_Y(koordinat_pusat) as longitude')
+        )->first();
 
         return view('manajemen.absensi.unggah', compact('absensiMasuk', 'absensiPulang', 'workArea'));
     }
 
+    // 2. SIMPAN ABSENSI
     public function storeFoto(Request $request)
     {
         $request->validate([
@@ -214,25 +281,25 @@ class ManajemenController extends Controller
 
         $file = $request->file('foto_absensi');
 
-        // --- 1. DETEKSI WAJAH (Python) ---
+        // Deteksi Wajah
         if (! $this->detectFace($file->getRealPath())) {
-            return redirect()->back()->with('error', 'VALIDASI WAJAH GAGAL: Sistem AI tidak menemukan wajah. Pastikan pencahayaan cukup.');
+            return redirect()->back()->with('error', 'VALIDASI WAJAH GAGAL: Sistem AI tidak menemukan wajah.');
         }
 
-        // --- 2. DEVICE LOCK ---
+        // Device Lock
         $deviceOwner = $request->cookie('device_owner_id');
         $currentUserId = auth()->user()->employee->emp_id;
         if ($deviceOwner && $deviceOwner != $currentUserId) {
             return redirect()->back()->with('error', 'KEAMANAN: Perangkat ini terdaftar atas nama karyawan lain.');
         }
 
-        // --- 3. DUPLIKASI FILE ---
+        // Cek Duplikasi
         $fileHash = md5_file($file->getRealPath());
         if (Attendance::where('file_hash', $fileHash)->exists()) {
             return redirect()->back()->with('error', 'Foto ini sudah pernah digunakan sebelumnya.');
         }
 
-        // --- 4. GEOFENCING ---
+        // Geofencing
         $workArea = WorkArea::select(
             'area_id', 'radius_geofence',
             DB::raw('ST_X(koordinat_pusat) as latitude'),
@@ -247,7 +314,7 @@ class ManajemenController extends Controller
             return redirect()->back()->with('error', "Anda berada di luar jangkauan kantor ($jarak meter).");
         }
 
-        // --- 5. SIMPAN DATA ---
+        // Simpan Data
         $fileName = $currentUserId . '-' . now()->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
         $path = $file->storeAs('public/absensi', $fileName);
         $publicPath = Storage::url($path);
@@ -274,41 +341,31 @@ class ManajemenController extends Controller
     }
 
     // 3. HALAMAN RIWAYAT
-public function showRiwayat()
+    public function showRiwayat()
     {
         $user = auth()->user();
         
-        // Pastikan data karyawan ada
         if (!$user->employee) {
             return redirect()->route('manajemen.dashboard')->with('error', 'Data karyawan tidak ditemukan.');
         }
         
         $karyawan = $user->employee; 
 
-        // 1. Ambil Data Absensi
         $riwayatAbsensi = Attendance::with('validation')
             ->where('emp_id', $karyawan->emp_id)
             ->orderBy('waktu_unggah', 'desc')
             ->get();
         
-        // 2. Hitung Statistik
         $izinCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'izin')->where('status', 'disetujui')->count();
         $sakitCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'sakit')->where('status', 'disetujui')->count();
         $cutiCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'cuti')->where('status', 'disetujui')->count();
 
-        // 3. ✅ [INI YANG KEMARIN HILANG] Ambil Data Riwayat Izin
         $riwayatIzin = Leave::where('emp_id', $karyawan->emp_id)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Kirim semua variabel ke View (tambahkan 'riwayatIzin')
         return view('manajemen.absensi.riwayat', compact(
-            'riwayatAbsensi', 
-            'karyawan', 
-            'izinCount', 
-            'sakitCount', 
-            'cutiCount',
-            'riwayatIzin' // <-- Wajib ada!
+            'riwayatAbsensi', 'karyawan', 'izinCount', 'sakitCount', 'cutiCount', 'riwayatIzin'
         ));
     }
 
@@ -319,10 +376,9 @@ public function showRiwayat()
         return view('manajemen.absensi.izin', compact('riwayatIzin'));
     }
 
-// --- FITUR PENGAJUAN IZIN ADMIN ---
+    // 5. SIMPAN PENGAJUAN IZIN
     public function storeIzin(Request $request)
     {
-        // Validasi Input
         $request->validate([
             'tipe_izin' => 'required|in:sakit,izin,cuti',
             'tanggal_mulai' => 'required|date',
@@ -333,14 +389,9 @@ public function showRiwayat()
             'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.'
         ]);
 
-        // Ambil ID Karyawan dari User yang Login
-        $user = Auth::user();
-        if (!$user->employee) {
-            return redirect()->back()->with('error', 'Data karyawan tidak ditemukan. Hubungi IT.');
-        }
-        $empId = $user->employee->emp_id;
+        $empId = auth()->user()->employee->emp_id;
 
-        // Cek Izin Ganda (Overlap)
+        // Cek Overlap
         $checkOverlap = Leave::where('emp_id', $empId)
             ->where('status', '!=', 'ditolak')
             ->where(function($q) use ($request) {
@@ -358,7 +409,6 @@ public function showRiwayat()
             return redirect()->back()->withInput()->withErrors(['tanggal_mulai' => 'Anda sudah memiliki pengajuan pada tanggal tersebut.']);
         }
 
-        // Proses Upload File Bukti
         $filePath = null;
         if ($request->hasFile('file_bukti')) {
             $file = $request->file('file_bukti');
@@ -367,7 +417,6 @@ public function showRiwayat()
             $filePath = Storage::url($path);
         }
 
-        // Simpan ke Database
         Leave::create([
             'emp_id' => $empId,
             'tipe_izin' => $request->tipe_izin,
@@ -375,11 +424,53 @@ public function showRiwayat()
             'tanggal_selesai' => $request->tanggal_selesai,
             'deskripsi' => $request->deskripsi,
             'file_bukti' => $filePath,
-            'status' => 'pending' // Default status
+            'status' => 'pending'
         ]);
 
-        // Redirect Kembali ke Halaman Izin Admin
         return redirect()->route('manajemen.izin.show')->with('success', 'Pengajuan izin berhasil dikirim.');
     }
+
+    // --- HELPER FUNCTIONS (Face Detect, Haversine, GPS) ---
+
+    private function detectFace($imagePath)
+    {
+        try {
+            $scriptPath = base_path('app/Python/detect_face.py');
+            $pythonCmd = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'python' : 'python3';
+            $command = "$pythonCmd " . escapeshellarg($scriptPath) . " " . escapeshellarg($imagePath) . " 2>&1";
+            $output = shell_exec($command);
+            $result = trim($output);
+
+            if ($result === 'true') return true;
+            
+            Log::warning("Face Detect Failed/Error: " . $result);
+            return false;
+        } catch (\Exception $e) {
+            Log::error("Face Detect Exception: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function haversineDistance($lat1, $lon1, $lat2, $lon2) {
+        $earthRadius = 6371000;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $earthRadius * $c;
+    }
+
+    private function gpsDmsToDecimal($dmsArray, $ref) {
+        $evalCoordPart = function ($coordPart) {
+            $parts = explode('/', $coordPart);
+            if (count($parts) == 2) { return $parts[1] == 0 ? 0 : $parts[0] / $parts[1]; }
+            return (float)$parts[0];
+        };
+        $degrees = $evalCoordPart($dmsArray[0]);
+        $minutes = $evalCoordPart($dmsArray[1]);
+        $seconds = $evalCoordPart($dmsArray[2]);
+        $decimal = $degrees + ($minutes / 60) + ($seconds / 3600);
+        if ($ref == 'S' || $ref == 'W') { return -$decimal; }
+        return $decimal;
+    }
 }
->>>>>>> 0de02d40c9dffccc6b9542015d2e8d4c901e8ee0
