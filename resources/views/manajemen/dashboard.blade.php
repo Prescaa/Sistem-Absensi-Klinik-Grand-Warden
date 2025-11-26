@@ -76,7 +76,7 @@
             {{-- FITUR BARU: GRAFIK TREN KEHADIRAN (Placeholder Analisis) --}}
             <div class="card shadow-sm border-0 mb-4 flex-grow-1">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="fw-bold mb-0">Tren Kehadiran Minggu Ini</h5>
+                    <h5 class="fw-bold mb-0 text-dark-emphasis">Tren Kehadiran Minggu Ini</h5>
                     <small class="text-muted">Analisis Produktivitas</small>
                 </div>
                 <div class="card-body p-4 d-flex align-items-end justify-content-around" style="height: 300px;">
@@ -116,7 +116,7 @@
                         <i class="bi bi-file-earmark-spreadsheet-fill text-success display-1"></i>
                     </div>
 
-                    <h4 class="fw-bold mb-2 text-body">Laporan Kehadiran</h4>
+                    <h4 class="fw-bold mb-2 text-body text-dark-emphasis">Laporan Kehadiran</h4>
                     <p class="text-muted mb-4 small">
                         Unduh rekapitulasi data absensi karyawan untuk keperluan evaluasi dan penggajian.
                     </p>
@@ -204,19 +204,32 @@
 
     .dark-mode .text-dark-emphasis { color: #e0e0e0 !important; }
     .dark-mode .text-body { color: #e0e0e0 !important; }
+    
     .dark-mode .card { background-color: #1e1e1e !important; border: 1px solid #333; }
+    
+    /* FIX: Memaksa bg-white menjadi gelap di dark mode */
+    .dark-mode .bg-white { background-color: #1e1e1e !important; color: #fff !important; }
+    
+    .dark-mode .card-header {
+        background-color: #252525 !important;
+        border-bottom-color: #444 !important;
+        color: #fff !important;
+    }
+    
+    .dark-mode .text-muted { color: #aaa !important; }
 
     /* Modal di Dark Mode */
     .dark-mode .modal-content { background-color: #1e1e1e; color: #fff; }
     .dark-mode .modal-footer.bg-light { background-color: #252525 !important; }
     .dark-mode .btn-close { filter: invert(1); }
     .dark-mode .form-control { background-color: #2b2b2b; border-color: #444; color: #fff; }
+    .dark-mode .btn-light { background-color: #333; border-color: #444; color: #fff; }
+    .dark-mode .btn-light:hover { background-color: #444; }
 </style>
 @endpush
 
 @push('scripts')
 <script>
-    
     document.addEventListener('DOMContentLoaded', function() {
         // --- SKRIP JAM ---
         function updateClock() {

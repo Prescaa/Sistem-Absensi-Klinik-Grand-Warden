@@ -14,16 +14,52 @@
             border: 1px solid #ddd;
             z-index: 1;
         }
+        
+        /* FIX PETA DARK MODE */
+        .dark-mode .leaflet-tile-pane {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+        }
+        .dark-mode .leaflet-marker-pane, 
+        .dark-mode .leaflet-popup-pane,
+        .dark-mode .leaflet-overlay-pane {
+            filter: none !important;
+        }
+        
+        /* CSS Dark Mode untuk Form */
+        .dark-mode .card {
+            background-color: #1e1e1e !important;
+            border-color: #333 !important;
+            color: #e0e0e0 !important;
+        }
+        .dark-mode .card-header {
+            background-color: #252525 !important;
+            border-bottom-color: #333 !important;
+            color: #fff !important;
+        }
+        .dark-mode .form-control {
+            background-color: #2b2b2b !important;
+            border-color: #444 !important;
+            color: #fff !important;
+        }
+        .dark-mode .form-control[readonly] {
+            background-color: #333 !important;
+            color: #aaa !important;
+        }
+        .dark-mode .text-primary {
+            color: #6ea8fe !important;
+        }
+        .dark-mode .bg-light {
+            background-color: #2b2b2b !important;
+        }
+        .dark-mode .form-text {
+            color: #aaa !important;
+        }
     </style>
 @endpush
 
 @section('content')
 <div class="container-fluid">
-    
-    {{-- Notifikasi session dihapus di sini --}}
-
     <div class="row">
-
         {{-- KOLOM KIRI --}}
         <div class="col-lg-5">
             <div class="card shadow-sm border-0 mb-4">
@@ -40,39 +76,27 @@
                         </h6>
                         <div class="mb-3">
                             <label for="nama_area" class="form-label small fw-bold">Nama Area</label>
-                            {{-- VALIDASI PESAN --}}
                             <input type="text" class="form-control" id="nama_area" name="nama_area"
-                                   value="{{ $lokasi->nama_area ?? 'Klinik Grand Warden' }}" required
-                                   oninvalid="this.setCustomValidity('Kolom ini wajib diisi.')"
-                                   oninput="this.setCustomValidity('')">
+                                   value="{{ $lokasi->nama_area ?? 'Klinik Grand Warden' }}" required>
                         </div>
 
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Latitude</label>
-                                {{-- VALIDASI PESAN --}}
                                 <input type="text" class="form-control bg-light" id="latitude" name="latitude"
-                                       value="{{ $lokasi->latitude ?? '' }}" required readonly
-                                       oninvalid="this.setCustomValidity('Pilih titik pada peta.')"
-                                       oninput="this.setCustomValidity('')">
+                                       value="{{ $lokasi->latitude ?? '' }}" required readonly>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Longitude</label>
-                                {{-- VALIDASI PESAN --}}
                                 <input type="text" class="form-control bg-light" id="longitude" name="longitude"
-                                       value="{{ $lokasi->longitude ?? '' }}" required readonly
-                                       oninvalid="this.setCustomValidity('Pilih titik pada peta.')"
-                                       oninput="this.setCustomValidity('')">
+                                       value="{{ $lokasi->longitude ?? '' }}" required readonly>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="radius" class="form-label small fw-bold">Radius (Meter)</label>
-                            {{-- VALIDASI PESAN --}}
                             <input type="number" class="form-control" id="radius" name="radius"
-                                   value="{{ $lokasi->radius_geofence ?? 100 }}" required
-                                   oninvalid="this.setCustomValidity('Tentukan radius geofence.')"
-                                   oninput="this.setCustomValidity('')">
+                                   value="{{ $lokasi->radius_geofence ?? 100 }}" required>
                         </div>
 
                         <hr class="my-4">
@@ -92,19 +116,13 @@
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Masuk (Max)</label>
-                                {{-- VALIDASI PESAN --}}
                                 <input type="time" class="form-control" id="jam_masuk" name="jam_masuk"
-                                       value="{{ $jamMasuk }}" required
-                                       oninvalid="this.setCustomValidity('Tentukan jam masuk.')"
-                                       oninput="this.setCustomValidity('')">
+                                       value="{{ $jamMasuk }}" required>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Pulang (Min)</label>
-                                {{-- VALIDASI PESAN --}}
                                 <input type="time" class="form-control" id="jam_pulang" name="jam_pulang"
-                                       value="{{ $jamPulang }}" required
-                                       oninvalid="this.setCustomValidity('Tentukan jam pulang.')"
-                                       oninput="this.setCustomValidity('')">
+                                       value="{{ $jamPulang }}" required>
                             </div>
                         </div>
 
@@ -163,7 +181,6 @@
             const initialRadius = parseFloat(radiusInput.value) || 100;
             const initialCenter = [initialLat, initialLng];
 
-            // Fallback value jika kosong
             if(!latInput.value) latInput.value = initialLat;
             if(!lngInput.value) lngInput.value = initialLng;
 

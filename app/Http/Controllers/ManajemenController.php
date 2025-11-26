@@ -7,12 +7,12 @@ use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\Leave;
 use App\Models\WorkArea;
-use App\Models\Validation; // Tambahkan ini
+use App\Models\Validation;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth; // Tambahkan ini
-use Illuminate\Support\Facades\Storage; // Tambahkan ini
-use Illuminate\Support\Facades\Log; // Tambahkan ini
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class ManajemenController extends Controller
 {
@@ -26,9 +26,9 @@ class ManajemenController extends Controller
         // 1. Statistik Utama
         $totalEmployees = Employee::count();
 
-        // FIX: Remove 'where type = masuk' to count anyone who has uploaded ANY attendance today
+        // Hitung kehadiran hari ini (unik per orang)
         $presentCount = Attendance::whereDate('waktu_unggah', $today)
-            ->distinct('emp_id') // Keep distinct to count people, not photos
+            ->distinct('emp_id')
             ->count('emp_id');
 
         $izinCount = Leave::where('tipe_izin', 'izin')
@@ -51,7 +51,6 @@ class ManajemenController extends Controller
             $date = Carbon::today()->subDays($i);
             $labels[] = $date->format('d M');
 
-            // FIX: Terapkan filter yang sama untuk grafik
             $count = Attendance::whereDate('waktu_unggah', $date)
                 ->where('type', 'masuk')
                 ->whereDoesntHave('validation', function ($q) {
@@ -73,57 +72,72 @@ class ManajemenController extends Controller
         ]);
     }
 
+    /**
+     * Halaman Validasi (Absensi & Izin)
+     */
     public function showValidasiPage()
     {
-        $currentEmpId = Auth::user()->employee->emp_id ?? 0;
-
-        // Ambil data pending (kecuali milik sendiri)
-        $pendingAttendances = Attendance::whereDoesntHave('validation')
-            ->where('emp_id', '!=', $currentEmpId)
-            ->with('employee')
-            ->orderBy('waktu_unggah', 'asc')
+        // Ambil absensi yang BELUM punya validasi (Karyawan biasa)
+        // ATAU absensi yang SUDAH punya validasi TAPI statusnya masih 'Pending' (Kasus Manajer)
+        $pendingAttendances = Attendance::with('employee')
+            ->where(function($query) {
+                // Kondisi 1: Belum ada row validasi sama sekali
+                $query->whereDoesntHave('validation')
+                // Kondisi 2: Ada row validasi, tapi status finalnya Pending
+                      ->orWhereHas('validation', function($q) {
+                          $q->where('status_validasi_final', 'Pending');
+                      });
+            })
+            ->orderBy('waktu_unggah', 'asc') // Yang terlama di atas agar segera diproses
             ->get();
 
         $pendingLeaves = Leave::where('status', 'pending')
-            ->where('emp_id', '!=', $currentEmpId)
             ->with('employee')
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // Kirim variabel dengan nama sesuai view lama/baru
         return view('manajemen.validasi', [
             'pendingAbsensi' => $pendingAttendances,
             'pendingIzin' => $pendingLeaves
         ]);
     }
 
+    /**
+     * Submit Validasi Absensi
+     */
     public function submitValidasi(Request $request)
     {
         $request->validate([
-            'att_id' => 'required|exists:attendance,att_id', // Sesuaikan nama tabel jika perlu (biasanya case insensitive di MySQL Windows, tapi hati-hati di Linux)
+            'att_id' => 'required|exists:ATTENDANCE,att_id',
             'status_validasi' => 'required|in:Valid,Invalid',
             'catatan_validasi' => 'nullable|string|max:500'
         ]);
 
         $att = Attendance::findOrFail($request->att_id);
 
-        // 🔥 LOGIKA BARU: Cek Self-Validation
+        // PROTEKSI: Manajer tidak boleh memvalidasi absensinya sendiri
         if ($att->emp_id == Auth::user()->employee->emp_id) {
-            return redirect()->back()->with('error', 'Anda tidak dapat memvalidasi absensi milik sendiri.');
+            return redirect()->back()->with('error', 'AKSES DITOLAK: Anda tidak dapat memvalidasi absensi milik sendiri.');
         }
 
-        Validation::create([
-            'att_id' => $request->att_id,
-            'admin_id' => Auth::user()->employee->emp_id,
-            'status_validasi_otomatis' => $request->status_validasi,
-            'status_validasi_final' => $request->status_validasi,
-            'catatan_admin' => $request->catatan_validasi,
-            'timestamp_validasi' => now()
-        ]);
+        // Update atau Create data validasi
+        Validation::updateOrCreate(
+            ['att_id' => $request->att_id],
+            [
+                'admin_id' => Auth::user()->employee->emp_id,
+                'status_validasi_otomatis' => $request->status_validasi, // Override status AI
+                'status_validasi_final' => $request->status_validasi,
+                'catatan_admin' => $request->catatan_validasi,
+                'timestamp_validasi' => now()
+            ]
+        );
 
         return redirect()->back()->with('success', 'Validasi absensi berhasil disimpan.');
     }
 
+    /**
+     * Submit Approval Izin
+     */
     public function submitValidasiIzin(Request $request)
     {
         $request->validate([
@@ -134,9 +148,9 @@ class ManajemenController extends Controller
 
         $leave = Leave::findOrFail($request->leave_id);
 
-        // 🔥 LOGIKA BARU: Cek Self-Approval
+        // PROTEKSI: Manajer tidak boleh menyetujui izin sendiri
         if ($leave->emp_id == Auth::user()->employee->emp_id) {
-            return redirect()->back()->with('error', 'Anda tidak dapat menyetujui izin milik sendiri.');
+            return redirect()->back()->with('error', 'AKSES DITOLAK: Anda tidak dapat menyetujui izin milik sendiri.');
         }
 
         $leave->status = $request->status;
@@ -148,17 +162,29 @@ class ManajemenController extends Controller
     }
 
     /**
-     * Menampilkan Halaman Tabel Laporan
+     * Menampilkan Halaman Tabel Laporan dengan FILTER & SORTING
      */
     public function showLaporanPage(Request $request)
     {
-        $query = Attendance::with(['employee', 'validation'])->orderBy('waktu_unggah', 'desc');
+        $query = Attendance::with(['employee', 'validation']);
+
+        // 1. Filter Tanggal
         if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('waktu_unggah', [Carbon::parse($request->start_date)->startOfDay(), Carbon::parse($request->end_date)->endOfDay()]);
+            $query->whereBetween('waktu_unggah', [
+                Carbon::parse($request->start_date)->startOfDay(), 
+                Carbon::parse($request->end_date)->endOfDay()
+            ]);
         } else {
+            // Default: Bulan ini
             $query->whereMonth('waktu_unggah', Carbon::now()->month);
         }
+
+        // 2. Fitur Sorting (Terbaru / Terlama)
+        $sortOrder = $request->input('sort_by', 'desc'); // Default Descending (Terbaru)
+        $query->orderBy('waktu_unggah', $sortOrder);
+
         $attendances = $query->get();
+
         return view('manajemen.laporan', compact('attendances'));
     }
 
@@ -184,7 +210,7 @@ class ManajemenController extends Controller
             "Expires" => "0"
         ];
 
-        // Ambil Pengaturan Jam Kerja dari DB
+        // Ambil Konfigurasi Jam Kerja
         $workArea = WorkArea::find(1);
         $jamMasukBatas = '08:00:00';
         $hariKerjaAktif = [1, 2, 3, 4, 5];
@@ -254,7 +280,7 @@ class ManajemenController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    // 1. HALAMAN UNGGAH (MANAJEMEN JUGA BISA ABSEN)
+    // 1. HALAMAN UNGGAH (MANAJEMEN)
     public function showUnggah()
     {
         $user = auth()->user();
@@ -264,10 +290,9 @@ class ManajemenController extends Controller
         $absensiMasuk = Attendance::where('emp_id', $user->employee->emp_id)->whereDate('waktu_unggah', $today)->where('type', 'masuk')->first();
         $absensiPulang = Attendance::where('emp_id', $user->employee->emp_id)->whereDate('waktu_unggah', $today)->where('type', 'pulang')->first();
 
-        // Ambil work area lengkap dengan jam kerja
         $workArea = WorkArea::select(
             'radius_geofence',
-            'jam_kerja', // ✅ Penting untuk tampilan
+            'jam_kerja',
             DB::raw('ST_X(koordinat_pusat) as latitude'),
             DB::raw('ST_Y(koordinat_pusat) as longitude')
         )->first();
@@ -287,25 +312,21 @@ class ManajemenController extends Controller
 
         $file = $request->file('foto_absensi');
 
-        // Deteksi Wajah
         if (! $this->detectFace($file->getRealPath())) {
             return redirect()->back()->with('error', 'VALIDASI WAJAH GAGAL: Sistem AI tidak menemukan wajah.');
         }
 
-        // Device Lock
         $deviceOwner = $request->cookie('device_owner_id');
         $currentUserId = auth()->user()->employee->emp_id;
         if ($deviceOwner && $deviceOwner != $currentUserId) {
             return redirect()->back()->with('error', 'KEAMANAN: Perangkat ini terdaftar atas nama karyawan lain.');
         }
 
-        // Cek Duplikasi
         $fileHash = md5_file($file->getRealPath());
         if (Attendance::where('file_hash', $fileHash)->exists()) {
             return redirect()->back()->with('error', 'Foto ini sudah pernah digunakan sebelumnya.');
         }
 
-        // Geofencing
         $workArea = WorkArea::select(
             'area_id', 'radius_geofence',
             DB::raw('ST_X(koordinat_pusat) as latitude'),
@@ -320,7 +341,6 @@ class ManajemenController extends Controller
             return redirect()->back()->with('error', "Anda berada di luar jangkauan kantor ($jarak meter).");
         }
 
-        // Simpan Data
         $fileName = $currentUserId . '-' . now()->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
         $path = $file->storeAs('public/absensi', $fileName);
         $publicPath = Storage::url($path);
@@ -350,10 +370,7 @@ class ManajemenController extends Controller
     public function showRiwayat()
     {
         $user = auth()->user();
-
-        if (!$user->employee) {
-            return redirect()->route('manajemen.dashboard')->with('error', 'Data karyawan tidak ditemukan.');
-        }
+        if (!$user->employee) return redirect()->route('manajemen.dashboard')->with('error', 'Data karyawan tidak ditemukan.');
 
         $karyawan = $user->employee;
 
@@ -366,9 +383,7 @@ class ManajemenController extends Controller
         $sakitCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'sakit')->where('status', 'disetujui')->count();
         $cutiCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'cuti')->where('status', 'disetujui')->count();
 
-        $riwayatIzin = Leave::where('emp_id', $karyawan->emp_id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $riwayatIzin = Leave::where('emp_id', $karyawan->emp_id)->orderBy('created_at', 'desc')->get();
 
         return view('manajemen.absensi.riwayat', compact(
             'riwayatAbsensi', 'karyawan', 'izinCount', 'sakitCount', 'cutiCount', 'riwayatIzin'
@@ -391,13 +406,10 @@ class ManajemenController extends Controller
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'deskripsi' => 'required|string|max:500',
             'file_bukti' => 'required_if:tipe_izin,sakit|file|mimes:jpg,jpeg,png,pdf|max:2048',
-        ], [
-            'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.'
         ]);
 
         $empId = auth()->user()->employee->emp_id;
 
-        // Cek Overlap
         $checkOverlap = Leave::where('emp_id', $empId)
             ->where('status', '!=', 'ditolak')
             ->where(function($q) use ($request) {
@@ -436,39 +448,24 @@ class ManajemenController extends Controller
         return redirect()->route('manajemen.izin.show')->with('success', 'Pengajuan izin berhasil dikirim.');
     }
 
-    // =========================================================================
-    // ⚠️ COPY 3 FUNGSI DI BAWAH INI KE AdminController.php (Paling Bawah)
-    // =========================================================================
+    // --- HELPER METHODS ---
 
-    /**
-     * Helper 1: Deteksi Wajah via Python
-     */
     private function detectFace($imagePath)
     {
         try {
             $scriptPath = base_path('app/Python/detect_face.py');
-            // Gunakan 'python' untuk Windows, 'python3' untuk Linux/Mac
             $pythonCmd = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'python' : 'python3';
-
             $command = "$pythonCmd " . escapeshellarg($scriptPath) . " " . escapeshellarg($imagePath) . " 2>&1";
             $output = shell_exec($command);
             $result = trim($output);
-
-            // Jika script python mengembalikan "true", berarti wajah terdeteksi
-            if ($result === 'true') return true;
-
-            return false; // Gagal deteksi
-
+            return $result === 'true';
         } catch (\Exception $e) {
-            return false; // Error sistem dianggap gagal
+            return false;
         }
     }
 
-    /**
-     * Helper 2: Hitung Jarak (Haversine Formula)
-     */
     private function haversineDistance($lat1, $lon1, $lat2, $lon2) {
-        $earthRadius = 6371000; // Radius bumi dalam meter
+        $earthRadius = 6371000;
         $dLat = deg2rad($lat2 - $lat1);
         $dLon = deg2rad($lon2 - $lon1);
         $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) * sin($dLon / 2);
@@ -476,9 +473,6 @@ class ManajemenController extends Controller
         return $earthRadius * $c;
     }
 
-    /**
-     * Helper 3: Konversi Koordinat EXIF ke Desimal
-     */
     private function gpsDmsToDecimal($dmsArray, $ref) {
         $evalCoordPart = function ($coordPart) {
             $parts = explode('/', $coordPart);
@@ -493,10 +487,8 @@ class ManajemenController extends Controller
         return $decimal;
     }
 
-    // --- TAMBAHKAN INI DI AdminController ---
     public function checkExif(Request $request)
     {
-        // Validasi File
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:10240',
         ]);
@@ -508,19 +500,16 @@ class ManajemenController extends Controller
         $file = $request->file('foto_absensi');
         $fileHash = md5_file($file->getRealPath());
 
-        // Cek Duplikasi
         if (Attendance::where('file_hash', $fileHash)->exists()) {
             return response()->json(['status' => 'error', 'message' => 'Foto ini sudah pernah dipakai sebelumnya.'], 400);
         }
 
-        // Cek EXIF (Opsional jika server mendukung)
         if (!function_exists('exif_read_data')) {
             return response()->json(['status' => 'success', 'message' => 'Warning: EXIF Server non-aktif, validasi dilewati.']);
         }
 
         $exif = @exif_read_data($file->getRealPath());
 
-        // Pastikan ada GPS
         if (!$exif || empty($exif['GPSLatitude']) || empty($exif['GPSLongitude'])) {
             return response()->json([
                 'status' => 'error',

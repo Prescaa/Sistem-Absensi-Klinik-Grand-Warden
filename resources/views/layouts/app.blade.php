@@ -408,7 +408,8 @@
 
             // --- NOTIFICATION SYSTEM (FIXED) ---
 
-            const serverNotifCount = parseInt("{{ $notifCount ?? 0 }}");
+            // UPDATE: Menghitung jumlah array notifikasi langsung dari variabel Blade
+            const serverNotifCount = {{ count($globalNotifications ?? []) }};
 
             const notifBell = document.querySelector('.notification-bell');
             const notifDrop = document.querySelector('.notification-dropdown');
@@ -438,6 +439,7 @@
                     expires.setDate(expires.getDate() + 30);
                     document.cookie = 'seen_notifications=' + encodeURIComponent(JSON.stringify(updatedSeenNotifications)) + '; expires=' + expires.toUTCString() + '; path=/';
 
+                    // Update Badge Logic
                     const remainingCount = Math.max(0, serverNotifCount - updatedSeenNotifications.length);
 
                     if (notifBadge) {

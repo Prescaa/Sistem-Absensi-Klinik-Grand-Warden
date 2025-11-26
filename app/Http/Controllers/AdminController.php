@@ -173,6 +173,9 @@ class AdminController extends Controller
         return redirect()->back()->with('success', 'Data absensi berhasil dihapus.');
     }
 
+    /* -----------------------------------------------------------------
+     | PERUBAHAN UTAMA: absensi yg diinput admin SELALU pending
+     * -----------------------------------------------------------------*/
     private function handleAttendanceStorage(array $validated, Request $request): \Illuminate\Http\RedirectResponse
     {
         DB::transaction(function () use ($validated, $request) {
@@ -187,16 +190,21 @@ class AdminController extends Controller
                 'nama_file_foto' => $fotoPath,
             ]);
 
+            // SELALU PENDING supaya Manajemen yg menyetujui
             $this->manageValidation(
-            $attendance,
-            $validated['status_validasi'],
-            $validated['catatan_admin'] ?? 'Input Manual Admin'
-        );
+                $attendance,
+                'Pending',
+                'Pending',
+                $validated['catatan_admin'] ?? 'Input Manual Admin'
+            );
         });
 
         return redirect()->back()->with('success', 'Data absensi berhasil ditambahkan dan otomatis disetujui.');
     }
 
+    /* -----------------------------------------------------------------
+     | PERUBAHAN UTAMA: update absensi manual juga SELALU pending
+     * -----------------------------------------------------------------*/
     private function handleAttendanceUpdate(Attendance $attendance, array $validated, Request $request): \Illuminate\Http\RedirectResponse
     {
         DB::transaction(function () use ($attendance, $validated, $request) {
@@ -208,11 +216,13 @@ class AdminController extends Controller
             }
 
             $attendance->save();
+
+            // SELALU PENDING supaya Manajemen yg menyetujui
             $this->manageValidation(
-            $attendance,
-            $validated['status_validasi'],
-            $validated['catatan_admin']
-        );
+                $attendance,
+                'Pending',
+                'validated['catatan_admin']
+            );
         });
 
         return redirect()->back()->with('success', 'Data absensi berhasil diperbarui.');
@@ -629,15 +639,8 @@ class AdminController extends Controller
         }
 
         $today = Carbon::today();
-        $absensiMasuk = Attendance::where('emp_id', $user->employee->emp_id)
-            ->whereDate('waktu_unggah', $today)
-            ->where('type', 'masuk')
-            ->first();
-
-        $absensiPulang = Attendance::where('emp_id', $user->employee->emp_id)
-            ->whereDate('waktu_unggah', $today)
-            ->where('type', 'pulang')
-            ->first();
+        $absensiMasuk = Attendance::where('emp_id', $user->employee->emp_id)->whereDate('waktu_unggah', $today)->where('type', 'masuk')->first();
+        $absensiPulang = Attendance::where('emp_id', $user->employee->emp_id)->whereDate('waktu_unggah', $today)->where('type', 'pulang')->first();
 
         $workArea = WorkArea::select(
             'radius_geofence',
@@ -797,14 +800,7 @@ class AdminController extends Controller
 
     public function showIzin(): \Illuminate\View\View|\Illuminate\Http\RedirectResponse
     {
-        $user = Auth::user();
-
-        if (!$user->employee) {
-            return redirect()->route('admin.dashboard')
-                ->with('error', 'Akun Anda belum terhubung ke data Karyawan.');
-        }
-
-        $riwayatIzin = Leave::where('emp_id', $user->employee->emp_id)
+        $riwayatIzin = Leave::where('emp_id', Auth::user()->employee->emp_id)
             ->orderBy('created_at', 'desc')
             ->get();
 

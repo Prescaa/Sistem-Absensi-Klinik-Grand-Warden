@@ -321,13 +321,30 @@
 
     .dark-mode .text-dark-emphasis { color: #e0e0e0 !important; }
     .dark-mode .text-body { color: #e0e0e0 !important; }
+    
     .dark-mode .card { background-color: #1e1e1e !important; border: 1px solid #333; }
+    .dark-mode .card-header {
+        background-color: #252525 !important;
+        border-bottom-color: #333 !important;
+        color: #fff !important;
+    }
+    .dark-mode .bg-white {
+        background-color: #1e1e1e !important;
+        color: #fff !important;
+    }
+    .dark-mode .text-muted { color: #aaa !important; }
+
+    .dark-mode .list-group-item {
+        border-color: #333 !important;
+        color: #e0e0e0 !important;
+    }
 
     /* Modal di Dark Mode */
     .dark-mode .modal-content { background-color: #1e1e1e; color: #fff; }
-    .dark-mode .modal-footer.bg-light { background-color: #252525 !important; }
+    .dark-mode .modal-footer, .dark-mode .bg-light { background-color: #252525 !important; border-color: #333 !important; }
     .dark-mode .btn-close { filter: invert(1); }
     .dark-mode .form-control { background-color: #2b2b2b; border-color: #444; color: #fff; }
+    .dark-mode input[type="date"] { color-scheme: dark; }
 </style>
 @endpush
 

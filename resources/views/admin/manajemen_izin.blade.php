@@ -122,10 +122,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Karyawan*</label>
-                            {{-- VALIDASI PESAN --}}
-                            <select name="emp_id" class="form-select" required
-                                    oninvalid="this.setCustomValidity('Silakan pilih karyawan dari daftar.')"
-                                    oninput="this.setCustomValidity('')">
+                            <select name="emp_id" class="form-select" required>
                                 <option value="">-- Pilih Karyawan --</option>
                                 @foreach($employees as $emp)
                                     <option value="{{ $emp->emp_id }}">{{ $emp->nama }} ({{ $emp->nip }})</option>
@@ -134,10 +131,7 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Tipe Izin*</label>
-                            {{-- VALIDASI PESAN --}}
-                            <select name="tipe_izin" class="form-select" required
-                                    oninvalid="this.setCustomValidity('Silakan pilih tipe izin.')"
-                                    oninput="this.setCustomValidity('')">
+                            <select name="tipe_izin" class="form-select" required>
                                 <option value="izin">Izin</option>
                                 <option value="sakit">Sakit</option>
                                 <option value="cuti">Cuti</option>
@@ -145,17 +139,11 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Tanggal Mulai*</label>
-                            {{-- VALIDASI PESAN --}}
-                            <input type="date" name="tanggal_mulai" class="form-control" required
-                                   oninvalid="this.setCustomValidity('Tentukan tanggal mulai.')"
-                                   oninput="this.setCustomValidity('')">
+                            <input type="date" name="tanggal_mulai" class="form-control" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Tanggal Selesai*</label>
-                            {{-- VALIDASI PESAN --}}
-                            <input type="date" name="tanggal_selesai" class="form-control" required
-                                   oninvalid="this.setCustomValidity('Tentukan tanggal selesai.')"
-                                   oninput="this.setCustomValidity('')">
+                            <input type="date" name="tanggal_selesai" class="form-control" required>
                         </div>
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold small">Alasan / Deskripsi</label>
@@ -203,10 +191,7 @@
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold small">Tipe Izin</label>
-                            {{-- VALIDASI PESAN --}}
-                            <select name="tipe_izin" id="edit_tipe" class="form-select" required
-                                    oninvalid="this.setCustomValidity('Silakan pilih tipe izin.')"
-                                    oninput="this.setCustomValidity('')">
+                            <select name="tipe_izin" id="edit_tipe" class="form-select" required>
                                 <option value="izin">Izin</option>
                                 <option value="sakit">Sakit</option>
                                 <option value="cuti">Cuti</option>
@@ -214,17 +199,11 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold small">Mulai</label>
-                            {{-- VALIDASI PESAN --}}
-                            <input type="date" name="tanggal_mulai" id="edit_mulai" class="form-control" required
-                                   oninvalid="this.setCustomValidity('Tentukan tanggal mulai.')"
-                                   oninput="this.setCustomValidity('')">
+                            <input type="date" name="tanggal_mulai" id="edit_mulai" class="form-control" required>
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold small">Selesai</label>
-                            {{-- VALIDASI PESAN --}}
-                            <input type="date" name="tanggal_selesai" id="edit_selesai" class="form-control" required
-                                   oninvalid="this.setCustomValidity('Tentukan tanggal selesai.')"
-                                   oninput="this.setCustomValidity('')">
+                            <input type="date" name="tanggal_selesai" id="edit_selesai" class="form-control" required>
                         </div>
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold small">Alasan</label>
@@ -321,4 +300,176 @@
         }
     });
 </script>
+@endpush
+
+@push('styles')
+<style>
+    /* CSS DARK MODE IZIN */
+    .dark-mode .card {
+        background-color: #1e1e1e !important;
+        border-color: #333 !important;
+        color: #e0e0e0 !important;
+    }
+    .dark-mode .card-header {
+        background-color: #252525 !important;
+        border-bottom-color: #333 !important;
+        color: #fff !important;
+    }
+    .dark-mode .bg-white {
+        background-color: #1e1e1e !important;
+        color: #fff !important;
+    }
+    .dark-mode .table {
+        color: #e0e0e0 !important;
+        border-color: #444 !important;
+    }
+    .dark-mode .table-light th {
+        background-color: #252525 !important;
+        border-color: #444 !important;
+        color: #fff !important;
+    }
+    .dark-mode .table tbody td {
+        border-bottom-color: #333 !important;
+        background-color: #1e1e1e !important;
+        color: #e0e0e0 !important; /* PERBAIKAN: Warna teks dalam sel */
+    }
+    .dark-mode .table-hover tbody tr:hover td {
+        background-color: #2a2a2a !important;
+        color: #fff !important;
+    }
+    .dark-mode .text-dark-emphasis { 
+        color: #fff !important; 
+    }
+    .dark-mode .text-muted { 
+        color: #aaa !important; 
+    }
+    
+    /* PERBAIKAN UTAMA: Kolom Alasan dan konten teks */
+    .dark-mode td span.text-truncate {
+        color: #e0e0e0 !important;
+    }
+    .dark-mode .badge.bg-secondary {
+        background-color: #6c757d !important;
+        color: #fff !important;
+    }
+    .dark-mode .badge.bg-success {
+        background-color: #198754 !important;
+        color: #fff !important;
+    }
+    .dark-mode .badge.bg-danger {
+        background-color: #dc3545 !important;
+        color: #fff !important;
+    }
+    
+    /* Badge dengan opacity untuk dark mode */
+    .dark-mode .badge.bg-danger.bg-opacity-10 {
+        background-color: rgba(220, 53, 69, 0.15) !important;
+        color: #ff6b7a !important;
+        border-color: #dc3545 !important;
+    }
+    .dark-mode .badge.bg-info.bg-opacity-10 {
+        background-color: rgba(13, 202, 240, 0.15) !important;
+        color: #6edff6 !important;
+        border-color: #0dcaf0 !important;
+    }
+    .dark-mode .badge.bg-warning.bg-opacity-10 {
+        background-color: rgba(255, 193, 7, 0.15) !important;
+        color: #ffd352 !important;
+        border-color: #ffc107 !important;
+    }
+    
+    /* Modal Styles */
+    .dark-mode .modal-content {
+        background-color: #1e1e1e !important;
+        color: #fff !important;
+        border-color: #444 !important;
+    }
+    .dark-mode .modal-header {
+        border-bottom-color: #444 !important;
+    }
+    .dark-mode .modal-footer, .dark-mode .bg-light {
+        background-color: #252525 !important;
+        border-top-color: #333 !important;
+        color: #e0e0e0 !important;
+    }
+    
+    /* Form Controls */
+    .dark-mode .form-control, .dark-mode .form-select {
+        background-color: #2b2b2b !important;
+        border-color: #444 !important;
+        color: #fff !important;
+    }
+    .dark-mode .form-control:focus, .dark-mode .form-select:focus {
+        background-color: #2b2b2b !important;
+        border-color: #0d6efd !important;
+        color: #fff !important;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+    .dark-mode .form-control::placeholder {
+        color: #888 !important;
+    }
+    .dark-mode .form-control.bg-light {
+        background-color: #333 !important;
+        color: #ccc !important;
+    }
+    .dark-mode input[type="date"] {
+        color-scheme: dark;
+    }
+    
+    /* Buttons */
+    .dark-mode .btn-close { 
+        filter: invert(1); 
+    }
+    .dark-mode .btn-light {
+        background-color: #333 !important;
+        border-color: #444 !important;
+        color: #fff !important;
+    }
+    .dark-mode .btn-light:hover {
+        background-color: #444 !important;
+        border-color: #555 !important;
+    }
+    .dark-mode .btn-outline-warning {
+        color: #ffc107 !important;
+        border-color: #ffc107 !important;
+    }
+    .dark-mode .btn-outline-warning:hover {
+        background-color: #ffc107 !important;
+        color: #000 !important;
+    }
+    .dark-mode .btn-outline-danger {
+        color: #dc3545 !important;
+        border-color: #dc3545 !important;
+    }
+    .dark-mode .btn-outline-danger:hover {
+        background-color: #dc3545 !important;
+        color: #fff !important;
+    }
+    
+    /* Text dalam modal delete */
+    .dark-mode .modal-body strong.text-dark {
+        color: #fff !important;
+    }
+    .dark-mode .modal-body p {
+        color: #e0e0e0 !important;
+    }
+    
+    /* Border dan separator */
+    .dark-mode .border-top {
+        border-top-color: #444 !important;
+    }
+    .dark-mode .text-primary {
+        color: #6ea8fe !important;
+    }
+    
+    /* Label form */
+    .dark-mode .form-label {
+        color: #e0e0e0 !important;
+    }
+    
+    /* Empty state */
+    .dark-mode .text-muted {
+        color: #888 !important;
+    }
+</style>
 @endpush

@@ -211,13 +211,11 @@
         const removeFileBtn = document.getElementById('removeFile');
         const fileNameDisplay = document.getElementById('fileNameDisplay');
 
-        // Ambil Data Kantor dari Elemen Hidden
         const workAreaEl = document.getElementById('work-area-data');
         const OFFICE_LAT = workAreaEl ? parseFloat(workAreaEl.dataset.lat) : 0;
         const OFFICE_LNG = workAreaEl ? parseFloat(workAreaEl.dataset.lng) : 0;
         const OFFICE_RAD = workAreaEl ? parseFloat(workAreaEl.dataset.rad) : 50;
 
-        // --- Logic Drag & Drop + Preview File ---
         function handleFile(file) {
             if (file && file.type.startsWith('image/')) {
                 const reader = new FileReader();
@@ -253,7 +251,6 @@
             uploadPlaceholder.classList.remove('d-none');
         });
 
-        // --- Logic Submit Absensi ---
         window.startAbsensi = function(type) {
             const form = document.getElementById('uploadForm');
             const overlay = document.getElementById('processOverlay');
@@ -275,7 +272,6 @@
             formData.append('foto_absensi', fileInput.files[0]);
             formData.append('_token', '{{ csrf_token() }}');
 
-            // 1. Cek EXIF Data Foto (Server Side Check)
             fetch('{{ route("karyawan.absensi.checkExif") }}', {
                 method: 'POST',
                 body: formData
@@ -286,7 +282,6 @@
                     throw new Error(data.message);
                 }
 
-                // 2. Ambil Lokasi Browser (Client Side Check)
                 loadingTitle.innerText = "Mengambil GPS...";
                 return new Promise((resolve, reject) => {
                     if (!navigator.geolocation) {
@@ -308,32 +303,21 @@
                 const userLat = position.coords.latitude;
                 const userLng = position.coords.longitude;
 
-                // Simpan ke input hidden
                 document.getElementById('browser_lat').value = userLat;
                 document.getElementById('browser_lng').value = userLng;
 
-                // 3. Hitung Jarak (Client Side Check)
                 const distance = haversineDistance(userLat, userLng, OFFICE_LAT, OFFICE_LNG);
-                
-                // LOGGING UNTUK DEBUGGING (Cek Console Browser F12)
-                console.log("===== DEBUG GEOFENCING =====");
-                console.log("User Location:", userLat, userLng);
-                console.log("Office Config:", OFFICE_LAT, OFFICE_LNG);
-                console.log("Calculated Dist:", distance + " meters");
-                console.log("Allowed Radius:", OFFICE_RAD + " meters");
+                console.log(`Jarak User: ${distance}m`);
 
                 if (distance <= OFFICE_RAD) {
                     loadingTitle.innerText = "Mengirim Data...";
                     loadingText.innerText = "Verifikasi berhasil. Menyimpan absensi...";
-                    form.submit(); // Submit Form jika valid
+                    form.submit();
                 } else {
                     overlay.classList.add('d-none');
-                    // Alert yang informatif untuk user
-                    alert(`GAGAL: Anda berada di luar radius kantor.\n\n` + 
-                          `Jarak: ${Math.round(distance)} meter (Max: ${OFFICE_RAD}m).\n` +
-                          `Lokasi Anda: [${userLat.toFixed(6)}, ${userLng.toFixed(6)}]\n` +
-                          `Lokasi Kantor: [${OFFICE_LAT.toFixed(6)}, ${OFFICE_LNG.toFixed(6)}]\n\n` +
-                          `Pastikan Anda berada di lokasi yang benar.`);
+                    // Alert yang lebih singkat
+                    const selisih = Math.round(distance - OFFICE_RAD);
+                    alert(`GAGAL: Anda berada ${selisih} m di luar radius kantor.`);
                 }
             })
             .catch(error => {
@@ -342,9 +326,8 @@
             });
         };
 
-        // Rumus Haversine untuk hitung jarak (meter)
         function haversineDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371000; // Radius bumi dalam meter
+            const R = 6371000;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) +

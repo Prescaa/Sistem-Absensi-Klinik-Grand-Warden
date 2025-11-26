@@ -120,10 +120,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Pilih Karyawan</label>
-                        {{-- VALIDASI PESAN --}}
-                        <select name="emp_id" class="form-select" required
-                                oninvalid="this.setCustomValidity('Silakan pilih karyawan dari daftar.')"
-                                oninput="this.setCustomValidity('')">
+                        <select name="emp_id" class="form-select" required>
                             <option value="">-- Pilih --</option>
                             @foreach($employees as $emp)
                                 <option value="{{ $emp->emp_id }}">{{ $emp->nama }} ({{ $emp->nip }})</option>
@@ -133,17 +130,11 @@
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label fw-bold small">Waktu Absen</label>
-                            {{-- VALIDASI PESAN --}}
-                            <input type="datetime-local" name="waktu_unggah" class="form-control" required value="{{ now()->format('Y-m-d\TH:i') }}"
-                                   oninvalid="this.setCustomValidity('Tentukan waktu absensi.')"
-                                   oninput="this.setCustomValidity('')">
+                            <input type="datetime-local" name="waktu_unggah" class="form-control" required value="{{ now()->format('Y-m-d\TH:i') }}">
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label fw-bold small">Tipe</label>
-                            {{-- VALIDASI PESAN --}}
-                            <select name="type" class="form-select" required
-                                    oninvalid="this.setCustomValidity('Pilih tipe absensi (Masuk/Pulang).')"
-                                    oninput="this.setCustomValidity('')">
+                            <select name="type" class="form-select" required>
                                 <option value="masuk">Masuk</option>
                                 <option value="pulang">Pulang</option>
                             </select>
@@ -193,17 +184,11 @@
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label fw-bold small">Waktu Absen</label>
-                            {{-- VALIDASI PESAN --}}
-                            <input type="datetime-local" name="waktu_unggah" id="edit_waktu" class="form-control" required
-                                   oninvalid="this.setCustomValidity('Tentukan waktu absensi.')"
-                                   oninput="this.setCustomValidity('')">
+                            <input type="datetime-local" name="waktu_unggah" id="edit_waktu" class="form-control" required>
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label fw-bold small">Tipe</label>
-                            {{-- VALIDASI PESAN --}}
-                            <select name="type" id="edit_type" class="form-select" required
-                                    oninvalid="this.setCustomValidity('Pilih tipe absensi.')"
-                                    oninput="this.setCustomValidity('')">
+                            <select name="type" id="edit_type" class="form-select" required>
                                 <option value="masuk">Masuk</option>
                                 <option value="pulang">Pulang</option>
                             </select>
@@ -263,30 +248,80 @@
 </div>
 @endsection
 
+@push('styles')
+<style>
+    /* CSS Dark Mode Absensi */
+    .dark-mode .card {
+        background-color: #1e1e1e !important;
+        border-color: #333 !important;
+        color: #e0e0e0 !important;
+    }
+    .dark-mode .card-header {
+        background-color: #252525 !important;
+        border-bottom-color: #333 !important;
+        color: #fff !important;
+    }
+    .dark-mode .bg-white {
+        background-color: #1e1e1e !important;
+        color: #fff !important;
+    }
+    .dark-mode .table {
+        color: #e0e0e0 !important;
+        border-color: #444 !important;
+    }
+    .dark-mode .table-light th {
+        background-color: #252525 !important;
+        border-color: #444 !important;
+        color: #fff !important;
+    }
+    .dark-mode .table tbody td {
+        border-bottom-color: #333 !important;
+        background-color: #1e1e1e !important;
+    }
+    .dark-mode .table-hover tbody tr:hover td {
+        background-color: #2a2a2a !important;
+    }
+    .dark-mode .text-dark-emphasis { color: #fff !important; }
+    
+    .dark-mode .modal-content {
+        background-color: #1e1e1e !important;
+        color: #fff !important;
+    }
+    .dark-mode .modal-footer, .dark-mode .bg-light {
+        background-color: #252525 !important;
+        border-top-color: #333 !important;
+        color: #e0e0e0 !important;
+    }
+    .dark-mode .form-control, .dark-mode .form-select {
+        background-color: #2b2b2b !important;
+        border-color: #444 !important;
+        color: #fff !important;
+    }
+    .dark-mode input[type="datetime-local"] {
+        color-scheme: dark;
+    }
+    .dark-mode .btn-close { filter: invert(1); }
+</style>
+@endpush
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Edit Modal Logic
         var editModal = document.getElementById('editAbsensiModal');
         if(editModal){
             editModal.addEventListener('show.bs.modal', function(event) {
                 var btn = event.relatedTarget;
                 var id = btn.getAttribute('data-id');
-
                 document.getElementById('editForm').action = '/admin/manajemen-absensi/update/' + id;
                 document.getElementById('edit_nama').value = btn.getAttribute('data-nama');
                 document.getElementById('edit_waktu').value = btn.getAttribute('data-waktu');
                 document.getElementById('edit_type').value = btn.getAttribute('data-type');
-
                 var fotoUrl = btn.getAttribute('data-foto');
                 document.getElementById('edit_preview_foto').src = fotoUrl ? fotoUrl : 'https://via.placeholder.com/50?text=No+Img';
-
                 document.getElementById('edit_status').value = btn.getAttribute('data-status');
                 document.getElementById('edit_catatan').value = btn.getAttribute('data-catatan');
             });
         }
-
-        // Delete Modal Logic
         var deleteModal = document.getElementById('deleteAbsensiModal');
         if(deleteModal){
             deleteModal.addEventListener('show.bs.modal', function(event) {
