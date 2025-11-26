@@ -1,181 +1,169 @@
-@extends('layouts.manajemen_app') {{-- ✅ Menggunakan layout Manajemen --}}
+@extends('layouts.manajemen_app')
 
-@section('page-title', 'Validasi & Persetujuan')
+@section('page-title', 'Validasi & Approval')
 
 @section('content')
-<div class="container-fluid">
+<div class="row">
+    <div class="col-12">
 
-    {{-- TAB NAVIGATION --}}
-    <ul class="nav nav-tabs mb-4" id="validasiTab" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold" id="absensi-tab" data-bs-toggle="tab" data-bs-target="#absensi" type="button" role="tab">
-                <i class="bi bi-camera-fill me-2"></i>Validasi Foto Absensi
-                @if(isset($attendances) && $attendances->count() > 0)
-                    <span class="badge bg-danger ms-2">{{ $attendances->count() }}</span>
-                @endif
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="izin-tab" data-bs-toggle="tab" data-bs-target="#izin" type="button" role="tab">
-                <i class="bi bi-file-medical-fill me-2"></i>Persetujuan Izin/Sakit
-                @if(isset($leaves) && $leaves->count() > 0)
-                    <span class="badge bg-danger ms-2">{{ $leaves->count() }}</span>
-                @endif
-            </button>
-        </li>
-    </ul>
+        <ul class="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm" id="pills-tab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="pills-absensi-tab" data-bs-toggle="pill" data-bs-target="#pills-absensi" type="button">
+                    <i class="bi bi-camera-fill me-2"></i>Validasi Absensi
+                    @if($pendingAbsensi->count() > 0) <span class="badge bg-danger ms-2">{{ $pendingAbsensi->count() }}</span> @endif
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="pills-izin-tab" data-bs-toggle="pill" data-bs-target="#pills-izin" type="button">
+                    <i class="bi bi-envelope-paper-fill me-2"></i>Approval Izin
+                    @if($pendingIzin->count() > 0) <span class="badge bg-danger ms-2">{{ $pendingIzin->count() }}</span> @endif
+                </button>
+            </li>
+        </ul>
 
-    {{-- TAB CONTENT --}}
-    <div class="tab-content" id="validasiTabContent">
+        <div class="tab-content" id="pills-tabContent">
 
-        {{-- === TAB 1: VALIDASI ABSENSI === --}}
-        <div class="tab-pane fade show active" id="absensi" role="tabpanel">
-            @if($attendances->isEmpty())
-                <div class="alert alert-secondary border-0 bg-light text-center py-5">
-                    <i class="bi bi-check-all display-1 text-muted mb-3"></i><br>
-                    <h5 class="text-muted">Tidak ada data absensi yang perlu divalidasi.</h5>
-                </div>
-            @else
-                <div class="row">
-                    @foreach($attendances as $att)
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card shadow-sm h-100 border-0">
-                            <div class="position-relative">
-                                <a href="{{ $att->nama_file_foto }}" target="_blank">
-                                    <img src="{{ $att->nama_file_foto }}" class="card-img-top" alt="Foto Absensi" style="height: 250px; object-fit: cover;">
-                                </a>
-                                <span class="position-absolute top-0 end-0 badge bg-dark m-2 shadow-sm">{{ ucfirst($att->type) }}</span>
-                            </div>
-                            <div class="card-body">
-                                <h5 class="card-title fw-bold mb-1">{{ $att->employee->nama ?? 'Karyawan' }}</h5>
-                                <small class="text-muted d-block mb-3">{{ $att->employee->nip ?? '-' }}</small>
+            <div class="tab-pane fade show active" id="pills-absensi">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Waktu</th>
+                                        <th>Karyawan</th>
+                                        <th>Tipe</th>
+                                        <th>Foto</th>
+                                        <th>Lokasi</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($pendingAbsensi as $att)
+                                    <tr>
+                                        <td>{{ $att->waktu_unggah->format('d M H:i') }}</td>
+                                        <td>
+                                            <div class="fw-bold">{{ $att->employee->nama }}</div>
+                                            <div class="small text-muted">{{ $att->employee->nip }}</div>
+                                        </td>
+                                        <td><span class="badge {{ $att->type == 'masuk' ? 'bg-success' : 'bg-warning text-dark' }}">{{ ucfirst($att->type) }}</span></td>
+                                        <td>
+                                            <img src="{{ asset($att->nama_file_foto) }}" class="rounded" width="50" style="cursor:pointer" data-bs-toggle="modal" data-bs-target="#img{{ $att->att_id }}">
+                                            <div class="modal fade" id="img{{ $att->att_id }}"><div class="modal-dialog"><div class="modal-content"><img src="{{ asset($att->nama_file_foto) }}" class="w-100"></div></div></div>
+                                        </td>
+                                        <td>
+                                            <a href="https://maps.google.com/?q={{ $att->latitude }},{{ $att->longitude }}" target="_blank" class="btn btn-sm btn-outline-info"><i class="bi bi-geo-alt"></i></a>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-2">
+                                                <form action="{{ route('manajemen.validasi.submit') }}" method="POST">
+                                                    @csrf
+                                                    <input type="hidden" name="att_id" value="{{ $att->att_id }}">
+                                                    <input type="hidden" name="status_validasi" value="Invalid">
+                                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tolak absensi ini?')"><i class="bi bi-x-lg"></i></button>
+                                                </form>
+                                                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#acc{{ $att->att_id }}"><i class="bi bi-check-lg"></i></button>
+                                            </div>
 
-                                <ul class="list-unstyled text-muted small mb-3 bg-light p-3 rounded">
-                                    <li class="mb-2"><i class="bi bi-calendar-event me-2 text-primary"></i> {{ $att->waktu_unggah->format('d M Y, H:i:s') }}</li>
-
-                                    <li class="d-flex align-items-start">
-                                        <i class="bi bi-geo-alt me-2 text-danger mt-1"></i>
-                                        <div class="w-100">
-                                            @if(abs($att->latitude) < 0.0001 && abs($att->longitude) < 0.0001)
-                                                <div class="text-danger fw-bold small mb-1">
-                                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Lokasi GPS Hilang
+                                            <div class="modal fade" id="acc{{ $att->att_id }}">
+                                                <div class="modal-dialog">
+                                                    <form action="{{ route('manajemen.validasi.submit') }}" method="POST">
+                                                        @csrf
+                                                        <div class="modal-content">
+                                                            <div class="modal-header"><h6 class="modal-title">Validasi: {{ $att->employee->nama }}</h6></div>
+                                                            <div class="modal-body">
+                                                                <input type="hidden" name="att_id" value="{{ $att->att_id }}">
+                                                                <input type="hidden" name="status_validasi" value="Valid">
+                                                                <div class="mb-3">
+                                                                    <label>Catatan</label>
+                                                                    <input type="text" name="catatan_validasi" class="form-control" placeholder="Opsional">
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer"><button type="submit" class="btn btn-success">Validasi</button></div>
+                                                        </div>
+                                                    </form>
                                                 </div>
-                                            @else
-                                                <a href="https://www.google.com/maps/search/?api=1&query={{ $att->latitude }},{{ $att->longitude }}" target="_blank" class="fw-bold text-decoration-none text-dark hover-primary" title="Buka di Google Maps">
-                                                    {{ number_format($att->latitude, 5) }}, {{ number_format($att->longitude, 5) }}
-                                                    <i class="bi bi-box-arrow-up-right ms-1 small text-primary"></i>
-                                                </a>
-                                                <div class="small text-muted fst-italic mt-1 location-address"
-                                                     data-lat="{{ $att->latitude }}"
-                                                     data-lng="{{ $att->longitude }}"
-                                                     style="line-height: 1.2;">
-                                                    <span class="spinner-border spinner-border-sm text-secondary" style="width: 0.7rem; height: 0.7rem; border-width: 1px;" role="status"></span>
-                                                    <span class="ms-1">Memuat alamat...</span>
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </li>
-                                </ul>
-
-                                {{-- ✅ FORM ACTION DIUBAH KE MANAJEMEN --}}
-                                <form action="{{ route('manajemen.validasi.submit') }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="att_id" value="{{ $att->att_id }}">
-
-                                    <div class="mb-3">
-                                        <textarea name="catatan_validasi" class="form-control form-control-sm" rows="2" placeholder="Catatan validasi (opsional)..."></textarea>
-                                    </div>
-
-                                    <div class="d-flex gap-2">
-                                        {{-- TOMBOL TERIMA / TOLAK --}}
-                                        <button type="submit" name="status_validasi" value="Valid" class="btn btn-success flex-fill btn-sm fw-bold py-2">
-                                            <i class="bi bi-check-lg"></i> Terima
-                                        </button>
-
-                                        <button type="submit" name="status_validasi" value="Invalid" class="btn btn-danger flex-fill btn-sm fw-bold py-2">
-                                            <i class="bi bi-x-lg"></i> Tolak
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr><td colspan="6" class="text-center text-muted py-4">Tidak ada antrean absensi.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    @endforeach
                 </div>
-            @endif
-        </div>
+            </div>
 
-        {{-- === TAB 2: VALIDASI IZIN === --}}
-        <div class="tab-pane fade" id="izin" role="tabpanel">
-            @if($leaves->isEmpty())
-                <div class="alert alert-secondary border-0 bg-light text-center py-5">
-                    <i class="bi bi-emoji-smile display-1 text-muted mb-3"></i><br>
-                    <h5 class="text-muted">Tidak ada pengajuan izin baru.</h5>
-                </div>
-            @else
-                <div class="row">
-                    @foreach($leaves as $leave)
-                    <div class="col-lg-6 mb-4">
-                        <div class="card shadow-sm border-0 h-100">
-                            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                                <div>
-                                    <h6 class="fw-bold mb-0">{{ $leave->employee->nama ?? 'Nama Tidak Ditemukan' }}</h6>
-                                    <small class="text-muted">{{ $leave->employee->nip ?? '-' }}</small>
-                                </div>
-                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">{{ ucfirst($leave->tipe_izin) }}</span>
-                            </div>
-                            <div class="card-body">
-                                <div class="row mb-3">
-                                    <div class="col-md-6 border-end">
-                                        <small class="text-muted d-block">Tanggal Mulai</small>
-                                        <strong class="text-dark">{{ \Carbon\Carbon::parse($leave->tanggal_mulai)->format('d M Y') }}</strong>
-                                    </div>
-                                    <div class="col-md-6 ps-4">
-                                        <small class="text-muted d-block">Tanggal Selesai</small>
-                                        <strong class="text-dark">{{ \Carbon\Carbon::parse($leave->tanggal_selesai)->format('d M Y') }}</strong>
-                                    </div>
-                                </div>
+            <div class="tab-pane fade" id="pills-izin">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Tanggal</th>
+                                        <th>Karyawan</th>
+                                        <th>Jenis</th>
+                                        <th>Ket.</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($pendingIzin as $leave)
+                                    <tr>
+                                        <td>{{ $leave->created_at->format('d M') }}</td>
+                                        <td>
+                                            <div class="fw-bold">{{ $leave->employee->nama }}</div>
+                                            <div class="small text-muted">{{ $leave->employee->nip }}</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge {{ $leave->tipe_izin == 'sakit' ? 'bg-danger' : 'bg-warning text-dark' }}">{{ ucfirst($leave->tipe_izin) }}</span>
+                                            @if($leave->file_bukti) <a href="{{ asset($leave->file_bukti) }}" target="_blank"><i class="bi bi-paperclip"></i></a> @endif
+                                        </td>
+                                        <td class="text-truncate" style="max-width: 150px;">{{ $leave->deskripsi }}</td>
+                                        <td>
+                                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#izin{{ $leave->leave_id }}">Proses</button>
 
-                                <div class="mb-3 bg-light p-3 rounded border">
-                                    <small class="text-muted d-block mb-1 fw-bold"><i class="bi bi-text-left me-1"></i>Alasan:</small>
-                                    <p class="mb-0 fst-italic text-dark">"{{ $leave->deskripsi }}"</p>
-                                </div>
-
-                                @if($leave->file_bukti)
-                                    <div class="mb-3">
-                                        <a href="{{ asset($leave->file_bukti) }}" target="_blank" class="btn btn-outline-primary btn-sm w-100">
-                                            <i class="bi bi-paperclip me-2"></i>Lihat Bukti Dokumen
-                                        </a>
-                                    </div>
-                                @endif
-
-                                <hr>
-
-                                {{-- ✅ FORM ACTION DIUBAH KE MANAJEMEN --}}
-                                <form action="{{ route('manajemen.validasi.izin.submit') }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="leave_id" value="{{ $leave->leave_id }}">
-
-                                    <div class="mb-3">
-                                        <input type="text" name="catatan_admin" class="form-control form-control-sm" placeholder="Catatan persetujuan/penolakan...">
-                                    </div>
-
-                                    <div class="d-flex gap-2">
-                                        {{-- TOMBOL SETUJUI / TOLAK IZIN --}}
-                                        <button type="submit" name="status" value="disetujui" class="btn btn-success flex-fill fw-bold">
-                                            <i class="bi bi-check-circle me-2"></i>Setujui
-                                        </button>
-                                        <button type="submit" name="status" value="ditolak" class="btn btn-danger flex-fill fw-bold">
-                                            <i class="bi bi-x-circle me-2"></i>Tolak
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
+                                            <div class="modal fade" id="izin{{ $leave->leave_id }}">
+                                                <div class="modal-dialog">
+                                                    <form action="{{ route('manajemen.validasi.izin.submit') }}" method="POST">
+                                                        @csrf
+                                                        <div class="modal-content">
+                                                            <div class="modal-header"><h6 class="modal-title">Approval Izin: {{ $leave->employee->nama }}</h6></div>
+                                                            <div class="modal-body">
+                                                                <input type="hidden" name="leave_id" value="{{ $leave->leave_id }}">
+                                                                <div class="mb-3 bg-light p-2 rounded">{{ $leave->deskripsi }}</div>
+                                                                <div class="mb-3">
+                                                                    <label>Keputusan</label>
+                                                                    <select name="status" class="form-select" required>
+                                                                        <option value="disetujui">Setujui</option>
+                                                                        <option value="ditolak">Tolak</option>
+                                                                    </select>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label>Catatan Admin</label>
+                                                                    <textarea name="catatan_admin" class="form-control" rows="2"></textarea>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer"><button type="submit" class="btn btn-primary">Simpan</button></div>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr><td colspan="5" class="text-center text-muted py-4">Tidak ada pengajuan izin.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    @endforeach
                 </div>
-            @endif
+            </div>
+
         </div>
     </div>
 </div>

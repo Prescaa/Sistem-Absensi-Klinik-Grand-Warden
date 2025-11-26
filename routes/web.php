@@ -23,8 +23,9 @@ Route::post('/login', [AuthController::class, 'handleLogin']);
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 
-// --- Rute Karyawan (Pegawai) ---
-Route::middleware(['auth', 'role:karyawan'])->group(function () {
+// --- RUTE PORTAL KARYAWAN (ABSENSI & PERSONAL) ---
+// Perubahan: Middleware ditambahkan 'admin' dan 'manajemen' agar mereka bisa akses
+Route::middleware(['auth', 'role:karyawan,admin,manajemen'])->group(function () {
 
     Route::get('/dashboard', [KaryawanController::class, 'dashboard'])->name('karyawan.dashboard');
     Route::get('/unggah', [KaryawanController::class, 'unggah'])->name('karyawan.unggah');
@@ -32,26 +33,24 @@ Route::middleware(['auth', 'role:karyawan'])->group(function () {
     Route::get('/izin', [KaryawanController::class, 'izin'])->name('karyawan.izin');
     Route::get('/profil', [KaryawanController::class, 'profil'])->name('karyawan.profil');
 
-    // Rute Update & Hapus Foto Karyawan
+    // Rute Update & Hapus Foto Profil (Personal)
     Route::put('/profil/update', [KaryawanController::class, 'updateProfil'])->name('karyawan.profil.update');
     Route::delete('/profil/hapus-foto', [KaryawanController::class, 'deleteFotoProfil'])->name('karyawan.profil.deleteFoto');
 
-    // Rute Absensi
+    // Rute Absensi Personal
     Route::get('/absensi/unggah/{type}', [KaryawanController::class, 'showUploadForm'])->name('karyawan.absensi.unggah');
     Route::post('/karyawan/absensi/check-exif', [KaryawanController::class, 'checkExif'])->name('karyawan.absensi.checkExif');
     Route::post('/absensi/simpan-foto', [KaryawanController::class, 'storeFoto'])->middleware('throttle:5,1')->name('karyawan.absensi.storeFoto');
 
-    // Rute Izin
+    // Rute Izin Personal
     Route::post('/izin/simpan', [KaryawanController::class, 'storeIzin'])->name('karyawan.izin.store');
 });
 
 
-// --- GROUP ADMIN (Fokus Operasional) ---
+// --- GROUP ADMIN (Fokus Operasional & Manajemen Data) ---
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
-
-    // ❌ Rute Validasi DIHAPUS dari sini (Dipindah ke Manajemen)
 
     // CRUD Karyawan
     Route::get('/manajemen-karyawan', [AdminController::class, 'showManajemenKaryawan'])->name('admin.karyawan.index');
@@ -67,45 +66,40 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/laporan', [AdminController::class, 'showLaporan'])->name('admin.laporan.show');
     Route::post('/laporan/export', [AdminController::class, 'exportLaporan'])->name('admin.laporan.export');
 
-    // Profil Admin
+    // Profil Admin (Akun User)
     Route::get('/profil', [ProfileController::class, 'index'])->name('admin.profil');
     Route::post('/profil', [ProfileController::class, 'update'])->name('admin.profil.update');
     Route::delete('/profil/hapus-foto', [ProfileController::class, 'deleteFotoAdmin'])->name('admin.profil.deleteFoto');
 
+    // Manajemen Absensi (CRUD Data Orang Lain)
     Route::get('/manajemen-absensi', [AdminController::class, 'showManajemenAbsensi'])->name('admin.absensi.index');
     Route::post('/manajemen-absensi/store', [AdminController::class, 'storeAbsensi'])->name('admin.absensi.store');
     Route::put('/manajemen-absensi/update/{id}', [AdminController::class, 'updateAbsensi'])->name('admin.absensi.update');
     Route::delete('/manajemen-absensi/destroy/{id}', [AdminController::class, 'destroyAbsensi'])->name('admin.absensi.destroy');
 
-    // --- MANAJEMEN IZIN (CRUD) ---
-    Route::get('/manajemen-izin', [AdminController::class, 'showManajemenIzin'])->name('admin.izin.index');
+    // Manajemen Izin (Approval)
+   Route::get('/manajemen-izin', [AdminController::class, 'showManajemenIzin'])->name('admin.izin.index');
+
+    // ✅ PERBAIKAN: Tambahkan route store untuk admin input izin karyawan
     Route::post('/manajemen-izin/store', [AdminController::class, 'storeIzin'])->name('admin.izin.store');
+
     Route::put('/manajemen-izin/update/{id}', [AdminController::class, 'updateIzin'])->name('admin.izin.update');
     Route::delete('/manajemen-izin/destroy/{id}', [AdminController::class, 'destroyIzin'])->name('admin.izin.destroy');
-
-    // TAMBAHKAN INI:
-    Route::get('/absensi/unggah', [AdminController::class, 'showUnggah'])->name('admin.absensi.unggah');
-    Route::post('/absensi/simpan', [AdminController::class, 'storeFoto'])->name('admin.absensi.storeFoto');
-    Route::get('/absensi/riwayat', [AdminController::class, 'showRiwayat'])->name('admin.absensi.riwayat');
-    Route::get('/izin', [AdminController::class, 'showIzin'])->name('admin.izin.show');
-
-    // RUTE EXIF :
-    Route::post('/absensi/check-exif', [AdminController::class, 'checkExif'])->name('admin.absensi.checkExif');
+    // [DIHAPUS] Rute Absensi Personal Admin (Unggah, Riwayat, Izin Pribadi)
+    // Admin sekarang menggunakan rute '/unggah', '/riwayat' milik group Karyawan di atas.
 });
 
 // --- GROUP MANAJEMEN ---
 Route::middleware(['auth', 'role:manajemen'])->prefix('manajemen')->group(function () {
     Route::get('/dashboard', [ManajemenController::class, 'dashboard'])->name('manajemen.dashboard');
 
-    // ✅ FITUR VALIDASI (Dipindahkan ke sini)
+    // Fitur Validasi
     Route::get('/validasi', [ManajemenController::class, 'showValidasiPage'])->name('manajemen.validasi.show');
     Route::post('/validasi/simpan', [ManajemenController::class, 'submitValidasi'])->name('manajemen.validasi.submit');
     Route::post('/validasi/izin/simpan', [ManajemenController::class, 'submitValidasiIzin'])->name('manajemen.validasi.izin.submit');
 
     // Halaman Laporan Detail (Tabel)
     Route::get('/laporan', [ManajemenController::class, 'showLaporanPage'])->name('manajemen.laporan.index');
-
-    // Export CSV
     Route::post('/laporan/export', [ManajemenController::class, 'exportLaporan'])->name('manajemen.laporan.export');
 
     // Profil Manajemen
@@ -113,46 +107,23 @@ Route::middleware(['auth', 'role:manajemen'])->prefix('manajemen')->group(functi
     Route::post('/profil', [ProfileController::class, 'update'])->name('manajemen.profil.update');
     Route::delete('/profil/hapus-foto', [ProfileController::class, 'deleteFotoAdmin'])->name('manajemen.profil.deleteFoto');
 
-    // TAMBAHKAN INI:
-    Route::get('/absensi/unggah', [ManajemenController::class, 'showUnggah'])->name('manajemen.absensi.unggah');
-    Route::post('/absensi/simpan', [ManajemenController::class, 'storeFoto'])->name('manajemen.absensi.storeFoto');
-    
-    Route::get('/absensi/riwayat', [ManajemenController::class, 'showRiwayat'])->name('manajemen.absensi.riwayat');
-    
-    Route::get('/izin', [ManajemenController::class, 'showIzin'])->name('manajemen.izin.show');
-    Route::post('/izin/simpan', [ManajemenController::class, 'storeIzin'])->name('manajemen.izin.store'); 
-
-        // RUTE EXIF :
-    Route::post('/absensi/check-exif', [ManajemenController::class, 'checkExif'])->name('manajemen.absensi.checkExif');
+    // [DIHAPUS] Rute Absensi Personal Manajemen
+    // Manajemen sekarang menggunakan rute '/unggah', '/riwayat' milik group Karyawan.
 });
 
-// Catatan: Jika ada route lama 'karyawan/unggah' yang konflik, 
-// sebaiknya dikomentari (disable) agar tidak bingung.
-
+// Rute Debugging Python
 Route::get('/debug-python', function () {
-    // 1. Cek apakah fungsi shell_exec aktif
     if (!function_exists('shell_exec')) {
-        return "ERROR: Fungsi shell_exec dimatikan di php.ini. Harap hapus shell_exec dari disable_functions.";
+        return "ERROR: Fungsi shell_exec dimatikan di php.ini.";
     }
-
-    // 2. Cek Versi Python (Apakah perintah 'python' dikenali?)
     $version = shell_exec("python --version 2>&1");
     if (empty($version)) {
-        return "ERROR: Perintah 'python' tidak dikenali. Coba gunakan path lengkap (misal: C:\\Users\\acer\\...\\python.exe) atau tambahkan ke Environment Variables Windows.";
+        return "ERROR: Perintah 'python' tidak dikenali.";
     }
-
-    // 3. Cek Script Deteksi Wajah
     $scriptPath = base_path('app/Python/detect_face.py');
     if (!file_exists($scriptPath)) {
         return "ERROR: File script tidak ditemukan di: $scriptPath";
     }
-
-    // 4. Simulasi Jalankan Script (Tanpa Gambar)
-    // Script kita harusnya print "error" jika tanpa argumen, bukan crash/blank.
     $output = shell_exec("python " . escapeshellarg($scriptPath) . " 2>&1");
-
-    return "<h1>Status Diagnosa:</h1>" .
-           "<p><b>Python Version:</b> <pre>$version</pre></p>" .
-           "<p><b>Script Path:</b> $scriptPath</p>" .
-           "<p><b>Output Script (Test Run):</b> <pre>$output</pre></p>";
+    return "<h1>Status Diagnosa:</h1><p><b>Python Version:</b> <pre>$version</pre></p><p><b>Script Path:</b> $scriptPath</p><p><b>Output Script (Test Run):</b> <pre>$output</pre></p>";
 });
