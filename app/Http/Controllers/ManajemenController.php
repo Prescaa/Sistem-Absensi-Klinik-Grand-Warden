@@ -367,8 +367,10 @@ public function showRiwayat()
         return view('manajemen.absensi.izin', compact('riwayatIzin'));
     }
 
-        public function storeIzin(Request $request)
+// --- FITUR PENGAJUAN IZIN ADMIN ---
+    public function storeIzin(Request $request)
     {
+        // Validasi Input
         $request->validate([
             'tipe_izin' => 'required|in:sakit,izin,cuti',
             'tanggal_mulai' => 'required|date',
@@ -379,8 +381,14 @@ public function showRiwayat()
             'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.'
         ]);
 
-        $empId = auth()->user()->employee->emp_id;
+        // Ambil ID Karyawan dari User yang Login
+        $user = Auth::user();
+        if (!$user->employee) {
+            return redirect()->back()->with('error', 'Data karyawan tidak ditemukan. Hubungi IT.');
+        }
+        $empId = $user->employee->emp_id;
 
+        // Cek Izin Ganda (Overlap)
         $checkOverlap = Leave::where('emp_id', $empId)
             ->where('status', '!=', 'ditolak')
             ->where(function($q) use ($request) {
@@ -398,6 +406,7 @@ public function showRiwayat()
             return redirect()->back()->withInput()->withErrors(['tanggal_mulai' => 'Anda sudah memiliki pengajuan pada tanggal tersebut.']);
         }
 
+        // Proses Upload File Bukti
         $filePath = null;
         if ($request->hasFile('file_bukti')) {
             $file = $request->file('file_bukti');
@@ -406,6 +415,7 @@ public function showRiwayat()
             $filePath = Storage::url($path);
         }
 
+        // Simpan ke Database
         Leave::create([
             'emp_id' => $empId,
             'tipe_izin' => $request->tipe_izin,
@@ -413,9 +423,10 @@ public function showRiwayat()
             'tanggal_selesai' => $request->tanggal_selesai,
             'deskripsi' => $request->deskripsi,
             'file_bukti' => $filePath,
-            'status' => 'pending'
+            'status' => 'pending' // Default status
         ]);
 
+        // Redirect Kembali ke Halaman Izin Admin
         return redirect()->route('manajemen.izin.show')->with('success', 'Pengajuan izin berhasil dikirim.');
     }
 }

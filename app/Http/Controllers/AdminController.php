@@ -237,43 +237,67 @@ class AdminController extends Controller
         ]);
     }
 
+    // --- FITUR PENGAJUAN IZIN ADMIN ---
     public function storeIzin(Request $request)
     {
+        // Validasi Input
         $request->validate([
-            'emp_id' => 'required|exists:EMPLOYEE,emp_id',
             'tipe_izin' => 'required|in:sakit,izin,cuti',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'deskripsi' => 'nullable|string',
-            'file_bukti' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
-            'status' => 'required|in:pending,disetujui,ditolak'
+            'deskripsi' => 'required|string|max:500',
+            'file_bukti' => 'required_if:tipe_izin,sakit|file|mimes:jpg,jpeg,png,pdf|max:2048',
+        ], [
+            'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.'
         ]);
 
-        DB::beginTransaction();
-        try {
-            $buktiPath = null;
-            if ($request->hasFile('file_bukti')) {
-                $path = $request->file('file_bukti')->store('public/bukti_izin');
-                $buktiPath = str_replace('public/', 'storage/', $path);
-            }
-
-            Leave::create([
-                'emp_id' => $request->emp_id,
-                'tipe_izin' => $request->tipe_izin,
-                'tanggal_mulai' => $request->tanggal_mulai,
-                'tanggal_selesai' => $request->tanggal_selesai,
-                'deskripsi' => $request->deskripsi,
-                'file_bukti' => $buktiPath,
-                'status' => $request->status,
-                'catatan_admin' => $request->status == 'disetujui' ? 'Diinput oleh Admin (Auto-Approve)' : null,
-            ]);
-
-            DB::commit();
-            return redirect()->back()->with('success', 'Data izin berhasil ditambahkan.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+        // Ambil ID Karyawan dari User yang Login
+        $user = Auth::user();
+        if (!$user->employee) {
+            return redirect()->back()->with('error', 'Data karyawan tidak ditemukan. Hubungi IT.');
         }
+        $empId = $user->employee->emp_id;
+
+        // Cek Izin Ganda (Overlap)
+        $checkOverlap = Leave::where('emp_id', $empId)
+            ->where('status', '!=', 'ditolak')
+            ->where(function($q) use ($request) {
+                $start = $request->tanggal_mulai;
+                $end = $request->tanggal_selesai;
+                $q->whereBetween('tanggal_mulai', [$start, $end])
+                  ->orWhereBetween('tanggal_selesai', [$start, $end])
+                  ->orWhere(function($sub) use ($start, $end) {
+                      $sub->where('tanggal_mulai', '<=', $start)->where('tanggal_selesai', '>=', $end);
+                  });
+            })
+            ->first();
+
+        if ($checkOverlap) {
+            return redirect()->back()->withInput()->withErrors(['tanggal_mulai' => 'Anda sudah memiliki pengajuan pada tanggal tersebut.']);
+        }
+
+        // Proses Upload File Bukti
+        $filePath = null;
+        if ($request->hasFile('file_bukti')) {
+            $file = $request->file('file_bukti');
+            $fileName = $empId . '-izin-' . now()->format('YmdHis') . '.' . $file->extension();
+            $path = $file->storeAs('bukti_izin', $fileName, 'public');
+            $filePath = Storage::url($path);
+        }
+
+        // Simpan ke Database
+        Leave::create([
+            'emp_id' => $empId,
+            'tipe_izin' => $request->tipe_izin,
+            'tanggal_mulai' => $request->tanggal_mulai,
+            'tanggal_selesai' => $request->tanggal_selesai,
+            'deskripsi' => $request->deskripsi,
+            'file_bukti' => $filePath,
+            'status' => 'pending' // Default status
+        ]);
+
+        // Redirect Kembali ke Halaman Izin Admin
+        return redirect()->route('admin.izin.show')->with('success', 'Pengajuan izin berhasil dikirim.');
     }
 
     public function updateIzin(Request $request, $id)
