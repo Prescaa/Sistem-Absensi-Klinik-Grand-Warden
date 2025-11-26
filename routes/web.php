@@ -110,20 +110,3 @@ Route::middleware(['auth', 'role:manajemen'])->prefix('manajemen')->group(functi
     // [DIHAPUS] Rute Absensi Personal Manajemen
     // Manajemen sekarang menggunakan rute '/unggah', '/riwayat' milik group Karyawan.
 });
-
-// Rute Debugging Python
-Route::get('/debug-python', function () {
-    if (!function_exists('shell_exec')) {
-        return "ERROR: Fungsi shell_exec dimatikan di php.ini.";
-    }
-    $version = shell_exec("python --version 2>&1");
-    if (empty($version)) {
-        return "ERROR: Perintah 'python' tidak dikenali.";
-    }
-    $scriptPath = base_path('app/Python/detect_face.py');
-    if (!file_exists($scriptPath)) {
-        return "ERROR: File script tidak ditemukan di: $scriptPath";
-    }
-    $output = shell_exec("python " . escapeshellarg($scriptPath) . " 2>&1");
-    return "<h1>Status Diagnosa:</h1><p><b>Python Version:</b> <pre>$version</pre></p><p><b>Script Path:</b> $scriptPath</p><p><b>Output Script (Test Run):</b> <pre>$output</pre></p>";
-});
