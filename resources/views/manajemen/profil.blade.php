@@ -4,6 +4,16 @@
 
 @section('content')
 
+    @if($errors->any())
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="card shadow-sm border-0">
         <div class="card-body p-4 p-md-5">
             {{-- Form Update Profil --}}

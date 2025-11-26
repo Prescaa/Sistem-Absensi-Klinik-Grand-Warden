@@ -5,6 +5,16 @@
 @section('content')
 <div class="container-fluid">
 
+    @if($errors->any())
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="row">
         {{-- KIRI: Formulir Pengajuan --}}
         <div class="col-lg-5 mb-4">
