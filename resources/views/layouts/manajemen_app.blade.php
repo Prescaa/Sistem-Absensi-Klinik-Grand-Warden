@@ -242,11 +242,25 @@
         </header>
 
         <main class="p-4 flex-grow-1">
+            {{-- Ganti blok @if(session...) lama dengan yang ini --}}
             @if (session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
+                <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+                        <div>{{ session('success') }}</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             @endif
+
             @if (session('error'))
-                <div class="alert alert-danger">{{ session('error') }}</div>
+                <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                        <div>{{ session('error') }}</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             @endif
 
             @yield('content')
