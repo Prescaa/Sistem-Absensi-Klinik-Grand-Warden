@@ -298,7 +298,7 @@
             formData.append('_token', '{{ csrf_token() }}');
 
             // --- FETCH KE SERVER (CHECK EXIF) ---
-            fetch('{{ route("karyawan.absensi.checkExif") }}', {
+            fetch('{{ route("manajemen.absensi.checkExif") }}', {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',

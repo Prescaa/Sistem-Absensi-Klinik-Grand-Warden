@@ -88,6 +88,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::post('/absensi/simpan', [AdminController::class, 'storeFoto'])->name('admin.absensi.storeFoto');
     Route::get('/absensi/riwayat', [AdminController::class, 'showRiwayat'])->name('admin.absensi.riwayat');
     Route::get('/izin', [AdminController::class, 'showIzin'])->name('admin.izin.show');
+
+    // RUTE EXIF :
+    Route::post('/absensi/check-exif', [AdminController::class, 'checkExif'])->name('admin.absensi.checkExif');
 });
 
 // --- GROUP MANAJEMEN ---
@@ -117,33 +120,11 @@ Route::middleware(['auth', 'role:manajemen'])->prefix('manajemen')->group(functi
     Route::get('/absensi/riwayat', [ManajemenController::class, 'showRiwayat'])->name('manajemen.absensi.riwayat');
     
     Route::get('/izin', [ManajemenController::class, 'showIzin'])->name('manajemen.izin.show');
-    Route::post('/izin/simpan', [ManajemenController::class, 'storeIzin'])->name('manajemen.izin.store');
+    Route::post('/izin/simpan', [ManajemenController::class, 'storeIzin'])->name('manajemen.izin.store'); 
+
+        // RUTE EXIF :
+    Route::post('/absensi/check-exif', [ManajemenController::class, 'checkExif'])->name('manajemen.absensi.checkExif');
 });
-
-
-// ... (kode route login/logout yang sudah ada) ...
-
-// ====================================================
-//  ROUTE ABSENSI UNIVERSAL (Admin, Manajemen, Karyawan)
-// ====================================================
-// Route::middleware(['auth', 'role:admin,manajemen,karyawan'])->group(function () {
-    
-//     // Halaman Absen (Form Upload)
-//     Route::get('/absensi/buat', [AbsensiController::class, 'create'])
-//         ->name('absensi.create');
-
-//     // Proses Simpan Absen
-//     Route::post('/absensi/simpan', [AbsensiController::class, 'store'])
-//         ->name('absensi.store');
-
-//     // Halaman Riwayat Absensi
-//     Route::get('/absensi/riwayat', [AbsensiController::class, 'riwayat'])
-//         ->name('absensi.riwayat');
-        
-//     // Cek EXIF (Ajax)
-//     Route::post('/absensi/check-exif', [AbsensiController::class, 'checkExif'])
-//         ->name('absensi.check-exif');
-// });
 
 // Catatan: Jika ada route lama 'karyawan/unggah' yang konflik, 
 // sebaiknya dikomentari (disable) agar tidak bingung.

@@ -429,4 +429,99 @@ public function showRiwayat()
         // Redirect Kembali ke Halaman Izin Admin
         return redirect()->route('manajemen.izin.show')->with('success', 'Pengajuan izin berhasil dikirim.');
     }
-}
+
+    // =========================================================================
+    // ⚠️ COPY 3 FUNGSI DI BAWAH INI KE AdminController.php (Paling Bawah)
+    // =========================================================================
+
+    /**
+     * Helper 1: Deteksi Wajah via Python
+     */
+    private function detectFace($imagePath)
+    {
+        try {
+            $scriptPath = base_path('app/Python/detect_face.py');
+            // Gunakan 'python' untuk Windows, 'python3' untuk Linux/Mac
+            $pythonCmd = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'python' : 'python3';
+            
+            $command = "$pythonCmd " . escapeshellarg($scriptPath) . " " . escapeshellarg($imagePath) . " 2>&1";
+            $output = shell_exec($command);
+            $result = trim($output);
+
+            // Jika script python mengembalikan "true", berarti wajah terdeteksi
+            if ($result === 'true') return true;
+            
+            return false; // Gagal deteksi
+
+        } catch (\Exception $e) {
+            return false; // Error sistem dianggap gagal
+        }
+    }
+
+    /**
+     * Helper 2: Hitung Jarak (Haversine Formula)
+     */
+    private function haversineDistance($lat1, $lon1, $lat2, $lon2) {
+        $earthRadius = 6371000; // Radius bumi dalam meter
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $earthRadius * $c;
+    }
+
+    /**
+     * Helper 3: Konversi Koordinat EXIF ke Desimal
+     */
+    private function gpsDmsToDecimal($dmsArray, $ref) {
+        $evalCoordPart = function ($coordPart) {
+            $parts = explode('/', $coordPart);
+            if (count($parts) == 2) { return $parts[1] == 0 ? 0 : $parts[0] / $parts[1]; }
+            return (float)$parts[0];
+        };
+        $degrees = $evalCoordPart($dmsArray[0]);
+        $minutes = $evalCoordPart($dmsArray[1]);
+        $seconds = $evalCoordPart($dmsArray[2]);
+        $decimal = $degrees + ($minutes / 60) + ($seconds / 3600);
+        if ($ref == 'S' || $ref == 'W') { return -$decimal; }
+        return $decimal;
+    }
+
+    // --- TAMBAHKAN INI DI AdminController ---
+    public function checkExif(Request $request)
+    {
+        // Validasi File
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:10240',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'message' => 'File terlalu besar (>10MB) atau bukan gambar.'], 422);
+        }
+
+        $file = $request->file('foto_absensi');
+        $fileHash = md5_file($file->getRealPath());
+        
+        // Cek Duplikasi
+        if (Attendance::where('file_hash', $fileHash)->exists()) {
+            return response()->json(['status' => 'error', 'message' => 'Foto ini sudah pernah dipakai sebelumnya.'], 400);
+        }
+
+        // Cek EXIF (Opsional jika server mendukung)
+        if (!function_exists('exif_read_data')) {
+            return response()->json(['status' => 'success', 'message' => 'Warning: EXIF Server non-aktif, validasi dilewati.']);
+        }
+
+        $exif = @exif_read_data($file->getRealPath());
+
+        // Pastikan ada GPS
+        if (!$exif || empty($exif['GPSLatitude']) || empty($exif['GPSLongitude'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data Lokasi (GPS) tidak ditemukan pada foto. Pastikan GPS kamera aktif.'
+            ], 400);
+        }
+
+        return response()->json(['status' => 'success', 'message' => 'Foto Valid.']);
+    }
+} 
