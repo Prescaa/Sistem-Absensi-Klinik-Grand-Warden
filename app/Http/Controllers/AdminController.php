@@ -534,9 +534,20 @@ class AdminController extends Controller
             "Expires" => "0"
         ];
 
+        // ✅ UPDATE: Ambil Config Jam Kerja dari DB
+        $workArea = WorkArea::find(1);
+        $jamMasukBatas = '08:00:00'; // Default
+        $hariKerjaAktif = [1,2,3,4,5]; // Default Senin-Jumat
+
+        if ($workArea && !empty($workArea->jam_kerja)) {
+            $config = $workArea->jam_kerja;
+            if (isset($config['masuk'])) $jamMasukBatas = $config['masuk'] . ':00'; // Pastikan format H:i:s
+            if (isset($config['hari_kerja'])) $hariKerjaAktif = $config['hari_kerja'];
+        }
+
         $listKaryawan = Employee::orderBy('nama')->get();
 
-        $callback = function() use ($listKaryawan, $startDate, $endDate) {
+        $callback = function() use ($listKaryawan, $startDate, $endDate, $jamMasukBatas, $hariKerjaAktif) {
             $file = fopen('php://output', 'w');
 
             // Helper Sanitasi untuk mencegah CSV Injection
@@ -557,8 +568,9 @@ class AdminController extends Controller
 
                 $totalHadir = $kehadiran->count();
 
-                $totalTerlambat = $kehadiran->filter(function ($att) {
-                    return $att->waktu_unggah->format('H:i:s') > '08:00:00';
+                // ✅ UPDATE: Hitung terlambat dengan jam dinamis
+                $totalTerlambat = $kehadiran->filter(function ($att) use ($jamMasukBatas) {
+                    return $att->waktu_unggah->format('H:i:s') > $jamMasukBatas;
                 })->count();
 
                 // Hitung Izin/Sakit (Disetujui)
@@ -569,7 +581,9 @@ class AdminController extends Controller
                           ->orWhereBetween('tanggal_selesai', [$startDate, $endDate]);
                     })->count();
 
-                $totalHariKerja = $this->countWorkingDaysInRange($startDate, $endDate);
+                // ✅ UPDATE: Hitung hari kerja dinamis
+                $totalHariKerja = $this->countWorkingDaysInRange($startDate, $endDate, $hariKerjaAktif);
+                
                 $persentase = $totalHariKerja > 0 ? ($totalHadir / $totalHariKerja) * 100 : 0;
 
                 fputcsv($file, [
@@ -587,12 +601,14 @@ class AdminController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    private function countWorkingDaysInRange($startDate, $endDate)
+    // ✅ UPDATE: Fungsi hitung hari kerja dinamis
+    private function countWorkingDaysInRange($startDate, $endDate, $validDays = [1,2,3,4,5])
     {
         $count = 0;
         $current = $startDate->copy();
         while ($current->lte($endDate)) {
-            if (!$current->isWeekend()) {
+            // dayOfWeek: 0=Minggu, 1=Senin, dst
+            if (in_array($current->dayOfWeek, $validDays)) {
                 $count++;
             }
             $current->addDay();
@@ -611,13 +627,17 @@ class AdminController extends Controller
         return view('admin.geofencing', ['lokasi' => $lokasi]);
     }
 
+    // ✅ UPDATE: Fungsi Simpan Jam Kerja & Lokasi
     public function saveGeofencing(Request $request)
     {
         $request->validate([
-            'nama_area' => 'required|string|max:100',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'radius' => 'required|numeric|min:50',
+            'nama_area'  => 'required|string|max:100',
+            'latitude'   => 'required|numeric',
+            'longitude'  => 'required|numeric',
+            'radius'     => 'required|numeric|min:50',
+            'jam_masuk'  => 'required',
+            'jam_pulang' => 'required',
+            'hari_kerja' => 'array' // Array hari (0-6)
         ]);
 
         $lokasi = WorkArea::firstOrNew(['area_id' => 1]);
@@ -626,9 +646,21 @@ class AdminController extends Controller
         $lat = (float) $request->latitude;
         $lon = (float) $request->longitude;
         $lokasi->koordinat_pusat = DB::raw("POINT($lat, $lon)");
+        
+        // Simpan Jam & Hari Kerja ke kolom JSON 'jam_kerja'
+        $hariKerja = $request->hari_kerja ?? [];
+        // Pastikan array berisi integer agar mudah dicek
+        $hariKerja = array_map('intval', $hariKerja);
+
+        $lokasi->jam_kerja = [
+            'masuk'      => $request->jam_masuk,
+            'pulang'     => $request->jam_pulang,
+            'hari_kerja' => $hariKerja
+        ];
+        
         $lokasi->save();
 
-        return redirect()->route('admin.geofencing.show')->with('success', 'Lokasi berhasil diperbarui!');
+        return redirect()->route('admin.geofencing.show')->with('success', 'Lokasi & Jam Kerja berhasil diperbarui!');
     }
 
     // 1. HALAMAN UNGGAH
