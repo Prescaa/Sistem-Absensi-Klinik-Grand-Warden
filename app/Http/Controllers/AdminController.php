@@ -129,6 +129,8 @@ class AdminController extends Controller
             'waktu_unggah' => 'required|date',
             'type' => 'required|in:' . implode(',', self::ATTENDANCE_TYPES),
             'foto' => 'nullable|image|mimes:' . self::ALLOWED_IMAGE_TYPES . '|max:' . self::MAX_IMAGE_SIZE,
+            'status_validasi' => 'required|in:Valid,Invalid,Pending',
+            'catatan_admin' => 'nullable|string|max:255',
         ]);
 
         if ($this->isSelfAttendance($validated['emp_id'])) {
@@ -152,6 +154,8 @@ class AdminController extends Controller
             'waktu_unggah' => 'required|date',
             'type' => 'required|in:' . implode(',', self::ATTENDANCE_TYPES),
             'foto' => 'nullable|image|max:' . self::MAX_IMAGE_SIZE,
+            'status_validasi' => 'required|in:Valid,Invalid,Pending',
+            'catatan_admin' => 'nullable|string|max:255',
         ]);
 
         return $this->handleAttendanceUpdate($attendance, $validated, $request);
@@ -183,7 +187,11 @@ class AdminController extends Controller
                 'nama_file_foto' => $fotoPath,
             ]);
 
-            $this->autoValidateAttendance($attendance);
+            $this->manageValidation(
+            $attendance,
+            $validated['status_validasi'],
+            $validated['catatan_admin'] ?? 'Input Manual Admin'
+        );
         });
 
         return redirect()->back()->with('success', 'Data absensi berhasil ditambahkan dan otomatis disetujui.');
@@ -200,24 +208,37 @@ class AdminController extends Controller
             }
 
             $attendance->save();
+            $this->manageValidation(
+            $attendance,
+            $validated['status_validasi'],
+            $validated['catatan_admin']
+        );
         });
 
         return redirect()->back()->with('success', 'Data absensi berhasil diperbarui.');
     }
 
-    private function autoValidateAttendance(Attendance $attendance): void
+    private function manageValidation(Attendance $attendance, string $status, ?string $note): void
     {
+        if ($status === 'Pending') {
+            $attendance->validation?->delete();
+            return;
+        }
+
         $adminEmpId = $this->getCurrentEmployeeId();
 
         if ($adminEmpId) {
-            Validation::create([
-                'att_id' => $attendance->att_id,
-                'admin_id' => $adminEmpId,
-                'status_validasi_otomatis' => 'Valid',
-                'status_validasi_final' => 'Valid',
-                'catatan_admin' => 'Ditambahkan secara manual oleh Admin (Auto-Approve).',
-                'timestamp_validasi' => now(),
-            ]);
+            // Gunakan updateOrCreate agar tidak error duplicate entry
+            Validation::updateOrCreate(
+                ['att_id' => $attendance->att_id],
+                [
+                    'admin_id' => $adminEmpId,
+                    'status_validasi_otomatis' => $status,
+                    'status_validasi_final' => $status,
+                    'catatan_admin' => $note,
+                    'timestamp_validasi' => now(),
+                ]
+            );
         }
     }
 

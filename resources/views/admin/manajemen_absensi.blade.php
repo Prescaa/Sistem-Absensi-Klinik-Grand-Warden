@@ -65,11 +65,17 @@
                                     @else
                                         <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Invalid</span>
                                     @endif
+                                    @if($att->validation->catatan_admin)
+                                        <div class="small text-muted fst-italic mt-1" style="font-size: 0.7rem; max-width: 150px;">
+                                            {{ Str::limit($att->validation->catatan_admin, 30) }}
+                                        </div>
+                                    @endif
                                 @else
                                     <span class="badge bg-secondary text-light">Pending</span>
                                 @endif
                             </td>
                             <td class="text-center pe-4">
+                                {{-- TOMBOL EDIT --}}
                                 <button class="btn btn-sm btn-outline-warning me-1"
                                         data-bs-toggle="modal"
                                         data-bs-target="#editAbsensiModal"
@@ -77,9 +83,14 @@
                                         data-nama="{{ $att->employee->nama ?? '-' }}"
                                         data-waktu="{{ $att->waktu_unggah->format('Y-m-d\TH:i') }}"
                                         data-type="{{ $att->type }}"
-                                        data-foto="{{ asset($att->nama_file_foto) }}">
+                                        data-foto="{{ asset($att->nama_file_foto) }}"
+                                        {{-- Data Status & Catatan untuk JS --}}
+                                        data-status="{{ $att->validation->status_validasi_final ?? 'Pending' }}"
+                                        data-catatan="{{ $att->validation->catatan_admin ?? '' }}">
                                     <i class="bi bi-pencil-fill"></i>
                                 </button>
+
+                                {{-- TOMBOL HAPUS --}}
                                 <button class="btn btn-sm btn-outline-danger"
                                         data-bs-toggle="modal"
                                         data-bs-target="#deleteAbsensiModal"
@@ -121,24 +132,35 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Waktu Absen</label>
-                        <input type="datetime-local" name="waktu_unggah" class="form-control" required>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold small">Waktu Absen</label>
+                            <input type="datetime-local" name="waktu_unggah" class="form-control" required value="{{ now()->format('Y-m-d\TH:i') }}">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold small">Tipe</label>
+                            <select name="type" class="form-select" required>
+                                <option value="masuk">Masuk</option>
+                                <option value="pulang">Pulang</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Tipe</label>
-                        <select name="type" class="form-select" required>
-                            <option value="masuk">Masuk</option>
-                            <option value="pulang">Pulang</option>
+
+                    {{-- Input Status Validasi Baru --}}
+                    <div class="mb-3 p-3 bg-light rounded border">
+                        <label class="form-label fw-bold small text-primary">Status Validasi</label>
+                        <select name="status_validasi" class="form-select mb-2">
+                            <option value="Valid" selected>✅ Valid (Disetujui)</option>
+                            <option value="Invalid">❌ Invalid (Ditolak)</option>
+                            <option value="Pending">⏳ Pending (Menunggu)</option>
                         </select>
+                        <input type="text" name="catatan_admin" class="form-control form-control-sm" placeholder="Catatan admin (opsional)">
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Upload Bukti Foto (Opsional)</label>
                         <input type="file" name="foto" class="form-control" accept="image/*">
                     </div>
-                    {{-- Hidden Lat/Long (Default Kantor/0) --}}
-                    <input type="hidden" name="latitude" value="0">
-                    <input type="hidden" name="longitude" value="0">
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -165,20 +187,33 @@
                         <label class="form-label fw-bold small">Karyawan</label>
                         <input type="text" id="edit_nama" class="form-control bg-light" readonly>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Waktu Absen</label>
-                        <input type="datetime-local" name="waktu_unggah" id="edit_waktu" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small">Tipe</label>
-                        <select name="type" id="edit_type" class="form-select" required>
-                            <option value="masuk">Masuk</option>
-                            <option value="pulang">Pulang</option>
-                        </select>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold small">Waktu Absen</label>
+                            <input type="datetime-local" name="waktu_unggah" id="edit_waktu" class="form-control" required>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold small">Tipe</label>
+                            <select name="type" id="edit_type" class="form-select" required>
+                                <option value="masuk">Masuk</option>
+                                <option value="pulang">Pulang</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="mb-3 p-2 border rounded bg-light d-flex gap-3 align-items-center">
-                         <img id="edit_preview_foto" src="" width="50" height="50" class="rounded border">
+                    {{-- Edit Status Validasi --}}
+                    <div class="mb-3 p-3 bg-light rounded border">
+                        <label class="form-label fw-bold small text-primary">Update Status Validasi</label>
+                        <select name="status_validasi" id="edit_status" class="form-select mb-2">
+                            <option value="Valid">✅ Valid</option>
+                            <option value="Invalid">❌ Invalid</option>
+                            <option value="Pending">⏳ Pending</option>
+                        </select>
+                        <textarea name="catatan_admin" id="edit_catatan" class="form-control form-control-sm" rows="2" placeholder="Catatan admin..."></textarea>
+                    </div>
+
+                    <div class="mb-3 p-2 border rounded d-flex gap-3 align-items-center">
+                         <img id="edit_preview_foto" src="" width="50" height="50" class="rounded border bg-white">
                          <div class="flex-grow-1">
                              <label class="form-label fw-bold small mb-1">Ganti Foto (Opsional)</label>
                              <input type="file" name="foto" class="form-control form-control-sm" accept="image/*">
@@ -208,7 +243,7 @@
                     <i class="bi bi-trash-fill text-danger display-1 mb-3"></i>
                     <p class="mb-1">Anda yakin ingin menghapus data absensi ini?</p>
                     <strong id="delete_info" class="d-block text-dark"></strong>
-                    <small class="text-muted d-block mt-2">Validasi terkait juga akan terhapus.</small>
+                    <small class="text-muted d-block mt-2">Validasi terkait juga akan terhapus permanen.</small>
                 </div>
                 <div class="modal-footer bg-light justify-content-center">
                     <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Batal</button>
@@ -223,22 +258,32 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Edit Modal
+        // Edit Modal Logic
         var editModal = document.getElementById('editAbsensiModal');
         if(editModal){
             editModal.addEventListener('show.bs.modal', function(event) {
                 var btn = event.relatedTarget;
                 var id = btn.getAttribute('data-id');
 
+                // Set Action URL
                 document.getElementById('editForm').action = '/admin/manajemen-absensi/update/' + id;
+
+                // Set Basic Data
                 document.getElementById('edit_nama').value = btn.getAttribute('data-nama');
                 document.getElementById('edit_waktu').value = btn.getAttribute('data-waktu');
                 document.getElementById('edit_type').value = btn.getAttribute('data-type');
-                document.getElementById('edit_preview_foto').src = btn.getAttribute('data-foto');
+
+                // Set Preview Foto
+                var fotoUrl = btn.getAttribute('data-foto');
+                document.getElementById('edit_preview_foto').src = fotoUrl ? fotoUrl : 'https://via.placeholder.com/50?text=No+Img';
+
+                // ✅ Set Status & Catatan
+                document.getElementById('edit_status').value = btn.getAttribute('data-status');
+                document.getElementById('edit_catatan').value = btn.getAttribute('data-catatan');
             });
         }
 
-        // Delete Modal
+        // Delete Modal Logic
         var deleteModal = document.getElementById('deleteAbsensiModal');
         if(deleteModal){
             deleteModal.addEventListener('show.bs.modal', function(event) {

@@ -26,8 +26,12 @@ class ManajemenController extends Controller
         // 1. Statistik Utama
         $totalEmployees = Employee::count();
 
+        // FIX: Hitung 'Hadir' tapi KECUALIKAN yang statusnya 'Invalid'
         $presentCount = Attendance::whereDate('waktu_unggah', $today)
             ->where('type', 'masuk')
+            ->whereDoesntHave('validation', function ($q) {
+                $q->where('status_validasi_final', 'Invalid');
+            })
             ->distinct('emp_id')
             ->count('emp_id');
 
@@ -51,10 +55,15 @@ class ManajemenController extends Controller
             $date = Carbon::today()->subDays($i);
             $labels[] = $date->format('d M');
 
+            // FIX: Terapkan filter yang sama untuk grafik
             $count = Attendance::whereDate('waktu_unggah', $date)
                 ->where('type', 'masuk')
+                ->whereDoesntHave('validation', function ($q) {
+                    $q->where('status_validasi_final', 'Invalid');
+                })
                 ->distinct('emp_id')
                 ->count('emp_id');
+
             $dataHadir[] = $count;
         }
 
