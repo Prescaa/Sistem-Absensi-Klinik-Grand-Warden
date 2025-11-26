@@ -12,7 +12,7 @@ use Carbon\Carbon;
 use App\Models\Leave;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cookie;
-use App\Models\User; 
+use App\Models\User;
 use App\Models\Employee;
 
 class KaryawanController extends Controller
@@ -132,7 +132,7 @@ class KaryawanController extends Controller
             // Hapus "POINT(" dan ")"
             $cleanStr = str_replace(['POINT(', ')'], '', $workAreaQuery->location_str);
             $parts = explode(' ', $cleanStr);
-            
+
             if (count($parts) == 2) {
                 $longitude = (float) $parts[0]; // Urutan WKT standar selalu: X (Lng) Y (Lat)
                 $latitude = (float) $parts[1];
@@ -142,7 +142,7 @@ class KaryawanController extends Controller
         // Masukkan ke object agar bisa dibaca View
         $workAreaQuery->latitude = $latitude;
         $workAreaQuery->longitude = $longitude;
-        
+
         $data['workArea'] = $workAreaQuery;
 
         return view('karyawan.unggah', $data);
@@ -388,7 +388,7 @@ class KaryawanController extends Controller
         $workArea = WorkArea::select(
             'area_id',
             'radius_geofence',
-            'jam_kerja', 
+            'jam_kerja',
             DB::raw('ST_AsText(koordinat_pusat) as location_str')
         )->first(); // Gunakan first() agar pasti dapat data
 
@@ -434,10 +434,10 @@ class KaryawanController extends Controller
         // =========================================================================
         $now = Carbon::now();
         $jamKerjaConfig = $workArea->jam_kerja;
-        
-        $hariIni = $now->dayOfWeek; 
-        $hariKerja = $jamKerjaConfig['hari_kerja'] ?? [1,2,3,4,5]; 
-        
+
+        $hariIni = $now->dayOfWeek;
+        $hariKerja = $jamKerjaConfig['hari_kerja'] ?? [1,2,3,4,5];
+
         if (!in_array($hariIni, $hariKerja)) {
             return redirect()->back()->with('error', 'Absensi Ditolak: Hari ini bukan jadwal hari kerja.');
         }
@@ -447,7 +447,7 @@ class KaryawanController extends Controller
 
         $statusValidasi = 'Valid';
         $catatanValidasi = null;
-        
+
         // A. Logika Masuk
         if ($request->type == 'masuk') {
             $jamMasukCarbon = Carbon::createFromTimeString($jamMasukBatas);
@@ -457,23 +457,23 @@ class KaryawanController extends Controller
             if ($now->greaterThan($jamPulangCarbon)) {
                  return redirect()->back()->with('error', 'Absensi Masuk ditolak! Jam kerja operasional hari ini telah berakhir pada pukul ' . $jamPulangBatas . '.');
             }
-            
+
             // 2. Cek Terlalu Pagi
             if ($now->lessThan($jamMasukCarbon->copy()->subHours(2))) {
                  return redirect()->back()->with('error', 'Terlalu awal! Absen dibuka pukul ' . $jamMasukCarbon->subHours(2)->format('H:i'));
             }
-            
+
             // 3. Cek Keterlambatan
             if ($now->greaterThan($jamMasukCarbon)) {
-                $statusValidasi = 'Need Review'; 
+                $statusValidasi = 'Need Review';
                 $catatanValidasi = 'Terlambat: Absen pukul ' . $now->format('H:i');
             }
         }
-        
+
         // B. Logika Pulang
         if ($request->type == 'pulang') {
             $jamPulangCarbon = Carbon::createFromTimeString($jamPulangBatas);
-            
+
             // Cek Pulang Cepat
             if ($now->lessThan($jamPulangCarbon)) {
                 $statusValidasi = 'Need Review';
@@ -504,12 +504,12 @@ class KaryawanController extends Controller
             'att_id' => $attendance->att_id,
             'status_validasi_otomatis' => $statusValidasi == 'Valid' ? 'Valid' : 'Need Review',
             'status_validasi_final' => $statusValidasi == 'Valid' ? 'Valid' : 'Pending',
-            'catatan_admin' => $catatanValidasi, 
+            'catatan_admin' => $catatanValidasi,
             'timestamp_validasi' => $now
         ]);
 
-        $cookieLifetime = 2628000; 
-        
+        $cookieLifetime = 2628000;
+
         $msg = 'Absensi berhasil dicatat!';
         if ($statusValidasi != 'Valid') {
             $msg .= ' (Status: ' . $catatanValidasi . ')';

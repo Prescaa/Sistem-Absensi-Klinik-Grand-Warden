@@ -11,11 +11,16 @@ class AuthController extends Controller
 {
     public function showLogin(Request $request)
     {
-        // 1. Cek jika sudah login (Logika lama)
         if (Auth::check()) {
-            if (strtolower(Auth::user()->role) === 'admin') {
+            $role = strtolower(Auth::user()->role);
+
+            if ($role === 'admin') {
                 return redirect('/admin/dashboard');
             }
+            if ($role === 'manajemen') {
+                return redirect('/manajemen/dashboard');
+            }
+
             return redirect('/dashboard');
         }
 
