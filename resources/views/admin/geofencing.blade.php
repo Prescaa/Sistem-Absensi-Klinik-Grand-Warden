@@ -20,12 +20,7 @@
 @section('content')
 <div class="container-fluid">
     
-    @if (session('success'))
-        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
+    {{-- Notifikasi session dihapus di sini --}}
 
     <div class="row">
 
@@ -45,27 +40,39 @@
                         </h6>
                         <div class="mb-3">
                             <label for="nama_area" class="form-label small fw-bold">Nama Area</label>
+                            {{-- VALIDASI PESAN --}}
                             <input type="text" class="form-control" id="nama_area" name="nama_area"
-                                   value="{{ $lokasi->nama_area ?? 'Klinik Grand Warden' }}" required>
+                                   value="{{ $lokasi->nama_area ?? 'Klinik Grand Warden' }}" required
+                                   oninvalid="this.setCustomValidity('Kolom ini wajib diisi.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
 
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Latitude</label>
+                                {{-- VALIDASI PESAN --}}
                                 <input type="text" class="form-control bg-light" id="latitude" name="latitude"
-                                       value="{{ $lokasi->latitude ?? '' }}" required readonly>
+                                       value="{{ $lokasi->latitude ?? '' }}" required readonly
+                                       oninvalid="this.setCustomValidity('Pilih titik pada peta.')"
+                                       oninput="this.setCustomValidity('')">
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Longitude</label>
+                                {{-- VALIDASI PESAN --}}
                                 <input type="text" class="form-control bg-light" id="longitude" name="longitude"
-                                       value="{{ $lokasi->longitude ?? '' }}" required readonly>
+                                       value="{{ $lokasi->longitude ?? '' }}" required readonly
+                                       oninvalid="this.setCustomValidity('Pilih titik pada peta.')"
+                                       oninput="this.setCustomValidity('')">
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="radius" class="form-label small fw-bold">Radius (Meter)</label>
+                            {{-- VALIDASI PESAN --}}
                             <input type="number" class="form-control" id="radius" name="radius"
-                                   value="{{ $lokasi->radius_geofence ?? 100 }}" required>
+                                   value="{{ $lokasi->radius_geofence ?? 100 }}" required
+                                   oninvalid="this.setCustomValidity('Tentukan radius geofence.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
 
                         <hr class="my-4">
@@ -85,13 +92,19 @@
                         <div class="row g-2 mb-3">
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Masuk (Max)</label>
+                                {{-- VALIDASI PESAN --}}
                                 <input type="time" class="form-control" id="jam_masuk" name="jam_masuk"
-                                       value="{{ $jamMasuk }}" required>
+                                       value="{{ $jamMasuk }}" required
+                                       oninvalid="this.setCustomValidity('Tentukan jam masuk.')"
+                                       oninput="this.setCustomValidity('')">
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold">Pulang (Min)</label>
+                                {{-- VALIDASI PESAN --}}
                                 <input type="time" class="form-control" id="jam_pulang" name="jam_pulang"
-                                       value="{{ $jamPulang }}" required>
+                                       value="{{ $jamPulang }}" required
+                                       oninvalid="this.setCustomValidity('Tentukan jam pulang.')"
+                                       oninput="this.setCustomValidity('')">
                             </div>
                         </div>
 

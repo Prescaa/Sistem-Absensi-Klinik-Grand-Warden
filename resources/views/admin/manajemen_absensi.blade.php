@@ -12,12 +12,8 @@
             </button>
         </div>
         <div class="card-body p-0">
-            @if(session('success'))
-                <div class="alert alert-success m-3">{{ session('success') }}</div>
-            @endif
-            @if(session('error'))
-                <div class="alert alert-danger m-3">{{ session('error') }}</div>
-            @endif
+            
+            {{-- Notifikasi hanya dari layout --}}
 
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -84,7 +80,6 @@
                                         data-waktu="{{ $att->waktu_unggah->format('Y-m-d\TH:i') }}"
                                         data-type="{{ $att->type }}"
                                         data-foto="{{ asset($att->nama_file_foto) }}"
-                                        {{-- Data Status & Catatan untuk JS --}}
                                         data-status="{{ $att->validation->status_validasi_final ?? 'Pending' }}"
                                         data-catatan="{{ $att->validation->catatan_admin ?? '' }}">
                                     <i class="bi bi-pencil-fill"></i>
@@ -125,7 +120,10 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Pilih Karyawan</label>
-                        <select name="emp_id" class="form-select" required>
+                        {{-- VALIDASI PESAN --}}
+                        <select name="emp_id" class="form-select" required
+                                oninvalid="this.setCustomValidity('Silakan pilih karyawan dari daftar.')"
+                                oninput="this.setCustomValidity('')">
                             <option value="">-- Pilih --</option>
                             @foreach($employees as $emp)
                                 <option value="{{ $emp->emp_id }}">{{ $emp->nama }} ({{ $emp->nip }})</option>
@@ -135,18 +133,23 @@
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label fw-bold small">Waktu Absen</label>
-                            <input type="datetime-local" name="waktu_unggah" class="form-control" required value="{{ now()->format('Y-m-d\TH:i') }}">
+                            {{-- VALIDASI PESAN --}}
+                            <input type="datetime-local" name="waktu_unggah" class="form-control" required value="{{ now()->format('Y-m-d\TH:i') }}"
+                                   oninvalid="this.setCustomValidity('Tentukan waktu absensi.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label fw-bold small">Tipe</label>
-                            <select name="type" class="form-select" required>
+                            {{-- VALIDASI PESAN --}}
+                            <select name="type" class="form-select" required
+                                    oninvalid="this.setCustomValidity('Pilih tipe absensi (Masuk/Pulang).')"
+                                    oninput="this.setCustomValidity('')">
                                 <option value="masuk">Masuk</option>
                                 <option value="pulang">Pulang</option>
                             </select>
                         </div>
                     </div>
 
-                    {{-- Input Status Validasi Baru --}}
                     <div class="mb-3 p-3 bg-light rounded border">
                         <label class="form-label fw-bold small text-primary">Status Validasi</label>
                         <select name="status_validasi" class="form-select mb-2">
@@ -190,18 +193,23 @@
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label fw-bold small">Waktu Absen</label>
-                            <input type="datetime-local" name="waktu_unggah" id="edit_waktu" class="form-control" required>
+                            {{-- VALIDASI PESAN --}}
+                            <input type="datetime-local" name="waktu_unggah" id="edit_waktu" class="form-control" required
+                                   oninvalid="this.setCustomValidity('Tentukan waktu absensi.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label fw-bold small">Tipe</label>
-                            <select name="type" id="edit_type" class="form-select" required>
+                            {{-- VALIDASI PESAN --}}
+                            <select name="type" id="edit_type" class="form-select" required
+                                    oninvalid="this.setCustomValidity('Pilih tipe absensi.')"
+                                    oninput="this.setCustomValidity('')">
                                 <option value="masuk">Masuk</option>
                                 <option value="pulang">Pulang</option>
                             </select>
                         </div>
                     </div>
 
-                    {{-- Edit Status Validasi --}}
                     <div class="mb-3 p-3 bg-light rounded border">
                         <label class="form-label fw-bold small text-primary">Update Status Validasi</label>
                         <select name="status_validasi" id="edit_status" class="form-select mb-2">
@@ -265,19 +273,14 @@
                 var btn = event.relatedTarget;
                 var id = btn.getAttribute('data-id');
 
-                // Set Action URL
                 document.getElementById('editForm').action = '/admin/manajemen-absensi/update/' + id;
-
-                // Set Basic Data
                 document.getElementById('edit_nama').value = btn.getAttribute('data-nama');
                 document.getElementById('edit_waktu').value = btn.getAttribute('data-waktu');
                 document.getElementById('edit_type').value = btn.getAttribute('data-type');
 
-                // Set Preview Foto
                 var fotoUrl = btn.getAttribute('data-foto');
                 document.getElementById('edit_preview_foto').src = fotoUrl ? fotoUrl : 'https://via.placeholder.com/50?text=No+Img';
 
-                // ✅ Set Status & Catatan
                 document.getElementById('edit_status').value = btn.getAttribute('data-status');
                 document.getElementById('edit_catatan').value = btn.getAttribute('data-catatan');
             });

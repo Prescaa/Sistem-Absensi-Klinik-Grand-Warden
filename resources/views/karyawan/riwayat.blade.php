@@ -261,13 +261,30 @@
                 </div>
             </div>
 
-            {{-- Sidebar Kanan --}}
+            {{-- Sidebar Kanan: Grafik Tren Kehadiran Mingguan --}}
             <div class="col-lg-4 d-flex">
                 <div class="card shadow-sm border-0 w-100">
-                    <div class="card-body p-4 text-center d-flex flex-column justify-content-center">
-                         <h5 class="fw-bold mb-3 text-dark-emphasis">Info</h5>
-                         <p class="text-muted">Grafik kehadiran akan muncul setelah data tersedia lebih banyak.</p>
-                         <i class="bi bi-bar-chart-line display-1 text-light"></i>
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0 text-dark-emphasis">Tren Kehadiran</h5>
+                        <small class="text-muted">7 Hari Terakhir</small>
+                    </div>
+                    <div class="card-body p-4 d-flex align-items-end justify-content-around" style="height: 300px;">
+                        {{-- Visualisasi Grafik Batang Sederhana dengan CSS (DINAMIS HARIAN) --}}
+                        @foreach($chartData as $index => $data)
+                            <div class="text-center w-100">
+                                @php
+                                    // Jika $data = 1 (hadir) -> tinggi 200px, jika 0 -> tinggi 5px (agar tetap ada bar kecil)
+                                    $height = $data ? 200 : 5; 
+                                    $colorClass = $data ? 'bg-success' : 'bg-light border';
+                                @endphp
+
+                                <div class="mx-auto rounded-top {{ $colorClass }}"
+                                     style="width: 30px; height: {{ $height }}px; transition: height 1s ease;"
+                                     title="{{ $data ? 'Hadir' : 'Tidak Hadir' }}">
+                                </div>
+                                <small class="d-block mt-2 fw-bold text-muted" style="font-size: 0.7rem;">{{ $chartLabels[$index] }}</small>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -321,6 +338,12 @@
     .dark-mode .border-end {
         border-right-color: #444 !important;
     }
+    /* Dark Mode untuk Grafik */
+    .dark-mode .card-header.bg-white {
+        background-color: #252525 !important;
+        color: #fff !important;
+        border-bottom-color: #444 !important;
+    }
 </style>
 @endpush
 
@@ -348,25 +371,18 @@
         updateDateTime();
         setInterval(updateDateTime, 60000);
 
-        // 2. ✅ PERBAIKAN: Fungsi Aktivasi Tab
-        // Fungsi ini akan dijalankan saat load pertama kali DAN saat hash URL berubah
+        // 2. Fungsi Aktivasi Tab dari Hash URL
         function activateTabFromHash() {
             const hash = window.location.hash; 
             if (hash) {
-                // Cari tombol tab yang targetnya sesuai dengan hash (#absensi atau #izin)
                 const triggerEl = document.querySelector(`button[data-bs-target="${hash}"]`);
                 if (triggerEl) {
-                    // Gunakan click() sebagai metode paling robust 
-                    // (bekerja meskipun objek Bootstrap JS belum ter-init secara global)
                     triggerEl.click();
                 }
             }
         }
 
-        // Jalankan saat halaman dimuat
         activateTabFromHash();
-
-        // Jalankan saat hash berubah (misal: user klik notif padahal sedang di halaman riwayat)
         window.addEventListener('hashchange', activateTabFromHash);
     });
 </script>

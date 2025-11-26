@@ -174,25 +174,29 @@ class KaryawanController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // 3. LOGIKA GRAFIK (Hitung per Minggu)
+        // 3. LOGIKA GRAFIK HARIAN (7 HARI TERAKHIR) - DIPERBAIKI
         $chartData = [];
-        $chartLabels = ['M1', 'M2', 'M3', 'M4']; // Minggu 1 - 4
+        $chartLabels = [];
 
-        // Kita hitung mundur 4 minggu ke belakang
-        for ($i = 3; $i >= 0; $i--) {
-            $startWeek = Carbon::now()->subWeeks($i)->startOfWeek();
-            $endWeek   = Carbon::now()->subWeeks($i)->endOfWeek();
+        // Loop 7 hari terakhir (termasuk hari ini), urutan mundur dari hari ini ke 6 hari lalu
+        // Agar grafik terbaca dari kiri (terlama) ke kanan (terbaru), kita loop mundur lalu reverse atau loop maju
+        // Di sini kita loop dari 6 hari lalu sampai hari ini (0)
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::today()->subDays($i);
+            $chartLabels[] = $date->format('d M'); // Format: 26 Nov
 
-            // Hitung berapa kali absen 'masuk' yang valid di minggu itu
-            $count = Attendance::where('emp_id', $karyawan->emp_id)
-                ->whereBetween('waktu_unggah', [$startWeek, $endWeek])
+            // Cek apakah karyawan HADIR (absen masuk) pada tanggal tersebut
+            // Dan validasinya TIDAK Invalid/Rejected
+            $isPresent = Attendance::where('emp_id', $karyawan->emp_id)
+                ->whereDate('waktu_unggah', $date)
                 ->where('type', 'masuk')
-                ->whereHas('validation', function($q) {
-                    $q->where('status_validasi_final', 'Valid');
+                ->whereDoesntHave('validation', function($q) {
+                    $q->whereIn('status_validasi_final', ['Invalid', 'Rejected']);
                 })
-                ->count();
+                ->exists(); // Mengembalikan true/false
 
-            $chartData[] = $count;
+            // Jika hadir nilai 1, jika tidak 0 (untuk tinggi grafik)
+            $chartData[] = $isPresent ? 1 : 0;
         }
 
         return view('karyawan.riwayat', compact(
@@ -447,15 +451,14 @@ class KaryawanController extends Controller
         // A. Logika Masuk
         if ($request->type == 'masuk') {
             $jamMasukCarbon = Carbon::createFromTimeString($jamMasukBatas);
-            $jamPulangCarbon = Carbon::createFromTimeString($jamPulangBatas); // Instansiasi Jam Pulang
+            $jamPulangCarbon = Carbon::createFromTimeString($jamPulangBatas);
 
-            // 1. Cek jika sudah lewat JAM PULANG (KARYAWAN TIDAK BOLEH ABSEN MASUK JIKA SUDAH JAM PULANG)
-            // Ini adalah perbaikan yang diminta.
+            // 1. Cek jika sudah lewat JAM PULANG
             if ($now->greaterThan($jamPulangCarbon)) {
                  return redirect()->back()->with('error', 'Absensi Masuk ditolak! Jam kerja operasional hari ini telah berakhir pada pukul ' . $jamPulangBatas . '.');
             }
             
-            // 2. Cek Terlalu Pagi (2 Jam sebelum masuk)
+            // 2. Cek Terlalu Pagi
             if ($now->lessThan($jamMasukCarbon->copy()->subHours(2))) {
                  return redirect()->back()->with('error', 'Terlalu awal! Absen dibuka pukul ' . $jamMasukCarbon->subHours(2)->format('H:i'));
             }
@@ -479,7 +482,7 @@ class KaryawanController extends Controller
         }
 
         // =========================================================================
-        // LAYER 7: SIMPAN DATA
+        // LAYER 7: SIMPAN DATA ATTENDANCE
         // =========================================================================
         $fileName = $currentUserId . '-' . $now->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
         $path = $file->storeAs('public/absensi', $fileName);

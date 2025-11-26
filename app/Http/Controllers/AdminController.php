@@ -228,7 +228,6 @@ class AdminController extends Controller
         $adminEmpId = $this->getCurrentEmployeeId();
 
         if ($adminEmpId) {
-            // Gunakan updateOrCreate agar tidak error duplicate entry
             Validation::updateOrCreate(
                 ['att_id' => $attendance->att_id],
                 [
@@ -337,6 +336,17 @@ class AdminController extends Controller
 
     public function storeKaryawan(Request $request): \Illuminate\Http\RedirectResponse
     {
+        // --- CUSTOM ERROR MESSAGES UNTUK BAHASA INDONESIA ---
+        $messages = [
+            'required' => 'Kolom :attribute wajib diisi.',
+            'unique' => ':attribute sudah digunakan.',
+            'email' => 'Format email tidak valid.',
+            'confirmed' => 'Konfirmasi password tidak cocok.', // FIX BAHASA INGGRIS
+            'min' => ':attribute minimal :min karakter.',
+            'max' => ':attribute maksimal :max karakter.',
+            'image' => ':attribute harus berupa gambar.',
+        ];
+
         $validated = $request->validate([
             'nama' => ['required', 'string', 'max:255'],
             'nip' => ['required', 'string', 'max:50', 'unique:employee'],
@@ -348,7 +358,7 @@ class AdminController extends Controller
             'no_telepon' => ['nullable', 'string', 'max:20'],
             'alamat' => ['nullable', 'string', 'max:500'],
             'foto_profil' => ['nullable', 'image', 'mimes:' . self::ALLOWED_IMAGE_TYPES, 'max:' . self::MAX_IMAGE_SIZE],
-        ]);
+        ], $messages); // Inject messages di sini
 
         return $this->handleEmployeeStorage($validated, $request);
     }
@@ -357,6 +367,17 @@ class AdminController extends Controller
     {
         $user = User::findOrFail($id);
         $employee = $user->employee;
+
+        // --- CUSTOM ERROR MESSAGES UNTUK BAHASA INDONESIA ---
+        $messages = [
+            'required' => 'Kolom :attribute wajib diisi.',
+            'unique' => ':attribute sudah digunakan.',
+            'email' => 'Format email tidak valid.',
+            'confirmed' => 'Konfirmasi password tidak cocok.', // FIX BAHASA INGGRIS
+            'min' => ':attribute minimal :min karakter.',
+            'max' => ':attribute maksimal :max karakter.',
+            'image' => ':attribute harus berupa gambar.',
+        ];
 
         $validated = $request->validate([
             'nama' => ['required', 'string', 'max:255'],
@@ -369,7 +390,7 @@ class AdminController extends Controller
             'no_telepon' => ['nullable', 'string', 'max:20'],
             'alamat' => ['nullable', 'string', 'max:500'],
             'foto_profil' => ['nullable', 'image', 'mimes:' . self::ALLOWED_IMAGE_TYPES, 'max:' . self::MAX_IMAGE_SIZE],
-        ]);
+        ], $messages); // Inject messages di sini
 
         return $this->handleEmployeeUpdate($user, $employee, $validated, $request);
     }

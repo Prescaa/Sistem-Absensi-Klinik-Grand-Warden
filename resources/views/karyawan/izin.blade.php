@@ -65,7 +65,10 @@
 
                         <div class="mb-3">
                             <label for="tipe_izin" class="form-label fw-semibold">Jenis Izin</label>
-                            <select name="tipe_izin" id="tipe_izin" class="form-select" required>
+                            {{-- VALIDASI PESAN INDONESIA --}}
+                            <select name="tipe_izin" id="tipe_izin" class="form-select" required
+                                    oninvalid="this.setCustomValidity('Silakan pilih jenis izin.')"
+                                    oninput="this.setCustomValidity('')">
                                 <option value="" selected disabled>-- Pilih Jenis --</option>
                                 <option value="sakit">Sakit (Perlu Surat Dokter)</option>
                                 <option value="izin">Izin (Keperluan Pribadi)</option>
@@ -76,17 +79,26 @@
                         <div class="row">
                             <div class="col-6 mb-3">
                                 <label for="tanggal_mulai" class="form-label fw-semibold">Mulai Tanggal</label>
-                                <input type="date" name="tanggal_mulai" class="form-control" required>
+                                {{-- VALIDASI PESAN INDONESIA --}}
+                                <input type="date" name="tanggal_mulai" class="form-control" required
+                                       oninvalid="this.setCustomValidity('Pilih tanggal mulai.')"
+                                       oninput="this.setCustomValidity('')">
                             </div>
                             <div class="col-6 mb-3">
                                 <label for="tanggal_selesai" class="form-label fw-semibold">Sampai Tanggal</label>
-                                <input type="date" name="tanggal_selesai" class="form-control" required>
+                                {{-- VALIDASI PESAN INDONESIA --}}
+                                <input type="date" name="tanggal_selesai" class="form-control" required
+                                       oninvalid="this.setCustomValidity('Pilih tanggal selesai.')"
+                                       oninput="this.setCustomValidity('')">
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="deskripsi" class="form-label fw-semibold">Alasan / Keterangan</label>
-                            <textarea name="deskripsi" class="form-control" rows="3" placeholder="Jelaskan alasan pengajuan izin..." required></textarea>
+                            {{-- VALIDASI PESAN INDONESIA --}}
+                            <textarea name="deskripsi" class="form-control" rows="3" placeholder="Jelaskan alasan pengajuan izin..." required
+                                      oninvalid="this.setCustomValidity('Jelaskan alasan pengajuan izin.')"
+                                      oninput="this.setCustomValidity('')"></textarea>
                         </div>
 
                         <div class="mb-4">

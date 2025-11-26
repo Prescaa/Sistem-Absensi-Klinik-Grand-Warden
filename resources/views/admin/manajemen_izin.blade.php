@@ -11,22 +11,9 @@
                 <i class="bi bi-plus-lg me-2"></i>Tambah Izin
             </button>
         </div>
-        
-        {{-- PERBAIKAN: Notifikasi dipindahkan ke sini dan dipastikan hanya muncul satu kali --}}
         <div class="card-body p-0 table-responsive">
-            @if(session('success'))
-                <div class="alert alert-success alert-dismissible fade show m-3" role="alert">
-                    <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
             
-            @if(session('error'))
-                <div class="alert alert-danger alert-dismissible fade show m-3" role="alert">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
+            {{-- Notifikasi hanya dari layout, blok ini kosong --}}
 
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -135,7 +122,10 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Karyawan*</label>
-                            <select name="emp_id" class="form-select" required>
+                            {{-- VALIDASI PESAN --}}
+                            <select name="emp_id" class="form-select" required
+                                    oninvalid="this.setCustomValidity('Silakan pilih karyawan dari daftar.')"
+                                    oninput="this.setCustomValidity('')">
                                 <option value="">-- Pilih Karyawan --</option>
                                 @foreach($employees as $emp)
                                     <option value="{{ $emp->emp_id }}">{{ $emp->nama }} ({{ $emp->nip }})</option>
@@ -144,7 +134,10 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Tipe Izin*</label>
-                            <select name="tipe_izin" class="form-select" required>
+                            {{-- VALIDASI PESAN --}}
+                            <select name="tipe_izin" class="form-select" required
+                                    oninvalid="this.setCustomValidity('Silakan pilih tipe izin.')"
+                                    oninput="this.setCustomValidity('')">
                                 <option value="izin">Izin</option>
                                 <option value="sakit">Sakit</option>
                                 <option value="cuti">Cuti</option>
@@ -152,11 +145,17 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Tanggal Mulai*</label>
-                            <input type="date" name="tanggal_mulai" class="form-control" required>
+                            {{-- VALIDASI PESAN --}}
+                            <input type="date" name="tanggal_mulai" class="form-control" required
+                                   oninvalid="this.setCustomValidity('Tentukan tanggal mulai.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small">Tanggal Selesai*</label>
-                            <input type="date" name="tanggal_selesai" class="form-control" required>
+                            {{-- VALIDASI PESAN --}}
+                            <input type="date" name="tanggal_selesai" class="form-control" required
+                                   oninvalid="this.setCustomValidity('Tentukan tanggal selesai.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold small">Alasan / Deskripsi</label>
@@ -204,7 +203,10 @@
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold small">Tipe Izin</label>
-                            <select name="tipe_izin" id="edit_tipe" class="form-select" required>
+                            {{-- VALIDASI PESAN --}}
+                            <select name="tipe_izin" id="edit_tipe" class="form-select" required
+                                    oninvalid="this.setCustomValidity('Silakan pilih tipe izin.')"
+                                    oninput="this.setCustomValidity('')">
                                 <option value="izin">Izin</option>
                                 <option value="sakit">Sakit</option>
                                 <option value="cuti">Cuti</option>
@@ -212,11 +214,17 @@
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold small">Mulai</label>
-                            <input type="date" name="tanggal_mulai" id="edit_mulai" class="form-control" required>
+                            {{-- VALIDASI PESAN --}}
+                            <input type="date" name="tanggal_mulai" id="edit_mulai" class="form-control" required
+                                   oninvalid="this.setCustomValidity('Tentukan tanggal mulai.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label fw-bold small">Selesai</label>
-                            <input type="date" name="tanggal_selesai" id="edit_selesai" class="form-control" required>
+                            {{-- VALIDASI PESAN --}}
+                            <input type="date" name="tanggal_selesai" id="edit_selesai" class="form-control" required
+                                   oninvalid="this.setCustomValidity('Tentukan tanggal selesai.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold small">Alasan</label>
