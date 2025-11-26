@@ -5,13 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\WorkArea;
 use App\Models\Attendance;
+use App\Models\Validation; // Pastikan Model Validation di-import
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Leave;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cookie;
-use App\Models\User; // Pastikan Model User di-import
+use App\Models\User; 
 use App\Models\Employee;
 
 class KaryawanController extends Controller
@@ -114,13 +115,35 @@ class KaryawanController extends Controller
     public function unggah() {
         $data = $this->getTodayAttendance();
 
-        // --- TAMBAHAN: Ambil data WorkArea untuk validasi Frontend & Display Jam Kerja ---
-        $data['workArea'] = WorkArea::select(
-                'radius_geofence',
-                'jam_kerja', // ✅ TAMBAHAN: Ambil kolom jam_kerja
-                DB::raw('ST_X(koordinat_pusat) as latitude'),
-                DB::raw('ST_Y(koordinat_pusat) as longitude')
-            )->find(1); // Asumsi ID area = 1
+        // --- PERBAIKAN KOORDINAT (Menggunakan ST_AsText agar Anti-Tertukar) ---
+        // Kita ambil raw text WKT, contoh: "POINT(106.822 -6.175)"
+        // Ini memastikan kita parsing manual: Angka Pertama = Longitude, Angka Kedua = Latitude
+        $workAreaQuery = WorkArea::select(
+            'radius_geofence',
+            'jam_kerja',
+            DB::raw('ST_AsText(koordinat_pusat) as location_str')
+        )->first(); // Gunakan first() bukan find(1) untuk jaga-jaga jika ID berubah
+
+        // Parsing Manual WKT POINT(lng lat)
+        $latitude = 0;
+        $longitude = 0;
+
+        if ($workAreaQuery && $workAreaQuery->location_str) {
+            // Hapus "POINT(" dan ")"
+            $cleanStr = str_replace(['POINT(', ')'], '', $workAreaQuery->location_str);
+            $parts = explode(' ', $cleanStr);
+            
+            if (count($parts) == 2) {
+                $longitude = (float) $parts[0]; // Urutan WKT standar selalu: X (Lng) Y (Lat)
+                $latitude = (float) $parts[1];
+            }
+        }
+
+        // Masukkan ke object agar bisa dibaca View
+        $workAreaQuery->latitude = $latitude;
+        $workAreaQuery->longitude = $longitude;
+        
+        $data['workArea'] = $workAreaQuery;
 
         return view('karyawan.unggah', $data);
     }
@@ -308,13 +331,13 @@ class KaryawanController extends Controller
     public function storeFoto(Request $request)
     {
         // =========================================================================
-        // LAYER 1: DEVICE LOCK (Anti-Joki)
+        // LAYER 1: DEVICE LOCK
         // =========================================================================
         $deviceOwner = $request->cookie('device_owner_id');
         $currentUserId = auth()->user()->employee->emp_id;
 
         if ($deviceOwner && $deviceOwner != $currentUserId) {
-            return redirect()->back()->with('error', 'KEAMANAN: Perangkat ini sudah terdaftar atas nama karyawan lain. Harap gunakan HP Anda sendiri.');
+            return redirect()->back()->with('error', 'KEAMANAN: Perangkat ini sudah terdaftar atas nama karyawan lain.');
         }
 
         // =========================================================================
@@ -330,7 +353,7 @@ class KaryawanController extends Controller
         $file = $request->file('foto_absensi');
 
         // =========================================================================
-        // LAYER 3: CEK DUPLIKASI FILE (Hash)
+        // LAYER 3: CEK DUPLIKASI FILE
         // =========================================================================
         $fileHash = md5_file($file->getRealPath());
         if (Attendance::where('file_hash', $fileHash)->exists()) {
@@ -338,69 +361,134 @@ class KaryawanController extends Controller
         }
 
         // =========================================================================
-        // LAYER 4: STRICT TIME CHECK (Anti-Drive-By)
+        // LAYER 4: STRICT TIME CHECK
         // =========================================================================
         $exif = @exif_read_data($file->getRealPath());
 
         if (!isset($exif['DateTimeOriginal'])) {
-            return redirect()->back()->with('error', 'Tanggal foto tidak terdeteksi. Pastikan menggunakan kamera langsung (Bukan upload file lama).');
+            return redirect()->back()->with('error', 'Tanggal foto tidak terdeteksi. Gunakan kamera langsung.');
         }
 
         try {
             $fotoTime = Carbon::parse($exif['DateTimeOriginal']);
             if (now()->diffInMinutes($fotoTime) > 5) {
-                return redirect()->back()->with('error', 'Foto kadaluarsa! Foto harus di-upload segera setelah diambil (Maksimal 5 menit).');
+                return redirect()->back()->with('error', 'Foto kadaluarsa! Foto harus di-upload segera (Maksimal 5 menit).');
             }
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Format tanggal foto tidak valid.');
         }
 
         // =========================================================================
-        // LAYER 5: SERVER-SIDE GEOFENCING (Hidden Coordinates)
+        // LAYER 5: SERVER-SIDE GEOFENCING (PARSING MANUAL WKT AGAR PRESISI)
         // =========================================================================
         $workArea = WorkArea::select(
             'area_id',
             'radius_geofence',
-            DB::raw('ST_X(koordinat_pusat) as latitude'),
-            DB::raw('ST_Y(koordinat_pusat) as longitude')
-        )->find(1);
+            'jam_kerja', 
+            DB::raw('ST_AsText(koordinat_pusat) as location_str')
+        )->first(); // Gunakan first() agar pasti dapat data
 
         if (!$workArea) {
             return redirect()->back()->with('error', 'Konfigurasi lokasi kantor belum diset.');
         }
 
+        // Manual Parsing (Sama seperti method unggah)
+        $cleanStr = str_replace(['POINT(', ')'], '', $workArea->location_str);
+        $parts = explode(' ', $cleanStr);
+        $officeLng = (float) $parts[0]; // X
+        $officeLat = (float) $parts[1]; // Y
+
         $jarakMeters = $this->haversineDistance(
             $request->browser_lat,
             $request->browser_lng,
-            $workArea->latitude,
-            $workArea->longitude
+            $officeLat,
+            $officeLng
         );
 
+        // GEOFENCING CHECK (Server Side)
         if ($jarakMeters > $workArea->radius_geofence) {
-            return redirect()->back()->with('error', "Lokasi Anda terlalu jauh dari kantor ($jarakMeters meter). Harap masuk ke area kantor.");
+            // DEBUG MESSAGE: Tampilkan detail koordinat agar user tahu salahnya dimana
+            $debugMsg = "Jarak: " . round($jarakMeters) . "m (Max: {$workArea->radius_geofence}m). " .
+                        "Posisi Anda: [{$request->browser_lat}, {$request->browser_lng}] " .
+                        "Kantor: [$officeLat, $officeLng]";
+            return redirect()->back()->with('error', "Gagal Geofencing: " . $debugMsg);
         }
 
+        // EXIF Geolocation Check (Jika ada GPS di foto)
         $exifLat = isset($exif['GPSLatitude']) ? $this->gpsDmsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef'] ?? 'N') : null;
         $exifLng = isset($exif['GPSLongitude']) ? $this->gpsDmsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef'] ?? 'E') : null;
 
         if ($exifLat && $exifLng) {
-            $jarakFoto = $this->haversineDistance($exifLat, $exifLng, $workArea->latitude, $workArea->longitude);
+            $jarakFoto = $this->haversineDistance($exifLat, $exifLng, $officeLat, $officeLng);
             if ($jarakFoto > ($workArea->radius_geofence + 500)) {
-                 return redirect()->back()->with('error', 'Data lokasi pada Foto terdeteksi di luar kantor. Gunakan kamera asli.');
+                 return redirect()->back()->with('error', 'Lokasi pada metadata Foto terdeteksi di luar kantor.');
             }
         }
 
         // =========================================================================
-        // LAYER 6: SIMPAN DATA
+        // LAYER 6: CEK JAM KERJA (DENGAN DETEKSI TERLAMBAT & BLOKIR LATE ENTRY)
         // =========================================================================
-        $fileName = $currentUserId . '-' . now()->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
+        $now = Carbon::now();
+        $jamKerjaConfig = $workArea->jam_kerja;
+        
+        $hariIni = $now->dayOfWeek; 
+        $hariKerja = $jamKerjaConfig['hari_kerja'] ?? [1,2,3,4,5]; 
+        
+        if (!in_array($hariIni, $hariKerja)) {
+            return redirect()->back()->with('error', 'Absensi Ditolak: Hari ini bukan jadwal hari kerja.');
+        }
+
+        $jamMasukBatas = $jamKerjaConfig['masuk'] ?? '08:00';
+        $jamPulangBatas = $jamKerjaConfig['pulang'] ?? '17:00';
+
+        $statusValidasi = 'Valid';
+        $catatanValidasi = null;
+        
+        // A. Logika Masuk
+        if ($request->type == 'masuk') {
+            $jamMasukCarbon = Carbon::createFromTimeString($jamMasukBatas);
+            $jamPulangCarbon = Carbon::createFromTimeString($jamPulangBatas); // Instansiasi Jam Pulang
+
+            // 1. Cek jika sudah lewat JAM PULANG (KARYAWAN TIDAK BOLEH ABSEN MASUK JIKA SUDAH JAM PULANG)
+            // Ini adalah perbaikan yang diminta.
+            if ($now->greaterThan($jamPulangCarbon)) {
+                 return redirect()->back()->with('error', 'Absensi Masuk ditolak! Jam kerja operasional hari ini telah berakhir pada pukul ' . $jamPulangBatas . '.');
+            }
+            
+            // 2. Cek Terlalu Pagi (2 Jam sebelum masuk)
+            if ($now->lessThan($jamMasukCarbon->copy()->subHours(2))) {
+                 return redirect()->back()->with('error', 'Terlalu awal! Absen dibuka pukul ' . $jamMasukCarbon->subHours(2)->format('H:i'));
+            }
+            
+            // 3. Cek Keterlambatan
+            if ($now->greaterThan($jamMasukCarbon)) {
+                $statusValidasi = 'Need Review'; 
+                $catatanValidasi = 'Terlambat: Absen pukul ' . $now->format('H:i');
+            }
+        }
+        
+        // B. Logika Pulang
+        if ($request->type == 'pulang') {
+            $jamPulangCarbon = Carbon::createFromTimeString($jamPulangBatas);
+            
+            // Cek Pulang Cepat
+            if ($now->lessThan($jamPulangCarbon)) {
+                $statusValidasi = 'Need Review';
+                $catatanValidasi = 'Pulang Cepat: Absen pukul ' . $now->format('H:i');
+            }
+        }
+
+        // =========================================================================
+        // LAYER 7: SIMPAN DATA
+        // =========================================================================
+        $fileName = $currentUserId . '-' . $now->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
         $path = $file->storeAs('public/absensi', $fileName);
         $publicPath = Storage::url($path);
 
-        Attendance::create([
+        $attendance = Attendance::create([
             'emp_id' => $currentUserId,
             'area_id' => $workArea->area_id,
-            'waktu_unggah' => now(),
+            'waktu_unggah' => $now,
             'latitude' => $exifLat ?? $request->browser_lat,
             'longitude' => $exifLng ?? $request->browser_lng,
             'nama_file_foto' => $publicPath,
@@ -409,13 +497,23 @@ class KaryawanController extends Controller
             'file_hash' => $fileHash
         ]);
 
-        // =========================================================================
-        // SUCCESS: Kunci Device Ini Selamanya (5 Tahun)
-        // =========================================================================
-        $cookieLifetime = 2628000; // 5 Tahun (dalam menit)
+        Validation::create([
+            'att_id' => $attendance->att_id,
+            'status_validasi_otomatis' => $statusValidasi == 'Valid' ? 'Valid' : 'Need Review',
+            'status_validasi_final' => $statusValidasi == 'Valid' ? 'Valid' : 'Pending',
+            'catatan_admin' => $catatanValidasi, 
+            'timestamp_validasi' => $now
+        ]);
+
+        $cookieLifetime = 2628000; 
+        
+        $msg = 'Absensi berhasil dicatat!';
+        if ($statusValidasi != 'Valid') {
+            $msg .= ' (Status: ' . $catatanValidasi . ')';
+        }
 
         return redirect()->route('karyawan.dashboard')
-            ->with('success', 'Absensi berhasil dicatat!')
+            ->with('success', $msg)
             ->withCookie(cookie('device_owner_id', $currentUserId, $cookieLifetime));
     }
 

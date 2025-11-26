@@ -11,12 +11,21 @@
                 <i class="bi bi-plus-lg me-2"></i>Tambah Izin
             </button>
         </div>
+        
+        {{-- PERBAIKAN: Notifikasi dipindahkan ke sini dan dipastikan hanya muncul satu kali --}}
         <div class="card-body p-0 table-responsive">
             @if(session('success'))
-                <div class="alert alert-success m-3">{{ session('success') }}</div>
+                <div class="alert alert-success alert-dismissible fade show m-3" role="alert">
+                    <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             @endif
+            
             @if(session('error'))
-                <div class="alert alert-danger m-3">{{ session('error') }}</div>
+                <div class="alert alert-danger alert-dismissible fade show m-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             @endif
 
             <table class="table table-hover align-middle mb-0">

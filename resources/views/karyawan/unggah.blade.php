@@ -6,6 +6,10 @@
 <div class="container-fluid">
     {{-- Data Work Area untuk JS (Dikirim dari Controller) --}}
     @if(isset($workArea))
+        {{-- 
+            UPDATE: Mengambil data latitude/longitude yang sudah diparsing 
+            dengan benar di Controller (ST_Y=Lat, ST_X=Lng) 
+        --}}
         <div id="work-area-data"
              data-lat="{{ $workArea->latitude }}"
              data-lng="{{ $workArea->longitude }}"
@@ -23,6 +27,8 @@
                         $isDisabled = $sedangIzin || $selesaiAbsen;
                         $karyawanId = auth()->user()->employee->emp_id;
                         $today = \Carbon\Carbon::today();
+                        
+                        // Cek apakah ada absensi hari ini yang ditolak/invalid
                         $rejectedToday = \App\Models\Attendance::where('emp_id', $karyawanId)
                             ->whereDate('waktu_unggah', $today)
                             ->whereHas('validation', function($q) {
@@ -30,6 +36,7 @@
                             })->first();
                         
                         // Ambil Jam Kerja dari WorkArea (dikirim dari Controller)
+                        // Pastikan handling jika workArea null atau jam_kerja kosong
                         $jamKerja = $workArea->jam_kerja ?? [];
                         $jamMasuk = $jamKerja['masuk'] ?? '08:00';
                         $jamPulang = $jamKerja['pulang'] ?? '17:00';
@@ -93,6 +100,7 @@
 
                     <form action="{{ route('karyawan.absensi.storeFoto') }}" method="POST" enctype="multipart/form-data" id="uploadForm" class="h-100">
                         @csrf
+                        {{-- Hidden Inputs untuk Data --}}
                         <input type="hidden" name="type" id="attendanceType">
                         <input type="hidden" name="browser_lat" id="browser_lat">
                         <input type="hidden" name="browser_lng" id="browser_lng">
@@ -104,6 +112,7 @@
 
                                     <input type="file" id="foto_absensi" name="foto_absensi" class="d-none" accept="image/jpeg,image/png" required>
 
+                                    {{-- Placeholder sebelum upload --}}
                                     <div id="uploadPlaceholder">
                                         <div class="mb-4 p-4 rounded-circle bg-light d-inline-block">
                                             <i class="bi bi-cloud-arrow-up-fill text-primary" style="font-size: 6rem;"></i>
@@ -115,6 +124,7 @@
                                         </button>
                                     </div>
 
+                                    {{-- Container Preview setelah upload --}}
                                     <div id="previewContainer" class="d-none position-relative w-100 h-100 d-flex align-items-center justify-content-center bg-dark rounded-3 overflow-hidden" style="max-height: 550px; min-height: 400px;">
                                         <img id="imagePreview" src="#" alt="Preview" class="img-fluid" style="max-height: 100%; max-width: 100%; object-fit: contain;">
                                         <div class="position-absolute bottom-0 start-0 w-100 p-3 bg-dark bg-opacity-75 text-white d-flex justify-content-between align-items-center">
@@ -140,19 +150,25 @@
                                 <h4 class="fw-bold mb-4 text-center">Konfirmasi Absensi</h4>
                                 <div class="d-grid gap-4">
                                     @if(is_null($absensiMasuk))
+                                        {{-- Tombol Absen Masuk --}}
                                         <button type="button" onclick="startAbsensi('masuk')" class="btn btn-primary btn-lg py-4 fs-4 shadow-sm">
                                             <div class="d-flex align-items-center justify-content-center">
                                                 <i class="bi bi-box-arrow-in-right me-3 fs-2"></i> <span>Absen Masuk</span>
                                             </div>
                                         </button>
+                                        {{-- Tombol Pulang Disabled --}}
                                         <button type="button" class="btn btn-secondary btn-lg py-3 disabled" style="opacity: 0.6"><i class="bi bi-lock-fill me-2"></i> Absen Pulang Terkunci</button>
                                     @else
+                                        {{-- Tombol Masuk Disabled (Sudah) --}}
                                         <button type="button" class="btn btn-success btn-lg py-3 disabled" style="opacity: 1"><i class="bi bi-check-circle-fill me-2"></i> Sudah Masuk</button>
+                                        
                                         @if(is_null($absensiPulang))
+                                            {{-- Tombol Absen Pulang --}}
                                             <button type="button" onclick="startAbsensi('pulang')" class="btn btn-danger btn-lg py-4 fs-4 shadow-sm mt-3">
                                                 <div class="d-flex align-items-center justify-content-center"><i class="bi bi-box-arrow-right me-3 fs-2"></i><span>Absen Pulang</span></div>
                                             </button>
                                         @else
+                                            {{-- Tombol Pulang Disabled (Sudah) --}}
                                             <button type="button" class="btn btn-success btn-lg py-3 disabled mt-3" style="opacity: 1"><i class="bi bi-check-circle-fill me-2"></i> Sudah Pulang</button>
                                         @endif
                                     @endif
@@ -195,11 +211,13 @@
         const removeFileBtn = document.getElementById('removeFile');
         const fileNameDisplay = document.getElementById('fileNameDisplay');
 
+        // Ambil Data Kantor dari Elemen Hidden
         const workAreaEl = document.getElementById('work-area-data');
         const OFFICE_LAT = workAreaEl ? parseFloat(workAreaEl.dataset.lat) : 0;
         const OFFICE_LNG = workAreaEl ? parseFloat(workAreaEl.dataset.lng) : 0;
         const OFFICE_RAD = workAreaEl ? parseFloat(workAreaEl.dataset.rad) : 50;
 
+        // --- Logic Drag & Drop + Preview File ---
         function handleFile(file) {
             if (file && file.type.startsWith('image/')) {
                 const reader = new FileReader();
@@ -235,6 +253,7 @@
             uploadPlaceholder.classList.remove('d-none');
         });
 
+        // --- Logic Submit Absensi ---
         window.startAbsensi = function(type) {
             const form = document.getElementById('uploadForm');
             const overlay = document.getElementById('processOverlay');
@@ -256,6 +275,7 @@
             formData.append('foto_absensi', fileInput.files[0]);
             formData.append('_token', '{{ csrf_token() }}');
 
+            // 1. Cek EXIF Data Foto (Server Side Check)
             fetch('{{ route("karyawan.absensi.checkExif") }}', {
                 method: 'POST',
                 body: formData
@@ -266,6 +286,7 @@
                     throw new Error(data.message);
                 }
 
+                // 2. Ambil Lokasi Browser (Client Side Check)
                 loadingTitle.innerText = "Mengambil GPS...";
                 return new Promise((resolve, reject) => {
                     if (!navigator.geolocation) {
@@ -287,19 +308,32 @@
                 const userLat = position.coords.latitude;
                 const userLng = position.coords.longitude;
 
+                // Simpan ke input hidden
                 document.getElementById('browser_lat').value = userLat;
                 document.getElementById('browser_lng').value = userLng;
 
+                // 3. Hitung Jarak (Client Side Check)
                 const distance = haversineDistance(userLat, userLng, OFFICE_LAT, OFFICE_LNG);
-                console.log(`Jarak User: ${distance}m`);
+                
+                // LOGGING UNTUK DEBUGGING (Cek Console Browser F12)
+                console.log("===== DEBUG GEOFENCING =====");
+                console.log("User Location:", userLat, userLng);
+                console.log("Office Config:", OFFICE_LAT, OFFICE_LNG);
+                console.log("Calculated Dist:", distance + " meters");
+                console.log("Allowed Radius:", OFFICE_RAD + " meters");
 
                 if (distance <= OFFICE_RAD) {
                     loadingTitle.innerText = "Mengirim Data...";
                     loadingText.innerText = "Verifikasi berhasil. Menyimpan absensi...";
-                    form.submit();
+                    form.submit(); // Submit Form jika valid
                 } else {
                     overlay.classList.add('d-none');
-                    alert(`GAGAL: Posisi Anda terdeteksi sejauh ${Math.round(distance)}m dari kantor. Maksimal radius: ${OFFICE_RAD}m.`);
+                    // Alert yang informatif untuk user
+                    alert(`GAGAL: Anda berada di luar radius kantor.\n\n` + 
+                          `Jarak: ${Math.round(distance)} meter (Max: ${OFFICE_RAD}m).\n` +
+                          `Lokasi Anda: [${userLat.toFixed(6)}, ${userLng.toFixed(6)}]\n` +
+                          `Lokasi Kantor: [${OFFICE_LAT.toFixed(6)}, ${OFFICE_LNG.toFixed(6)}]\n\n` +
+                          `Pastikan Anda berada di lokasi yang benar.`);
                 }
             })
             .catch(error => {
@@ -308,8 +342,9 @@
             });
         };
 
+        // Rumus Haversine untuk hitung jarak (meter)
         function haversineDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371000;
+            const R = 6371000; // Radius bumi dalam meter
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
