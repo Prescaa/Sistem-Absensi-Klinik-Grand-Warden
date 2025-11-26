@@ -30,6 +30,36 @@
                     <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-plus me-2"></i>Formulir Pengajuan</h5>
                 </div>
                 <div class="card-body">
+
+                    {{-- === KONTAK MANAJEMEN DINAMIS (START) === --}}
+                    @if($teleponManajemen)
+                        @php
+                            // Format nomor untuk link WA (Mengganti 0 di depan menjadi 62)
+                            $waNumber = preg_replace('/^0/', '62', $teleponManajemen);
+                        @endphp
+                        <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+                            <i class="bi bi-whatsapp fs-3 me-3"></i>
+                            <div>
+                                <small class="d-block fw-bold">Butuh persetujuan segera?</small>
+                                <small class="d-block text-muted" style="line-height: 1.2;">
+                                    Hubungi Manajemen untuk konfirmasi cepat:
+                                </small>
+                                <a href="https://wa.me/{{ $waNumber }}" target="_blank" class="fw-bold text-primary text-decoration-none mt-1 d-inline-block">
+                                    <i class="bi bi-telephone me-1"></i> {{ $teleponManajemen }} (Manajemen)
+                                </a>
+                            </div>
+                        </div>
+                    @else
+                        {{-- Opsi jika nomor manajemen belum di-set di database --}}
+                        <div class="alert alert-secondary d-flex align-items-center mb-4" role="alert">
+                            <i class="bi bi-info-circle fs-3 me-3"></i>
+                            <div>
+                                <small class="d-block text-muted">Kontak manajemen belum tersedia.</small>
+                            </div>
+                        </div>
+                    @endif
+                    {{-- === KONTAK MANAJEMEN DINAMIS (END) === --}}
+
                     <form action="{{ route('karyawan.izin.store') }}" method="POST" enctype="multipart/form-data">
                         @csrf
 
@@ -160,7 +190,7 @@
 @push('styles')
 <style>
     /* === CSS DARK MODE LENGKAP === */
-    
+
     /* Card di Dark Mode */
     .dark-mode .card {
         background-color: #1e1e1e !important;
@@ -194,7 +224,7 @@
     .dark-mode .form-control::placeholder {
         color: #aaa;
     }
-    
+
     /* File Input: Tombol 'Choose File' */
     .dark-mode input[type="file"]::file-selector-button {
         background-color: #444;
@@ -216,7 +246,7 @@
         border-color: #444;
     }
     /* Header Tabel (thead) agar tidak putih */
-    .dark-mode .bg-light, 
+    .dark-mode .bg-light,
     .dark-mode .table thead th {
         background-color: #2b2b2b !important;
         color: #fff !important;
@@ -235,11 +265,11 @@
         background-color: #1e1e1e !important;
         color: #e0e0e0 !important;
     }
-    
+
     /* Text Utilities untuk Dark Mode */
     .dark-mode .text-dark { color: #e0e0e0 !important; }
     .dark-mode .text-muted { color: #a0a0a0 !important; }
-    
+
     /* Alert di dalam tabel (Catatan Admin) saat Dark Mode */
     .dark-mode .alert-light {
         background-color: #2b2b2b !important;
@@ -249,10 +279,30 @@
     .dark-mode .alert-light strong {
         color: #fff !important;
     }
-    
+
     /* File Input Text Help */
     .dark-mode .form-text {
         color: #aaa !important;
+    }
+
+    /* === TAMBAHAN CSS DARK MODE UNTUK ALERT KONTAK BARU === */
+    .dark-mode .alert-info {
+        background-color: #2b2b2b !important; /* Warna latar gelap */
+        border-color: #0dcaf0 !important;      /* Border biru muda */
+        color: #e0e0e0 !important;             /* Teks terang */
+    }
+    .dark-mode .alert-info .text-primary {
+        color: #6edff6 !important;             /* Link warna biru terang agar terbaca */
+    }
+    .dark-mode .alert-info .text-muted {
+        color: #b0b0b0 !important;             /* Text muted sedikit lebih terang */
+    }
+    /* --- */
+    /* Agar alert-secondary (jika nomor kosong) tetap terlihat */
+    .dark-mode .alert-secondary {
+        background-color: #2b2b2b !important;
+        border-color: #6c757d !important;
+        color: #e0e0e0 !important;
     }
 </style>
 @endpush

@@ -11,6 +11,8 @@ use Carbon\Carbon;
 use App\Models\Leave;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cookie;
+use App\Models\User; // Pastikan Model User di-import
+use App\Models\Employee;
 
 class KaryawanController extends Controller
 {
@@ -27,7 +29,7 @@ class KaryawanController extends Controller
             ->whereDoesntHave('validation', function($q) {
                 $q->whereIn('status_validasi_final', ['Invalid', 'Rejected']);
             })
-            ->latest('waktu_unggah') 
+            ->latest('waktu_unggah')
             ->first();
 
         $absensiPulang = Attendance::where('emp_id', $karyawanId)
@@ -103,10 +105,10 @@ class KaryawanController extends Controller
         // Jika lolos semua cek EXIF
         return response()->json(['status' => 'success', 'message' => 'Validasi Foto Berhasil']);
     }
-    
-    public function dashboard() { 
+
+    public function dashboard() {
         $attendanceData = $this->getTodayAttendance();
-        return view('karyawan.dashboard', $attendanceData); 
+        return view('karyawan.dashboard', $attendanceData);
     }
 
     public function unggah() {
@@ -166,20 +168,32 @@ class KaryawanController extends Controller
                     $q->where('status_validasi_final', 'Valid');
                 })
                 ->count();
-            
+
             $chartData[] = $count;
         }
 
         return view('karyawan.riwayat', compact(
-            'karyawan', 'riwayatAbsensi', 'izinCount', 'sakitCount', 'cutiCount', 
+            'karyawan', 'riwayatAbsensi', 'izinCount', 'sakitCount', 'cutiCount',
             'chartData', 'chartLabels', 'riwayatIzin'
         ));
     }
 
     public function izin()
     {
-        $riwayatIzin = Leave::where('emp_id', auth()->user()->employee->emp_id)->orderBy('created_at', 'desc')->get();
-        return view('karyawan.izin', compact('riwayatIzin'));
+        $riwayatIzin = Leave::where('emp_id', auth()->user()->employee->emp_id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // === LOGIKA BARU: AMBIL NO HP MANAJEMEN ===
+        // Cari Employee yang User-nya memiliki role 'Manajemen'
+        $manajemenEmp = Employee::whereHas('user', function($q) {
+            $q->where('role', 'Manajemen');
+        })->first();
+
+        // Ambil no telepon jika ada, jika tidak set default
+        $teleponManajemen = $manajemenEmp ? $manajemenEmp->no_telepon : null;
+
+        return view('karyawan.izin', compact('riwayatIzin', 'teleponManajemen'));
     }
 
     public function storeIzin(Request $request)
@@ -254,13 +268,13 @@ class KaryawanController extends Controller
         $employee = auth()->user()->employee;
 
         $request->validate([
-            'nama' => 'required|string|max:255', 
+            'nama' => 'required|string|max:255',
             'alamat' => 'nullable|string|max:255',
-            'no_telepon' => 'nullable|numeric|digits_between:10,15', 
+            'no_telepon' => 'nullable|numeric|digits_between:10,15',
             'foto_profil' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        $employee->nama = $request->nama; 
+        $employee->nama = $request->nama;
         $employee->alamat = $request->alamat;
         $employee->no_telepon = $request->no_telepon;
 
@@ -349,7 +363,7 @@ class KaryawanController extends Controller
             'radius_geofence',
             DB::raw('ST_X(koordinat_pusat) as latitude'),
             DB::raw('ST_Y(koordinat_pusat) as longitude')
-        )->find(1); 
+        )->find(1);
 
         if (!$workArea) {
             return redirect()->back()->with('error', 'Konfigurasi lokasi kantor belum diset.');
@@ -387,7 +401,7 @@ class KaryawanController extends Controller
             'emp_id' => $currentUserId,
             'area_id' => $workArea->area_id,
             'waktu_unggah' => now(),
-            'latitude' => $exifLat ?? $request->browser_lat, 
+            'latitude' => $exifLat ?? $request->browser_lat,
             'longitude' => $exifLng ?? $request->browser_lng,
             'nama_file_foto' => $publicPath,
             'timestamp_ekstraksi' => $exif['DateTimeOriginal'],
