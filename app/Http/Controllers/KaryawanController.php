@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\WorkArea;
 use App\Models\Attendance;
-use App\Models\Validation; // Pastikan Model Validation di-import
+use App\Models\Validation; 
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -21,9 +21,8 @@ class KaryawanController extends Controller
         $karyawanId = auth()->user()->employee->emp_id;
         $today = Carbon::today();
 
-        // --- LOGIKA ABSEN ULANG ---
-        // Kita cari absensi hari ini, TAPI kita filter:
-        // Ambil yang status validasinya BUKAN 'Invalid' atau 'Rejected'.
+        // Logika: Ambil absensi hari ini yang status validasinya TIDAK 'Invalid' atau 'Rejected'
+        // Jika status masih 'Pending', tetap dianggap sudah absen (menunggu).
         $absensiMasuk = Attendance::where('emp_id', $karyawanId)
             ->whereDate('waktu_unggah', $today)
             ->where('type', 'masuk')
@@ -42,7 +41,6 @@ class KaryawanController extends Controller
             ->latest('waktu_unggah')
             ->first();
 
-        // Cek apakah hari ini ada izin yang DISETUJUI
         $todayLeave = Leave::where('emp_id', $karyawanId)
             ->where('status', 'disetujui')
             ->whereDate('tanggal_mulai', '<=', $today)
@@ -56,11 +54,8 @@ class KaryawanController extends Controller
         ];
     }
 
-    // Di dalam Class KaryawanController
-
     public function checkExif(Request $request)
     {
-        // Validasi input dasar
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:7000',
         ]);
@@ -71,22 +66,18 @@ class KaryawanController extends Controller
 
         $file = $request->file('foto_absensi');
 
-        // --- A. CEK DUPLIKASI FILE (Hash) ---
         $fileHash = md5_file($file->getRealPath());
         $isDuplicate = Attendance::where('file_hash', $fileHash)->exists();
         if ($isDuplicate) {
             return response()->json(['status' => 'error', 'message' => 'Foto ini sudah pernah dipakai sebelumnya. Harap ambil foto baru!'], 400);
         }
 
-        // --- B. BACA EXIF ---
         $exif = @exif_read_data($file->getRealPath());
 
-        // Cek Kelengkapan GPS
         if (!$exif || empty($exif['GPSLatitude']) || empty($exif['GPSLongitude'])) {
             return response()->json(['status' => 'error', 'message' => 'Data GPS tidak ditemukan pada foto. Pastikan fitur Lokasi/GPS aktif saat memotret.'], 400);
         }
 
-        // Cek Waktu Pengambilan (Anti-Foto Lama)
         if (empty($exif['DateTimeOriginal'])) {
             return response()->json(['status' => 'error', 'message' => 'Tanggal foto tidak terdeteksi. Jangan gunakan foto hasil download/editan.'], 400);
         }
@@ -103,7 +94,6 @@ class KaryawanController extends Controller
            return response()->json(['status' => 'error', 'message' => 'Format tanggal foto rusak.'], 400);
         }
 
-        // Jika lolos semua cek EXIF
         return response()->json(['status' => 'success', 'message' => 'Validasi Foto Berhasil']);
     }
 
@@ -115,7 +105,6 @@ class KaryawanController extends Controller
     public function unggah() {
         $data = $this->getTodayAttendance();
 
-        // --- AMBIL KOORDINAT (ST_Y=LAT, ST_X=LNG) ---
         $workAreaQuery = WorkArea::select(
             'radius_geofence',
             'jam_kerja',
@@ -130,8 +119,8 @@ class KaryawanController extends Controller
             $parts = explode(' ', $cleanStr);
             
             if (count($parts) == 2) {
-                $longitude = (float) $parts[0]; // X
-                $latitude = (float) $parts[1];  // Y
+                $longitude = (float) $parts[0]; 
+                $latitude = (float) $parts[1];  
             }
         }
 
@@ -155,23 +144,19 @@ class KaryawanController extends Controller
         $user = auth()->user();
         $karyawan = $user->employee;
 
-        // 1. Ambil Daftar Riwayat
         $riwayatAbsensi = Attendance::with('validation')
             ->where('emp_id', $karyawan->emp_id)
             ->orderBy('waktu_unggah', 'desc')
             ->get();
 
-        // 2. Statistik Angka
         $izinCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'izin')->where('status', 'disetujui')->count();
         $sakitCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'sakit')->where('status', 'disetujui')->count();
         $cutiCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'cuti')->where('status', 'disetujui')->count();
 
-        // Ambil data riwayat izin
         $riwayatIzin = Leave::where('emp_id', $karyawan->emp_id)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // 3. LOGIKA GRAFIK HARIAN (7 HARI TERAKHIR)
         $chartData = [];
         $chartLabels = [];
 
@@ -213,7 +198,6 @@ class KaryawanController extends Controller
 
     public function storeIzin(Request $request)
     {
-        // 1. VALIDASI INPUT
         $request->validate([
             'tipe_izin' => 'required|in:sakit,izin,cuti',
             'tanggal_mulai' => 'required|date',
@@ -226,7 +210,6 @@ class KaryawanController extends Controller
 
         $empId = auth()->user()->employee->emp_id;
 
-        // 2. CEK OVERLAP
         $checkOverlap = Leave::where('emp_id', $empId)
             ->where('status', '!=', 'ditolak') 
             ->where(function($q) use ($request) {
@@ -247,7 +230,6 @@ class KaryawanController extends Controller
                 ->withErrors(['tanggal_mulai' => 'Anda sudah memiliki pengajuan pada tanggal tersebut.']);
         }
 
-        // 3. UPLOAD FILE
         $filePath = null;
         if ($request->hasFile('file_bukti')) {
             $file = $request->file('file_bukti');
@@ -256,7 +238,6 @@ class KaryawanController extends Controller
             $filePath = Storage::url($path);
         }
 
-        // 4. SIMPAN DB
         Leave::create([
             'emp_id' => $empId,
             'tipe_izin' => $request->tipe_izin,
@@ -319,21 +300,20 @@ class KaryawanController extends Controller
         return redirect()->back()->with('error', 'Anda belum memiliki foto profil.');
     }
 
+    // =========================================================================
+    // STORE FOTO (LOGIKA UTAMA ABSENSI)
+    // =========================================================================
     public function storeFoto(Request $request)
     {
-        // =========================================================================
-        // LAYER 1: DEVICE LOCK
-        // =========================================================================
+        // 1. DEVICE LOCK
         $deviceOwner = $request->cookie('device_owner_id');
         $currentUserId = auth()->user()->employee->emp_id;
 
         if ($deviceOwner && $deviceOwner != $currentUserId) {
-            return redirect()->back()->with('error', 'KEAMANAN: Perangkat ini sudah terdaftar atas nama karyawan lain. Harap gunakan HP Anda sendiri.');
+            return redirect()->back()->with('error', 'KEAMANAN: Perangkat ini sudah terdaftar atas nama karyawan lain.');
         }
 
-        // =========================================================================
-        // LAYER 2: VALIDASI INPUT
-        // =========================================================================
+        // 2. VALIDASI INPUT
         $request->validate([
             'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:5000',
             'type'         => 'required|in:masuk,pulang',
@@ -343,47 +323,34 @@ class KaryawanController extends Controller
 
         $file = $request->file('foto_absensi');
 
-        // =========================================================================
-        // LAYER 3: DETEKSI WAJAH
-        // =========================================================================
+        // 3. DETEKSI WAJAH
         if (! $this->detectFace($file->getRealPath())) {
-            return redirect()->back()->with('error', 'VALIDASI WAJAH GAGAL: Sistem AI tidak menemukan wajah. Pastikan wajah terlihat jelas.');
+            return redirect()->back()->with('error', 'VALIDASI WAJAH GAGAL: Sistem AI tidak menemukan wajah.');
         }
 
-        // =========================================================================
-        // LAYER 4: CEK DUPLIKASI
-        // =========================================================================
+        // 4. CEK DUPLIKASI
         $fileHash = md5_file($file->getRealPath());
         if (Attendance::where('file_hash', $fileHash)->exists()) {
-            return redirect()->back()->with('error', 'Foto ini sudah pernah digunakan sebelumnya. Harap ambil foto baru!');
+            return redirect()->back()->with('error', 'Foto ini sudah pernah digunakan sebelumnya.');
         }
 
-        // =========================================================================
-        // LAYER 5: STRICT TIME CHECK (EXIF)
-        // =========================================================================
+        // 5. STRICT TIME CHECK (EXIF)
         $exif = @exif_read_data($file->getRealPath());
-
         if (!isset($exif['DateTimeOriginal'])) {
             return redirect()->back()->with('error', 'Tanggal foto tidak terdeteksi. Pastikan menggunakan kamera langsung.');
         }
-
         try {
             $fotoTime = Carbon::parse($exif['DateTimeOriginal']);
             if (now()->diffInMinutes($fotoTime) > 5) {
-                return redirect()->back()->with('error', 'Foto kadaluarsa! Foto harus di-upload segera setelah diambil (Maksimal 5 menit).');
+                return redirect()->back()->with('error', 'Foto kadaluarsa! Maksimal 5 menit setelah diambil.');
             }
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Format tanggal foto tidak valid.');
         }
 
-        // =========================================================================
-        // LAYER 6: GEOFENCING & PARSING KOORDINAT
-        // =========================================================================
-        // AMBIL DENGAN TEXT PARSING (PALING AMAN)
+        // 6. GEOFENCING
         $workArea = WorkArea::select(
-            'area_id', 
-            'radius_geofence', 
-            'jam_kerja',
+            'area_id', 'radius_geofence', 'jam_kerja',
             DB::raw('ST_AsText(koordinat_pusat) as location_str')
         )->first(); 
 
@@ -396,15 +363,8 @@ class KaryawanController extends Controller
         $officeLng = (float) $parts[0]; 
         $officeLat = (float) $parts[1]; 
 
-        // A. Jarak Browser
-        $browserDistance = $this->haversineDistance(
-            $request->browser_lat,
-            $request->browser_lng,
-            $officeLat,
-            $officeLng
-        );
-
-        // B. Jarak Foto (EXIF)
+        // Hitung Jarak
+        $browserDistance = $this->haversineDistance($request->browser_lat, $request->browser_lng, $officeLat, $officeLng);
         $exifLat = isset($exif['GPSLatitude']) ? $this->gpsDmsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef'] ?? 'N') : null;
         $exifLng = isset($exif['GPSLongitude']) ? $this->gpsDmsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef'] ?? 'E') : null;
         
@@ -413,18 +373,14 @@ class KaryawanController extends Controller
             $photoDistance = $this->haversineDistance($exifLat, $exifLng, $officeLat, $officeLng);
         }
 
-        // C. Validasi Lokasi (Salah satu harus masuk)
         $isValidLocation = false;
-        $usedLocationSource = '';
         $finalLat = $request->browser_lat;
         $finalLng = $request->browser_lng;
 
         if ($browserDistance <= $workArea->radius_geofence) {
             $isValidLocation = true;
-            $usedLocationSource = 'Browser GPS';
         } elseif ($photoDistance !== null && $photoDistance <= $workArea->radius_geofence) {
             $isValidLocation = true;
-            $usedLocationSource = 'Photo EXIF';
             $finalLat = $exifLat;
             $finalLng = $exifLng;
         }
@@ -434,89 +390,69 @@ class KaryawanController extends Controller
             return redirect()->back()->with('error', "Anda berada $selisih m di luar radius kantor.");
         }
 
-        // =========================================================================
-        // LAYER 7: CEK JAM KERJA (FIX: HANDLE NEXT DAY ENTRY)
-        // =========================================================================
+        // 7. CEK JAM KERJA & STATUS VALIDASI
         $now = Carbon::now();
-        $jamKerjaConfig = $workArea->jam_kerja; // Array JSON
-        
+        $jamKerjaConfig = $workArea->jam_kerja;
         $hariIni = $now->dayOfWeek; 
         $hariKerja = $jamKerjaConfig['hari_kerja'] ?? [1,2,3,4,5]; 
         
         if (!in_array($hariIni, $hariKerja)) {
-            return redirect()->back()->with('error', 'Hari ini bukan jadwal hari kerja. Anda tidak bisa melakukan absensi.');
+            return redirect()->back()->with('error', 'Hari ini bukan jadwal hari kerja.');
         }
 
         $jamMasukBatas = $jamKerjaConfig['masuk'] ?? '08:00';
         $jamPulangBatas = $jamKerjaConfig['pulang'] ?? '17:00';
 
-        $statusValidasi = 'Valid';
-        $statusFinal = 'Valid'; // Variabel untuk status_validasi_final
+        // Default System Logic (Status Otomatis)
+        $statusValidasiOtomatis = 'Valid';
         $catatanValidasi = null;
 
-        // A. Logika Masuk
+        // =====================================================================
+        // PERUBAHAN PENTING: STATUS FINAL SELALU PENDING
+        // Agar semua absensi masuk ke dashboard approval manajer
+        // =====================================================================
+        $statusFinal = 'Pending'; 
+
+        // Logika Cek Keterlambatan (Hanya mempengaruhi Status Otomatis)
         if ($request->type == 'masuk') {
             $jamMasukCarbon = Carbon::createFromTimeString($jamMasukBatas);
             $jamPulangCarbon = Carbon::createFromTimeString($jamPulangBatas);
-            
-            // Flag untuk menandai apakah ini entry dini hari untuk shift besok
             $isEntryForTomorrow = false;
 
-            // 1. Cek apakah sudah lewat jam pulang
             if ($now->greaterThan($jamPulangCarbon)) {
-                // JIKA SUDAH LEWAT JAM PULANG, CEK APAKAH INI PERSIAPAN UNTUK BESOK?
-                // Logika: Jika waktu sekarang >= (Jam Masuk Besok - 2 Jam)
-                
-                $jamMasukBesok = $jamMasukCarbon->copy()->addDay(); // Jam masuk besok
-                $windowBukaBesok = $jamMasukBesok->copy()->subHours(2); // 2 jam sebelum masuk besok
-
+                $jamMasukBesok = $jamMasukCarbon->copy()->addDay();
+                $windowBukaBesok = $jamMasukBesok->copy()->subHours(2);
                 if ($now->greaterThanOrEqualTo($windowBukaBesok)) {
-                    // Ini valid! User absen dini hari/malam untuk shift besok.
                     $isEntryForTomorrow = true;
-                    // Tidak dianggap terlambat karena belum jam masuknya
                 } else {
-                    // Benar-benar sudah lewat jam pulang dan belum waktunya absen besok
-                    return redirect()->back()->with('error', 'Absensi Masuk ditolak! Jam kerja operasional hari ini telah berakhir pada pukul ' . $jamPulangBatas . '.');
+                    return redirect()->back()->with('error', 'Absensi Masuk ditolak! Jam kerja telah berakhir.');
                 }
             }
             
-            // 2. Cek Terlalu Pagi (Hanya jika bukan entry besok)
             if (!$isEntryForTomorrow && $now->lessThan($jamMasukCarbon->copy()->subHours(2))) {
-                 return redirect()->back()->with('error', 'Terlalu awal! Absensi masuk baru dibuka pukul ' . $jamMasukCarbon->subHours(2)->format('H:i') . '.');
+                 return redirect()->back()->with('error', 'Terlalu awal! Absensi belum dibuka.');
             }
 
-            // 3. Cek Keterlambatan (Hanya jika bukan entry besok)
             if (!$isEntryForTomorrow && $now->greaterThan($jamMasukCarbon)) {
-                $statusValidasi = 'Need Review';
-                $statusFinal = 'Pending';
-                $catatanValidasi = 'Terlambat: Absen pukul ' . $now->format('H:i') . ' (Jadwal: ' . $jamMasukBatas . ')';
+                $statusValidasiOtomatis = 'Need Review'; 
+                $catatanValidasi = 'Terlambat (Otomatis): Absen pukul ' . $now->format('H:i') . ' (Jadwal: ' . $jamMasukBatas . ')';
             }
         }
         
-        // B. Logika Pulang
         if ($request->type == 'pulang') {
             $jamPulangCarbon = Carbon::createFromTimeString($jamPulangBatas);
-            
-            // Cek Pulang Cepat
             if ($now->lessThan($jamPulangCarbon)) {
-                $statusValidasi = 'Need Review';
-                $statusFinal = 'Pending';
-                $catatanValidasi = 'Pulang Cepat: Absen pukul ' . $now->format('H:i') . ' (Jadwal: ' . $jamPulangBatas . ')';
+                $statusValidasiOtomatis = 'Need Review';
+                $catatanValidasi = 'Pulang Cepat (Otomatis): Absen pukul ' . $now->format('H:i') . ' (Jadwal: ' . $jamPulangBatas . ')';
             }
         }
 
-        // =========================================================================
-        // --- LOGIKA BARU: MANAJEMEN HARUS APPROVAL MANAJER LAIN ---
-        // =========================================================================
-        if (strtolower(auth()->user()->role) === 'manajemen') {
-            $statusValidasi = 'Need Review';
-            $statusFinal = 'Pending';
-            $catatanValidasi = 'Menunggu Validasi Manajer Lain';
+        // Jika tidak ada catatan otomatis (tepat waktu), beri catatan default
+        if (!$catatanValidasi) {
+            $catatanValidasi = 'Tepat Waktu - Menunggu Validasi Manajer';
         }
 
-        // =========================================================================
-        // LAYER 8: SIMPAN DATA ATTENDANCE
-        // =========================================================================
+        // 8. SIMPAN DATA ATTENDANCE
         $fileName = $currentUserId . '-' . $now->format('Ymd-His') . '-' . $request->type . '.' . $file->extension();
         $path = $file->storeAs('public/absensi', $fileName);
         $publicPath = Storage::url($path);
@@ -533,30 +469,18 @@ class KaryawanController extends Controller
             'file_hash' => $fileHash
         ]);
 
-        // =========================================================================
-        // LAYER 9: SIMPAN STATUS VALIDASI
-        // =========================================================================
+        // 9. SIMPAN VALIDATION (STATUS FINAL = PENDING)
         Validation::create([
             'att_id' => $attendance->att_id,
-            'status_validasi_otomatis' => $statusValidasi,
-            'status_validasi_final' => $statusFinal,
+            'status_validasi_otomatis' => $statusValidasiOtomatis, // Bisa Valid/Need Review (Sistem)
+            'status_validasi_final' => $statusFinal,               // Selalu Pending (Manusia)
             'catatan_admin' => $catatanValidasi, 
             'timestamp_validasi' => $now
         ]);
 
-        $cookieLifetime = 2628000;
-        
-        $msg = 'Absensi berhasil dicatat!';
-        if ($statusValidasi != 'Valid') {
-            $msg .= ' (Status: ' . $catatanValidasi . ')';
-        }
-        if ($usedLocationSource == 'Photo EXIF') {
-             $msg .= ' (Menggunakan Lokasi Foto)';
-        }
-
         return redirect()->route('karyawan.dashboard')
-            ->with('success', $msg)
-            ->withCookie(cookie('device_owner_id', $currentUserId, $cookieLifetime));
+            ->with('success', 'Absensi berhasil dicatat! Menunggu validasi Manajer.')
+            ->withCookie(cookie('device_owner_id', $currentUserId, 2628000));
     }
 
     // --- HELPER METHODS ---
@@ -566,16 +490,8 @@ class KaryawanController extends Controller
         try {
             $scriptPath = base_path('app/Python/detect_face.py');
             $pythonCmd = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' ? 'python' : 'python3';
-
-            $command = sprintf(
-                '%s %s %s 2>&1',
-                $pythonCmd,
-                escapeshellarg($scriptPath),
-                escapeshellarg($imagePath)
-            );
-
+            $command = sprintf('%s %s %s 2>&1', $pythonCmd, escapeshellarg($scriptPath), escapeshellarg($imagePath));
             $output = trim(shell_exec($command));
-
             return $output === 'true';
         } catch (\Exception $e) {
             Log::error("Face Detect Error: " . $e->getMessage());

@@ -77,18 +77,16 @@ class ManajemenController extends Controller
      */
     public function showValidasiPage()
     {
-        // Ambil absensi yang BELUM punya validasi (Karyawan biasa)
-        // ATAU absensi yang SUDAH punya validasi TAPI statusnya masih 'Pending' (Kasus Manajer)
+        // Ambil SEMUA absensi masuk yang BELUM divalidasi atau status final = 'Pending'
         $pendingAttendances = Attendance::with('employee')
-            ->where(function($query) {
-                // Kondisi 1: Belum ada row validasi sama sekali
-                $query->whereDoesntHave('validation')
-                // Kondisi 2: Ada row validasi, tapi status finalnya Pending
-                      ->orWhereHas('validation', function($q) {
-                          $q->where('status_validasi_final', 'Pending');
-                      });
+            ->where('type', 'masuk')
+            ->where(function ($q) {
+                $q->whereDoesntHave('validation')
+                  ->orWhereHas('validation', function ($sub) {
+                      $sub->where('status_validasi_final', 'Pending');
+                  });
             })
-            ->orderBy('waktu_unggah', 'asc') // Yang terlama di atas agar segera diproses
+            ->orderBy('waktu_unggah', 'asc')
             ->get();
 
         $pendingLeaves = Leave::where('status', 'pending')

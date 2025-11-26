@@ -190,16 +190,20 @@ class AdminController extends Controller
                 'nama_file_foto' => $fotoPath,
             ]);
 
-            // SELALU PENDING supaya Manajemen yg menyetujui
-            $this->manageValidation(
-                $attendance,
-                'Pending',
-                'Pending',
-                $validated['catatan_admin'] ?? 'Input Manual Admin'
+            // SELALU PENDING supaya Manajemen yang menyetujui
+            Validation::updateOrCreate(
+                ['att_id' => $attendance->att_id],
+                [
+                    'admin_id' => $this->getCurrentEmployeeId(),
+                    'status_validasi_otomatis' => 'Pending',
+                    'status_validasi_final' => 'Pending',
+                    'catatan_admin' => $validated['catatan_admin'] ?? 'Input Manual Admin',
+                    'timestamp_validasi' => now(),
+                ]
             );
         });
 
-        return redirect()->back()->with('success', 'Data absensi berhasil ditambahkan dan otomatis disetujui.');
+        return redirect()->back()->with('success', 'Data absensi berhasil ditambahkan dan menunggu validasi Manajemen.');
     }
 
     /* -----------------------------------------------------------------
@@ -217,38 +221,20 @@ class AdminController extends Controller
 
             $attendance->save();
 
-            // SELALU PENDING supaya Manajemen yg menyetujui
-            $this->manageValidation(
-                $attendance,
-                'Pending',
-                'validated['catatan_admin']
-            );
-        });
-
-        return redirect()->back()->with('success', 'Data absensi berhasil diperbarui.');
-    }
-
-    private function manageValidation(Attendance $attendance, string $status, ?string $note): void
-    {
-        if ($status === 'Pending') {
-            $attendance->validation?->delete();
-            return;
-        }
-
-        $adminEmpId = $this->getCurrentEmployeeId();
-
-        if ($adminEmpId) {
+            // SELALU PENDING supaya Manajemen yang menyetujui
             Validation::updateOrCreate(
                 ['att_id' => $attendance->att_id],
                 [
-                    'admin_id' => $adminEmpId,
-                    'status_validasi_otomatis' => $status,
-                    'status_validasi_final' => $status,
-                    'catatan_admin' => $note,
+                    'admin_id' => $this->getCurrentEmployeeId(),
+                    'status_validasi_otomatis' => 'Pending',
+                    'status_validasi_final' => 'Pending',
+                    'catatan_admin' => $validated['catatan_admin'] ?? 'Update Manual Admin',
                     'timestamp_validasi' => now(),
                 ]
             );
-        }
+        });
+
+        return redirect()->back()->with('success', 'Data absensi berhasil diperbarui dan menunggu validasi Manajemen.');
     }
 
     // =================================================================
@@ -922,7 +908,7 @@ class AdminController extends Controller
         if (Attendance::where('file_hash', $fileHash)->exists()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Foto ini sudah pernah dipakai sebelumnya.'
+                'message' => 'Foto ini sudah pernah digunakan sebelumnya.'
             ], 400);
         }
 
