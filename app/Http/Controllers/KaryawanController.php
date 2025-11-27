@@ -17,30 +17,37 @@ use App\Models\Employee;
 
 class KaryawanController extends Controller
 {
+    /**
+     * Helper: Ambil Data Absensi & Izin Hari Ini
+     * Absensi dianggap sah jika status finalnya BUKAN 'Invalid'.
+     */
     private function getTodayAttendance() {
         $karyawanId = auth()->user()->employee->emp_id;
         $today = Carbon::today();
 
-        // Logika: Ambil absensi hari ini yang status validasinya TIDAK 'Invalid' atau 'Rejected'
-        // Jika status masih 'Pending', tetap dianggap sudah absen (menunggu).
+        // Absensi Masuk (Hanya Invalid yang diabaikan. Pending tetap dianggap menunggu validasi)
         $absensiMasuk = Attendance::where('emp_id', $karyawanId)
             ->whereDate('waktu_unggah', $today)
             ->where('type', 'masuk')
             ->whereDoesntHave('validation', function($q) {
-                $q->whereIn('status_validasi_final', ['Invalid', 'Rejected']);
+                // Di sini, kita hanya mengecek status final 'Invalid'
+                $q->where('status_validasi_final', 'Invalid');
             })
             ->latest('waktu_unggah')
             ->first();
 
+        // Absensi Pulang
         $absensiPulang = Attendance::where('emp_id', $karyawanId)
             ->whereDate('waktu_unggah', $today)
             ->where('type', 'pulang')
             ->whereDoesntHave('validation', function($q) {
-                $q->whereIn('status_validasi_final', ['Invalid', 'Rejected']);
+                // Di sini, kita hanya mengecek status final 'Invalid'
+                $q->where('status_validasi_final', 'Invalid');
             })
             ->latest('waktu_unggah')
             ->first();
 
+        // Izin/Sakit/Cuti Hari Ini yang Disetujui
         $todayLeave = Leave::where('emp_id', $karyawanId)
             ->where('status', 'disetujui')
             ->whereDate('tanggal_mulai', '<=', $today)
@@ -54,6 +61,9 @@ class KaryawanController extends Controller
         ];
     }
 
+    /**
+     * [AJAX] Endpoint Cek Validitas EXIF sebelum submit
+     */
     public function checkExif(Request $request)
     {
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
@@ -72,6 +82,10 @@ class KaryawanController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Foto ini sudah pernah dipakai sebelumnya. Harap ambil foto baru!'], 400);
         }
 
+        if (!function_exists('exif_read_data')) {
+            return response()->json(['status' => 'success', 'message' => 'Warning: Ekstensi EXIF Server non-aktif. Validasi tanggal/gps otomatis dilewati.'], 200);
+        }
+        
         $exif = @exif_read_data($file->getRealPath());
 
         if (!$exif || empty($exif['GPSLatitude']) || empty($exif['GPSLongitude'])) {
@@ -97,11 +111,17 @@ class KaryawanController extends Controller
         return response()->json(['status' => 'success', 'message' => 'Validasi Foto Berhasil']);
     }
 
+    /**
+     * Menampilkan Dashboard Karyawan
+     */
     public function dashboard() {
         $attendanceData = $this->getTodayAttendance();
         return view('karyawan.dashboard', $attendanceData);
     }
 
+    /**
+     * Menampilkan Halaman Unggah Absensi
+     */
     public function unggah() {
         $data = $this->getTodayAttendance();
 
@@ -118,6 +138,7 @@ class KaryawanController extends Controller
             $cleanStr = str_replace(['POINT(', ')'], '', $workAreaQuery->location_str);
             $parts = explode(' ', $cleanStr);
             
+            // Asumsi format POINT(Longitude Latitude)
             if (count($parts) == 2) {
                 $longitude = (float) $parts[0]; 
                 $latitude = (float) $parts[1];  
@@ -134,46 +155,86 @@ class KaryawanController extends Controller
         return view('karyawan.unggah', $data);
     }
 
+    /**
+     * Redirect untuk form upload
+     */
     public function showUploadForm(Request $request, $type) {
         if (!in_array($type, ['masuk', 'pulang'])) { abort(404); }
         return $this->unggah();
     }
 
+    /**
+     * Menampilkan Riwayat Absensi & Statistik
+     * [FIX UTAMA FLEKSIBILITAS] Statistik menggunakan filter bulan ini (Overlap Check)
+     */
     public function riwayat()
     {
         $user = auth()->user();
         $karyawan = $user->employee;
+        $now = Carbon::now();
+        
+        // Definisikan periode bulan berjalan (untuk statistik izin/sakit/cuti)
+        $startOfMonth = $now->copy()->startOfMonth();
+        $endOfMonth = $now->copy()->endOfMonth();
 
+        // Ambil data absensi milik user (semua, untuk riwayat log)
         $riwayatAbsensi = Attendance::with('validation')
             ->where('emp_id', $karyawan->emp_id)
             ->orderBy('waktu_unggah', 'desc')
             ->get();
 
-        $izinCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'izin')->where('status', 'disetujui')->count();
-        $sakitCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'sakit')->where('status', 'disetujui')->count();
-        $cutiCount = Leave::where('emp_id', $karyawan->emp_id)->where('tipe_izin', 'cuti')->where('status', 'disetujui')->count();
-
+        // Ambil riwayat izin (semua, untuk riwayat log)
         $riwayatIzin = Leave::where('emp_id', $karyawan->emp_id)
             ->orderBy('created_at', 'desc')
             ->get();
+            
+        // 1. [FIX FLEKSIBILITAS] Statistik Filter BULAN INI (Overlap Check)
+        // Menghitung semua pengajuan yang tumpang tindih (overlap) dengan bulan ini.
+        $leaveQuery = Leave::where('emp_id', $karyawan->emp_id)
+            ->where('status', 'disetujui')
+            // Logika Overlap: (Tanggal mulai <= Akhir Bulan) AND (Tanggal selesai >= Awal Bulan)
+            ->whereDate('tanggal_mulai', '<=', $endOfMonth)
+            ->whereDate('tanggal_selesai', '>=', $startOfMonth);
 
+        // Menggunakan clone agar query dasar bisa dipakai berulang kali
+        $izinCount = (clone $leaveQuery)->where('tipe_izin', 'izin')->count();
+        $sakitCount = (clone $leaveQuery)->where('tipe_izin', 'sakit')->count();
+        $cutiCount = (clone $leaveQuery)->where('tipe_izin', 'cuti')->count();
+        // -------------------------------------------------------------
+
+        // 2. Grafik Menggabungkan Absensi Fisik & Izin Resmi (Logika sudah benar)
         $chartData = [];
         $chartLabels = [];
 
+        // Loop 7 hari terakhir
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
             $chartLabels[] = $date->format('d M'); 
 
-            $isPresent = Attendance::where('emp_id', $karyawan->emp_id)
+            // Cek 1: Apakah ada Absensi Masuk (yang tidak invalid)?
+            $isHadirFisik = Attendance::where('emp_id', $karyawan->emp_id)
                 ->whereDate('waktu_unggah', $date)
                 ->where('type', 'masuk')
                 ->whereDoesntHave('validation', function($q) {
-                    $q->whereIn('status_validasi_final', ['Invalid', 'Rejected']);
+                    $q->where('status_validasi_final', 'Invalid');
                 })
                 ->exists(); 
 
-            $chartData[] = $isPresent ? 1 : 0;
+            // Cek 2: Jika Tidak Hadir Fisik, Apakah sedang Izin/Sakit/Cuti Resmi?
+            $isIzinResmi = false;
+            if (!$isHadirFisik) {
+                $isIzinResmi = Leave::where('emp_id', $karyawan->emp_id)
+                    ->where('status', 'disetujui') // Hanya yang disetujui
+                    ->whereDate('tanggal_mulai', '<=', $date)
+                    ->whereDate('tanggal_selesai', '>=', $date)
+                    ->exists();
+            }
+
+            // Nilai 1 jika Hadir Fisik ATAU Izin Resmi. Nilai 0 jika Alpha.
+            $chartData[] = ($isHadirFisik || $isIzinResmi) ? 1 : 0;
         }
+        // -------------------------------------------------------------
+
 
         return view('karyawan.riwayat', compact(
             'karyawan', 'riwayatAbsensi', 'izinCount', 'sakitCount', 'cutiCount',
@@ -181,6 +242,9 @@ class KaryawanController extends Controller
         ));
     }
 
+    /**
+     * Menampilkan Halaman Pengajuan Izin
+     */
     public function izin()
     {
         $riwayatIzin = Leave::where('emp_id', auth()->user()->employee->emp_id)
@@ -196,16 +260,29 @@ class KaryawanController extends Controller
         return view('karyawan.izin', compact('riwayatIzin', 'teleponManajemen'));
     }
 
+    /**
+     * Menyimpan Pengajuan Izin Baru
+     */
     public function storeIzin(Request $request)
     {
+        // === [PERBAIKAN] MENGGUNAKAN ARRAY UNTUK VALIDASI AGAR REGEX AMAN ===
         $request->validate([
-            'tipe_izin' => 'required|in:sakit,izin,cuti',
-            'tanggal_mulai' => 'required|date',
-            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'deskripsi' => 'required|string|max:500',
-            'file_bukti' => 'required_if:tipe_izin,sakit|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'tipe_izin' => ['required', 'in:sakit,izin,cuti'],
+            'tanggal_mulai' => ['required', 'date'],
+            'tanggal_selesai' => ['required', 'date', 'after_or_equal:tanggal_mulai'],
+            // REGEX: Hanya huruf, angka, spasi, titik, koma, strip, slash, petik, kurung. (Tanpa # $ % &)
+            'deskripsi' => ['required', 'string', 'max:500', 'regex:/^[a-zA-Z0-9\s\.\,\-\/\'\"\(\)]+$/'],
+            'file_bukti' => ['required_if:tipe_izin,sakit', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
         ], [
-            'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.'
+            // Pesan Error Kustom
+            'tanggal_selesai.after_or_equal' => 'Tanggal selesai harus sama atau setelah tanggal mulai.',
+            'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.',
+            'tipe_izin.required' => 'Jenis izin wajib dipilih.',
+            'tanggal_mulai.required' => 'Tanggal mulai wajib diisi.',
+            'tanggal_selesai.required' => 'Tanggal selesai wajib diisi.',
+            'deskripsi.required' => 'Alasan/Keterangan wajib diisi.',
+            // Pesan khusus jika ada simbol terlarang
+            'deskripsi.regex' => 'Alasan tidak boleh mengandung simbol spesial (seperti #, $, %, &).',
         ]);
 
         $empId = auth()->user()->employee->emp_id;
@@ -251,6 +328,9 @@ class KaryawanController extends Controller
         return redirect()->route('karyawan.izin')->with('success', 'Pengajuan izin berhasil dikirim.');
     }
 
+    /**
+     * Menampilkan Halaman Profil Karyawan
+     */
     public function profil()
     {
         $user = auth()->user();
@@ -258,15 +338,28 @@ class KaryawanController extends Controller
         return view('karyawan.profil', compact('user', 'employee'));
     }
 
+    /**
+     * Memperbarui Data Profil Karyawan
+     */
     public function updateProfil(Request $request)
     {
         $employee = auth()->user()->employee;
 
+        // === [PERBAIKAN] MENGGUNAKAN ARRAY UNTUK VALIDASI AGAR REGEX AMAN ===
         $request->validate([
-            'nama' => 'required|string|max:255',
-            'alamat' => 'nullable|string|max:255',
-            'no_telepon' => 'nullable|numeric|digits_between:10,15',
-            'foto_profil' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            // NAMA: Hanya huruf, spasi, titik, koma, petik, dan strip. (Tanpa Angka & Simbol)
+            'nama' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s\.\,\'\-]+$/'],
+            
+            // ALAMAT: Boleh angka, huruf, dan tanda baca alamat biasa. (Tanpa # $ % &)
+            'alamat' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s\.\,\-\/\'\"\(\)]+$/'],
+            
+            'no_telepon' => ['nullable', 'numeric', 'digits_between:10,15'],
+            'foto_profil' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
+        ], [
+            // Pesan Error Kustom untuk Profil
+            'nama.regex' => 'Nama hanya boleh berisi huruf, titik, koma, dan petik (Tanpa angka/simbol).',
+            'alamat.regex' => 'Alamat tidak boleh mengandung simbol spesial (seperti #, $, %, &).',
+            'no_telepon.numeric' => 'Nomor telepon harus berupa angka.',
         ]);
 
         $employee->nama = $request->nama;
@@ -287,6 +380,9 @@ class KaryawanController extends Controller
         return redirect()->route('karyawan.profil')->with('success', 'Profil berhasil diperbarui.');
     }
 
+    /**
+     * Menghapus Foto Profil Karyawan
+     */
     public function deleteFotoProfil()
     {
         $employee = auth()->user()->employee;
@@ -341,6 +437,7 @@ class KaryawanController extends Controller
         }
         try {
             $fotoTime = Carbon::parse($exif['DateTimeOriginal']);
+            // Maksimal 5 menit perbedaan waktu
             if (now()->diffInMinutes($fotoTime) > 5) {
                 return redirect()->back()->with('error', 'Foto kadaluarsa! Maksimal 5 menit setelah diambil.');
             }
@@ -360,8 +457,8 @@ class KaryawanController extends Controller
 
         $cleanStr = str_replace(['POINT(', ')'], '', $workArea->location_str);
         $parts = explode(' ', $cleanStr);
-        $officeLng = (float) $parts[0]; 
-        $officeLat = (float) $parts[1]; 
+        $officeLng = (float) $parts[0]; // Longitude
+        $officeLat = (float) $parts[1]; // Latitude
 
         // Hitung Jarak
         $browserDistance = $this->haversineDistance($request->browser_lat, $request->browser_lng, $officeLat, $officeLng);
@@ -390,7 +487,7 @@ class KaryawanController extends Controller
             return redirect()->back()->with('error', "Anda berada $selisih m di luar radius kantor.");
         }
 
-        // 7. CEK JAM KERJA & STATUS VALIDASI
+        // 7. CEK JAM KERJA & STATUS VALIDASI OTOMATIS
         $now = Carbon::now();
         $jamKerjaConfig = $workArea->jam_kerja;
         $hariIni = $now->dayOfWeek; 
@@ -407,10 +504,7 @@ class KaryawanController extends Controller
         $statusValidasiOtomatis = 'Valid';
         $catatanValidasi = null;
 
-        // =====================================================================
-        // PERUBAHAN PENTING: STATUS FINAL SELALU PENDING
-        // Agar semua absensi masuk ke dashboard approval manajer
-        // =====================================================================
+        // Status Final Selalu Pending agar masuk antrian approval Manajer
         $statusFinal = 'Pending'; 
 
         // Logika Cek Keterlambatan (Hanya mempengaruhi Status Otomatis)
@@ -419,6 +513,7 @@ class KaryawanController extends Controller
             $jamPulangCarbon = Carbon::createFromTimeString($jamPulangBatas);
             $isEntryForTomorrow = false;
 
+            // Logika untuk Absensi Masuk Hari Berikutnya (setelah jam pulang)
             if ($now->greaterThan($jamPulangCarbon)) {
                 $jamMasukBesok = $jamMasukCarbon->copy()->addDay();
                 $windowBukaBesok = $jamMasukBesok->copy()->subHours(2);
@@ -429,16 +524,19 @@ class KaryawanController extends Controller
                 }
             }
             
+            // Logika terlalu awal
             if (!$isEntryForTomorrow && $now->lessThan($jamMasukCarbon->copy()->subHours(2))) {
                  return redirect()->back()->with('error', 'Terlalu awal! Absensi belum dibuka.');
             }
 
+            // Logika Terlambat
             if (!$isEntryForTomorrow && $now->greaterThan($jamMasukCarbon)) {
                 $statusValidasiOtomatis = 'Need Review'; 
                 $catatanValidasi = 'Terlambat (Otomatis): Absen pukul ' . $now->format('H:i') . ' (Jadwal: ' . $jamMasukBatas . ')';
             }
         }
         
+        // Logika Pulang Cepat
         if ($request->type == 'pulang') {
             $jamPulangCarbon = Carbon::createFromTimeString($jamPulangBatas);
             if ($now->lessThan($jamPulangCarbon)) {
@@ -449,6 +547,7 @@ class KaryawanController extends Controller
 
         // Jika tidak ada catatan otomatis (tepat waktu), beri catatan default
         if (!$catatanValidasi) {
+            // [CATATAN]: status_validasi_otomatis tetap 'Valid'
             $catatanValidasi = 'Tepat Waktu - Menunggu Validasi Manajer';
         }
 

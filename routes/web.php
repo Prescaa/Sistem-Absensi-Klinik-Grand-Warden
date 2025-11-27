@@ -78,7 +78,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::delete('/manajemen-absensi/destroy/{id}', [AdminController::class, 'destroyAbsensi'])->name('admin.absensi.destroy');
 
     // Manajemen Izin (Approval)
-   Route::get('/manajemen-izin', [AdminController::class, 'showManajemenIzin'])->name('admin.izin.index');
+    Route::get('/manajemen-izin', [AdminController::class, 'showManajemenIzin'])->name('admin.izin.index');
 
     // ✅ PERBAIKAN: Tambahkan route store untuk admin input izin karyawan
     Route::post('/manajemen-izin/store', [AdminController::class, 'storeIzin'])->name('admin.izin.store');

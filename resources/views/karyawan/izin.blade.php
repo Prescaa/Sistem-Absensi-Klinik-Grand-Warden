@@ -27,7 +27,7 @@
         <div class="col-lg-5 mb-4">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white py-3">
-                    <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-plus me-2"></i>Formulir Pengajuan</h5>
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-plus me-2"></i>Formulir Pengajuan Izin</h5>
                 </div>
                 <div class="card-body">
 
@@ -78,14 +78,14 @@
 
                         <div class="row">
                             <div class="col-6 mb-3">
-                                <label for="tanggal_mulai" class="form-label fw-semibold">Mulai Tanggal</label>
+                                <label for="tanggal_mulai" class="form-label fw-semibold">Tanggal Mulai</label>
                                 {{-- VALIDASI PESAN INDONESIA --}}
                                 <input type="date" name="tanggal_mulai" class="form-control" required
                                        oninvalid="this.setCustomValidity('Pilih tanggal mulai.')"
                                        oninput="this.setCustomValidity('')">
                             </div>
                             <div class="col-6 mb-3">
-                                <label for="tanggal_selesai" class="form-label fw-semibold">Sampai Tanggal</label>
+                                <label for="tanggal_selesai" class="form-label fw-semibold">Tanggal Selesai</label>
                                 {{-- VALIDASI PESAN INDONESIA --}}
                                 <input type="date" name="tanggal_selesai" class="form-control" required
                                        oninvalid="this.setCustomValidity('Pilih tanggal selesai.')"
@@ -129,7 +129,7 @@
                             <thead class="bg-light">
                                 <tr>
                                     <th class="ps-4">Tanggal</th>
-                                    <th>Tipe</th>
+                                    <th>Jenis Izin</th>
                                     <th>Keterangan</th>
                                     <th style="width: 25%;">Status & Catatan</th>
                                 </tr>
@@ -185,7 +185,7 @@
                                     <tr>
                                         <td colspan="4" class="text-center py-4 text-muted">
                                             <i class="bi bi-inbox display-6 d-block mb-2"></i>
-                                            Belum ada riwayat pengajuan.
+                                            Belum ada riwayat pengajuan izin.
                                         </td>
                                     </tr>
                                 @endforelse
