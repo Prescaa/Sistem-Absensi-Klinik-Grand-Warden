@@ -24,6 +24,16 @@
         }
         .sidebar .nav-link:hover { color: #fff; background-color: rgba(255,255,255,0.1); }
         .sidebar .nav-link.active { color: #fff; background-color: #0d6efd; box-shadow: 0 4px 6px rgba(13, 110, 253, 0.3); }
+        
+        /* PERBAIKAN: Pastikan text-danger menang atas warna default sidebar */
+        .sidebar .nav-link.text-danger {
+            color: #dc3545 !important;
+        }
+        .sidebar .nav-link.text-danger:hover {
+            color: #ff6b6b !important;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+
         .sidebar-footer { margin-top: auto; padding-bottom: 1rem; padding-left: 10px; padding-right: 10px; }
 
         .main-wrapper {
@@ -119,7 +129,8 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="/logout" class="nav-link">
+                    {{-- PERBAIKAN: Menambahkan class text-danger dan fw-bold --}}
+                    <a href="/logout" class="nav-link text-danger fw-bold">
                         <i class="bi bi-box-arrow-left me-2"></i> Logout
                     </a>
                 </li>
@@ -138,7 +149,7 @@
                     <i class="bi bi-moon-fill fs-5 hover-primary dark-mode-toggle"></i>
                 </div>
 
-                {{-- ✅ DROP DOWN NOTIFIKASI MANAJEMEN (PERBAIKAN UTAMA) --}}
+                {{-- ✅ DROP DOWN NOTIFIKASI MANAJEMEN --}}
                 <div class="dropdown me-3">
                     <div class="position-relative" id="mgmtNotifToggle" data-bs-toggle="dropdown" style="cursor:pointer;">
                         <i class="bi bi-bell-fill fs-5 hover-primary"></i>

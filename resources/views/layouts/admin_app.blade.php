@@ -74,6 +74,16 @@
             background-color: #0d6efd;
             border-radius: 8px;
         }
+        
+        /* PERBAIKAN: Pastikan text-danger menang atas warna default sidebar */
+        .sidebar .nav-link.text-danger {
+            color: #dc3545 !important;
+        }
+        .sidebar .nav-link.text-danger:hover {
+            color: #ff6b6b !important;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+
         .sidebar-footer {
             margin-top: auto;
             padding-bottom: 1rem;
@@ -199,7 +209,8 @@
                     </a>
                 </li>
                 <li class="nav-item mb-1">
-                    <a href="/logout" class="nav-link">
+                    {{-- PERBAIKAN: Menambahkan class text-danger dan fw-bold --}}
+                    <a href="/logout" class="nav-link text-danger fw-bold">
                         <i class="bi bi-box-arrow-left me-2"></i> Logout
                     </a>
                 </li>
