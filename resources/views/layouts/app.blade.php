@@ -25,7 +25,7 @@
             overflow-x: hidden;
         }
 
-        /* === SIDEBAR STYLE (DIPERBAIKI) === */
+        /* === SIDEBAR STYLE === */
         .sidebar {
             width: var(--sidebar-width);
             min-width: var(--sidebar-width);
@@ -38,18 +38,16 @@
             left: 0;
             z-index: 1000;
             overflow-y: auto;
-            /* Mencegah scroll horizontal jika konten sidebar lebar */
             overflow-x: hidden;
         }
 
-        /* === MAIN WRAPPER (FOOTER FIX) === */
+        /* === MAIN WRAPPER === */
         .main-wrapper {
             margin-left: var(--sidebar-width);
             width: calc(100% - var(--sidebar-width));
-            /* Kunci agar footer terdorong ke bawah */
             min-height: 100vh;
             display: flex;
-            flex-direction: column; /* Susunan vertikal */
+            flex-direction: column;
             transition: margin-left 0.3s ease, width 0.3s ease;
         }
 
@@ -107,15 +105,13 @@
             position: sticky; top: 0; z-index: 999;
         }
 
-        /* PERBAIKAN FOOTER: Push Bottom (Bukan Sticky/Fixed) */
         .main-footer {
             background-color: #e9ecef;
             color: #6c757d;
             border-top: 1px solid #dee2e6;
-            /* margin-top: auto akan mendorong footer ke paling bawah sisa ruang */
             margin-top: auto;
             transition: all 0.3s ease;
-            padding: 1rem; /* Tambahkan padding agar rapi */
+            padding: 1rem;
         }
 
         /* === DARK MODE STYLES === */
@@ -124,7 +120,7 @@
         .notification-badge {
             font-size: 0.6rem;
             padding: 0.25em 0.4em;
-            display: none; /* Default hidden */
+            display: none;
         }
 
         .dark-mode { background-color: #121212 !important; color: #e0e0e0; }
@@ -188,7 +184,7 @@
                 </li>
             @endif
 
-            {{-- 2. FITUR UTAMA (Muncul untuk SEMUA: Karyawan, Admin, Manajemen) --}}
+            {{-- 2. FITUR UTAMA (Muncul untuk SEMUA) --}}
             <li class="nav-item mb-1">
                 <a class="nav-link {{ request()->routeIs('karyawan.unggah') ? 'active' : '' }}" href="{{ route('karyawan.unggah') }}">
                     <i class="bi bi-camera-fill me-2"></i> Unggah Absensi
@@ -234,22 +230,30 @@
     </div>
 
     <div class="sidebar-footer mt-auto">
-        <ul class="nav nav-pills flex-column">
-            <li class="nav-item">
-                <a href="{{ route('karyawan.profil') }}" class="nav-link {{ request()->routeIs('karyawan.profil') ? 'active' : '' }}">
-                    <i class="bi bi-person-circle me-2"></i> Profil Saya
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('logout') }}" class="nav-link text-danger">
-                    <i class="bi bi-box-arrow-left me-2"></i> Logout
-                </a>
-            </li>
-        </ul>
+        {{-- 
+            PERBAIKAN: HANYA TAMPILKAN PROFIL & LOGOUT JIKA ROLE ADALAH KARYAWAN.
+            Admin & Manajemen tidak perlu melihat ini di Portal Absensi karena
+            sudah ada di dashboard utama mereka.
+        --}}
+        @if($role === 'karyawan')
+            <ul class="nav nav-pills flex-column">
+                <li class="nav-item">
+                    <a href="{{ route('karyawan.profil') }}" class="nav-link {{ request()->routeIs('karyawan.profil') ? 'active' : '' }}">
+                        <i class="bi bi-person-circle me-2"></i> Profil Saya
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {{-- Logout dengan warna merah (text-danger) --}}
+                    <a href="{{ route('logout') }}" class="nav-link text-danger fw-bold">
+                        <i class="bi bi-box-arrow-left me-2"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        @endif
     </div>
 </nav>
 
-    {{-- Main Wrapper (Perbaikan Flex Column) --}}
+    {{-- Main Wrapper --}}
     <div class="main-wrapper">
 
         <header class="topbar d-flex justify-content-between align-items-center p-3">
@@ -267,7 +271,6 @@
                 <div class="position-relative me-3">
                     <i class="bi bi-bell-fill fs-5 hover-primary notification-bell text-dark" style="cursor: pointer;"></i>
 
-                    {{-- Badge Notif --}}
                     <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge">0</span>
 
                     <div class="notification-dropdown" style="width: 320px;">
@@ -339,7 +342,6 @@
             </div>
         </header>
 
-        {{-- Main Content: Flex Grow untuk mengisi ruang kosong --}}
         <main class="p-4 flex-grow-1 overflow-auto">
             @yield('content')
         </main>
@@ -359,7 +361,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // --- SIDEBAR & DARK MODE (Standard) ---
+            // --- SIDEBAR & DARK MODE ---
             const toggleBtn = document.getElementById('sidebarToggle');
             const body = document.body;
             const sidebar = document.getElementById('sidebar');
@@ -406,11 +408,8 @@
                 });
             }
 
-            // --- NOTIFICATION SYSTEM (FIXED) ---
-
-            // UPDATE: Menghitung jumlah array notifikasi langsung dari variabel Blade
+            // --- NOTIFICATION SYSTEM ---
             const serverNotifCount = {{ count($globalNotifications ?? []) }};
-
             const notifBell = document.querySelector('.notification-bell');
             const notifDrop = document.querySelector('.notification-dropdown');
             const notifBadge = document.getElementById('notificationBadge');
@@ -424,46 +423,27 @@
                         .find(row => row.startsWith('seen_notifications='));
 
                     return cookieValue ? JSON.parse(decodeURIComponent(cookieValue.split('=')[1])) : [];
-                } catch (error) {
-                    console.error('Error reading seen notifications:', error);
-                    return [];
-                }
+                } catch (error) { return []; }
             }
 
             function markNotificationsAsSeen(notificationIds) {
                 try {
                     const seenNotifications = getSeenNotifications();
                     const updatedSeenNotifications = [...new Set([...seenNotifications, ...notificationIds])];
-
                     const expires = new Date();
                     expires.setDate(expires.getDate() + 30);
                     document.cookie = 'seen_notifications=' + encodeURIComponent(JSON.stringify(updatedSeenNotifications)) + '; expires=' + expires.toUTCString() + '; path=/';
 
-                    // Update Badge Logic
                     const remainingCount = Math.max(0, serverNotifCount - updatedSeenNotifications.length);
-
                     if (notifBadge) {
-                        if (remainingCount <= 0) {
-                            notifBadge.style.display = 'none';
-                        } else {
-                            notifBadge.textContent = remainingCount;
-                            notifBadge.style.display = 'inline-block';
-                        }
+                        notifBadge.style.display = remainingCount <= 0 ? 'none' : 'inline-block';
+                        notifBadge.textContent = remainingCount;
                     }
-
                     if (notifCountBadge) {
-                        if (remainingCount <= 0) {
-                            notifCountBadge.style.display = 'none';
-                        } else {
-                            notifCountBadge.textContent = remainingCount + ' Baru';
-                            notifCountBadge.style.display = 'inline-block';
-                        }
+                        notifCountBadge.style.display = remainingCount <= 0 ? 'none' : 'inline-block';
+                        notifCountBadge.textContent = remainingCount + ' Baru';
                     }
-                    return true;
-                } catch (error) {
-                    console.error('Error marking notifications as seen:', error);
-                    return false;
-                }
+                } catch (error) {}
             }
 
             if(notifBell) {
@@ -478,10 +458,7 @@
                             const notifId = link.getAttribute('data-notification-id');
                             if (notifId) notificationIds.push(notifId);
                         });
-
-                        if (notificationIds.length > 0) {
-                            markNotificationsAsSeen(notificationIds);
-                        }
+                        if (notificationIds.length > 0) markNotificationsAsSeen(notificationIds);
                     }
                 });
             }
@@ -489,44 +466,28 @@
             notifLinks.forEach(function(link) {
                 link.addEventListener('click', function(e) {
                     const notifId = this.getAttribute('data-notification-id');
-                    if (notifId) {
-                        markNotificationsAsSeen([notifId]);
-                    }
+                    if (notifId) markNotificationsAsSeen([notifId]);
                 });
             });
 
             document.addEventListener('click', function() {
-                if(notifDrop) {
-                    notifDrop.style.display = 'none';
-                }
+                if(notifDrop) notifDrop.style.display = 'none';
             });
 
             if(notifDrop) {
-                notifDrop.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                });
+                notifDrop.addEventListener('click', function(e) { e.stopPropagation(); });
             }
 
             function initializeNotificationBadge() {
                 const seenNotifications = getSeenNotifications();
                 const remainingCount = Math.max(0, serverNotifCount - seenNotifications.length);
-
                 if (notifBadge) {
-                    if (remainingCount <= 0) {
-                        notifBadge.style.display = 'none';
-                    } else {
-                        notifBadge.textContent = remainingCount;
-                        notifBadge.style.display = 'inline-block';
-                    }
+                    notifBadge.style.display = remainingCount <= 0 ? 'none' : 'inline-block';
+                    notifBadge.textContent = remainingCount;
                 }
-
                 if (notifCountBadge) {
-                    if (remainingCount <= 0) {
-                        notifCountBadge.style.display = 'none';
-                    } else {
-                        notifCountBadge.textContent = remainingCount + ' Baru';
-                        notifCountBadge.style.display = 'inline-block';
-                    }
+                    notifCountBadge.style.display = remainingCount <= 0 ? 'none' : 'inline-block';
+                    notifCountBadge.textContent = remainingCount + ' Baru';
                 }
             }
 
