@@ -51,7 +51,7 @@ class AuthController extends Controller
 
         // 4. Validasi & Login (Logika lama)
         $credentials = $request->validate([
-            'username' => 'required',
+            'username' => 'required|alpha_num',
             'password' => 'required',
         ]);
 
