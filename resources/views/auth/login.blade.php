@@ -104,8 +104,14 @@
                                             <span class="input-group-text bg-light border-0">
                                                 <i class="bi bi-person"></i>
                                             </span>
-                                            <input type="text" class="form-control bg-light border-0"
-                                                   placeholder="Username" name="username" required>
+                                            <input type="text"
+                                                name="username"
+                                                class="form-control"
+                                                placeholder="Username"
+                                                required
+                                                pattern="[a-zA-Z0-9]+"
+                                                title="Hanya huruf dan angka yang diperbolehkan (tanpa spasi atau simbol)"
+                                                oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')">
                                         </div>
                                     </div>
 

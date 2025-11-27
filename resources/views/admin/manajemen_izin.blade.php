@@ -12,7 +12,7 @@
             </button>
         </div>
         <div class="card-body p-0 table-responsive">
-            
+
             {{-- Notifikasi hanya dari layout, blok ini kosong --}}
 
             <table class="table table-hover align-middle mb-0">
@@ -228,7 +228,11 @@
                         </div>
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold small">Ganti Bukti (Opsional)</label>
-                            <input type="file" name="file_bukti" class="form-control">
+                           <input type="file"
+                                name="file_bukti"
+                                class="form-control"
+                                accept=".jpg, .jpeg, .png, .pdf, image/jpeg, image/png, application/pdf">
+                            <small class="text-muted">Format yang diterima: JPG, PNG, PDF. Maks 2MB. (Opsional)</small>
                         </div>
                     </div>
                 </div>
@@ -337,13 +341,13 @@
         background-color: #2a2a2a !important;
         color: #fff !important;
     }
-    .dark-mode .text-dark-emphasis { 
-        color: #fff !important; 
+    .dark-mode .text-dark-emphasis {
+        color: #fff !important;
     }
-    .dark-mode .text-muted { 
-        color: #aaa !important; 
+    .dark-mode .text-muted {
+        color: #aaa !important;
     }
-    
+
     /* PERBAIKAN UTAMA: Kolom Alasan dan konten teks */
     .dark-mode td span.text-truncate {
         color: #e0e0e0 !important;
@@ -360,7 +364,7 @@
         background-color: #dc3545 !important;
         color: #fff !important;
     }
-    
+
     /* Badge dengan opacity untuk dark mode */
     .dark-mode .badge.bg-danger.bg-opacity-10 {
         background-color: rgba(220, 53, 69, 0.15) !important;
@@ -377,7 +381,7 @@
         color: #ffd352 !important;
         border-color: #ffc107 !important;
     }
-    
+
     /* Modal Styles */
     .dark-mode .modal-content {
         background-color: #1e1e1e !important;
@@ -392,7 +396,7 @@
         border-top-color: #333 !important;
         color: #e0e0e0 !important;
     }
-    
+
     /* Form Controls */
     .dark-mode .form-control, .dark-mode .form-select {
         background-color: #2b2b2b !important;
@@ -415,10 +419,10 @@
     .dark-mode input[type="date"] {
         color-scheme: dark;
     }
-    
+
     /* Buttons */
-    .dark-mode .btn-close { 
-        filter: invert(1); 
+    .dark-mode .btn-close {
+        filter: invert(1);
     }
     .dark-mode .btn-light {
         background-color: #333 !important;
@@ -445,7 +449,7 @@
         background-color: #dc3545 !important;
         color: #fff !important;
     }
-    
+
     /* Text dalam modal delete */
     .dark-mode .modal-body strong.text-dark {
         color: #fff !important;
@@ -453,7 +457,7 @@
     .dark-mode .modal-body p {
         color: #e0e0e0 !important;
     }
-    
+
     /* Border dan separator */
     .dark-mode .border-top {
         border-top-color: #444 !important;
@@ -461,12 +465,12 @@
     .dark-mode .text-primary {
         color: #6ea8fe !important;
     }
-    
+
     /* Label form */
     .dark-mode .form-label {
         color: #e0e0e0 !important;
     }
-    
+
     /* Empty state */
     .dark-mode .text-muted {
         color: #888 !important;
