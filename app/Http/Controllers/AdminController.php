@@ -355,15 +355,16 @@ class AdminController extends Controller
 
     public function storeKaryawan(Request $request): \Illuminate\Http\RedirectResponse
     {
-        // --- CUSTOM ERROR MESSAGES UNTUK BAHASA INDONESIA ---
         $messages = [
             'required' => 'Kolom :attribute wajib diisi.',
             'unique' => ':attribute sudah digunakan.',
             'email' => 'Format email tidak valid.',
-            'confirmed' => 'Konfirmasi password tidak cocok.', // FIX BAHASA INGGRIS
+            'confirmed' => 'Konfirmasi password tidak cocok.',
             'min' => ':attribute minimal :min karakter.',
             'max' => ':attribute maksimal :max karakter.',
             'image' => ':attribute harus berupa gambar.',
+            // Tambahkan pesan error khusus regex
+            'alamat.regex' => 'Alamat tidak boleh mengandung simbol aneh (hanya huruf, angka, titik, koma, strip, dan garis miring).',
         ];
 
         $validated = $request->validate([
@@ -375,9 +376,12 @@ class AdminController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', 'in:Karyawan,Admin,Manajemen'],
             'no_telepon' => ['nullable', 'string', 'max:20'],
-            'alamat' => ['nullable', 'string', 'max:500'],
+
+            // PERBAIKAN: Tambahkan Regex di sini
+            'alamat' => ['nullable', 'string', 'max:500', 'regex:/^[a-zA-Z0-9\s\.\,\-\/]+$/'],
+
             'foto_profil' => ['nullable', 'image', 'mimes:' . self::ALLOWED_IMAGE_TYPES, 'max:' . self::MAX_IMAGE_SIZE],
-        ], $messages); // Inject messages di sini
+        ], $messages);
 
         return $this->handleEmployeeStorage($validated, $request);
     }
@@ -387,15 +391,16 @@ class AdminController extends Controller
         $user = User::findOrFail($id);
         $employee = $user->employee;
 
-        // --- CUSTOM ERROR MESSAGES UNTUK BAHASA INDONESIA ---
         $messages = [
             'required' => 'Kolom :attribute wajib diisi.',
             'unique' => ':attribute sudah digunakan.',
             'email' => 'Format email tidak valid.',
-            'confirmed' => 'Konfirmasi password tidak cocok.', // FIX BAHASA INGGRIS
+            'confirmed' => 'Konfirmasi password tidak cocok.',
             'min' => ':attribute minimal :min karakter.',
             'max' => ':attribute maksimal :max karakter.',
             'image' => ':attribute harus berupa gambar.',
+            // Tambahkan pesan error khusus regex
+            'alamat.regex' => 'Alamat tidak boleh mengandung simbol aneh (hanya huruf, angka, titik, koma, strip, dan garis miring).',
         ];
 
         $validated = $request->validate([
@@ -407,9 +412,12 @@ class AdminController extends Controller
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', 'in:Karyawan,Admin,Manajemen'],
             'no_telepon' => ['nullable', 'string', 'max:20'],
-            'alamat' => ['nullable', 'string', 'max:500'],
+
+            // PERBAIKAN: Tambahkan Regex di sini
+            'alamat' => ['nullable', 'string', 'max:500', 'regex:/^[a-zA-Z0-9\s\.\,\-\/]+$/'],
+
             'foto_profil' => ['nullable', 'image', 'mimes:' . self::ALLOWED_IMAGE_TYPES, 'max:' . self::MAX_IMAGE_SIZE],
-        ], $messages); // Inject messages di sini
+        ], $messages);
 
         return $this->handleEmployeeUpdate($user, $employee, $validated, $request);
     }
