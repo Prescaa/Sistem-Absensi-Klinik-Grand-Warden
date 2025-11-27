@@ -125,11 +125,11 @@ class AppServiceProvider extends ServiceProvider
             $notifications = [];
 
             if (Auth::check() && strtolower(Auth::user()->role) == 'manajemen') {
-                
+
                 // ✅ PERBAIKAN QUERY DI SINI:
                 // Sebelumnya: Attendance::whereDoesntHave('validation') -> Ini salah untuk kasus Manajer.
                 // Sekarang: Mengambil yang belum validasi ATAU yang status validasinya 'Pending'.
-                
+
                 $pendingAbsensi = Attendance::with('employee')
                     ->where(function($query) {
                         // Kondisi 1: Belum ada row validasi sama sekali (Karyawan Biasa)
@@ -150,11 +150,11 @@ class AppServiceProvider extends ServiceProvider
 
                     $notifications[] = [
                         'id'      => 'mgmt_att_' . $absen->att_id,
-                        'type'    => 'absensi', 
+                        'type'    => 'absensi',
                         'title'   => 'Validasi Absensi Baru',
                         'message' => $prefix . "$nama melakukan absen " . ucfirst($absen->type) . ".",
                         'time'    => $absen->waktu_unggah,
-                        'url'     => route('manajemen.validasi.show') . '#pills-absensi' 
+                        'url'     => route('manajemen.validasi.show') . '#pills-absensi'
                     ];
                 }
 
@@ -173,7 +173,7 @@ class AppServiceProvider extends ServiceProvider
 
                     $notifications[] = [
                         'id'      => 'mgmt_leave_' . $izin->leave_id,
-                        'type'    => 'izin', 
+                        'type'    => 'izin',
                         'title'   => 'Pengajuan Izin Baru',
                         'message' => $prefix . "$nama mengajukan $tipe.",
                         'time'    => $izin->created_at,

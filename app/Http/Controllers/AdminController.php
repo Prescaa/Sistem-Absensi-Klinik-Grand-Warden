@@ -124,12 +124,13 @@ class AdminController extends Controller
 
     public function storeAbsensi(Request $request): \Illuminate\Http\RedirectResponse
     {
+        // 1. Validasi Input
         $validated = $request->validate([
             'emp_id' => 'required|exists:employee,emp_id',
             'waktu_unggah' => 'required|date',
             'type' => 'required|in:' . implode(',', self::ATTENDANCE_TYPES),
             'foto' => 'nullable|image|mimes:' . self::ALLOWED_IMAGE_TYPES . '|max:' . self::MAX_IMAGE_SIZE,
-            'status_validasi' => 'required|in:Valid,Invalid,Pending',
+            'status_validasi' => 'required|in:Valid,Invalid,Pending', // Ambil input dari form
             'catatan_admin' => 'nullable|string|max:255',
         ]);
 
@@ -154,7 +155,7 @@ class AdminController extends Controller
             'waktu_unggah' => 'required|date',
             'type' => 'required|in:' . implode(',', self::ATTENDANCE_TYPES),
             'foto' => 'nullable|image|max:' . self::MAX_IMAGE_SIZE,
-            'status_validasi' => 'required|in:Valid,Invalid,Pending',
+            'status_validasi' => 'required|in:Valid,Invalid,Pending', // Ambil input dari form
             'catatan_admin' => 'nullable|string|max:255',
         ]);
 
@@ -185,30 +186,27 @@ class AdminController extends Controller
                 'emp_id' => $validated['emp_id'],
                 'waktu_unggah' => Carbon::parse($validated['waktu_unggah']),
                 'type' => $validated['type'],
-                'latitude' => 0,
-                'longitude' => 0,
+                'latitude' => 0, // Default manual
+                'longitude' => 0, // Default manual
                 'nama_file_foto' => $fotoPath,
             ]);
 
-            // SELALU PENDING supaya Manajemen yang menyetujui
+            // GUNAKAN STATUS DARI INPUT FORM ($validated['status_validasi'])
             Validation::updateOrCreate(
                 ['att_id' => $attendance->att_id],
                 [
                     'admin_id' => $this->getCurrentEmployeeId(),
-                    'status_validasi_otomatis' => 'Pending',
-                    'status_validasi_final' => 'Pending',
+                    'status_validasi_otomatis' => 'Need Review', // Otomatis tetap pending karena manual
+                    'status_validasi_final' => $validated['status_validasi'], // <-- PERBAIKAN DI SINI
                     'catatan_admin' => $validated['catatan_admin'] ?? 'Input Manual Admin',
                     'timestamp_validasi' => now(),
                 ]
             );
         });
 
-        return redirect()->back()->with('success', 'Data absensi berhasil ditambahkan dan menunggu validasi Manajemen.');
+        return redirect()->back()->with('success', 'Data absensi berhasil ditambahkan.');
     }
 
-    /* -----------------------------------------------------------------
-     | PERUBAHAN UTAMA: update absensi manual juga SELALU pending
-     * -----------------------------------------------------------------*/
     private function handleAttendanceUpdate(Attendance $attendance, array $validated, Request $request): \Illuminate\Http\RedirectResponse
     {
         DB::transaction(function () use ($attendance, $validated, $request) {
@@ -216,25 +214,25 @@ class AdminController extends Controller
             $attendance->type = $validated['type'];
 
             if ($request->hasFile('foto')) {
+                // Hapus foto lama jika ada dan bukan placeholder (opsional)
                 $attendance->nama_file_foto = $this->handlePhotoUpload($request, 'absensi');
             }
 
             $attendance->save();
 
-            // SELALU PENDING supaya Manajemen yang menyetujui
+            // GUNAKAN STATUS DARI INPUT FORM ($validated['status_validasi'])
             Validation::updateOrCreate(
                 ['att_id' => $attendance->att_id],
                 [
                     'admin_id' => $this->getCurrentEmployeeId(),
-                    'status_validasi_otomatis' => 'Pending',
-                    'status_validasi_final' => 'Pending',
+                    'status_validasi_final' => $validated['status_validasi'], // <-- PERBAIKAN DI SINI
                     'catatan_admin' => $validated['catatan_admin'] ?? 'Update Manual Admin',
                     'timestamp_validasi' => now(),
                 ]
             );
         });
 
-        return redirect()->back()->with('success', 'Data absensi berhasil diperbarui dan menunggu validasi Manajemen.');
+        return redirect()->back()->with('success', 'Data absensi berhasil diperbarui.');
     }
 
     // =================================================================
@@ -261,6 +259,7 @@ class AdminController extends Controller
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'deskripsi' => 'required|string|max:500',
+            'status' => 'required|in:disetujui,pending,ditolak', // Tambahkan validasi status
             'file_bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:' . self::MAX_IMAGE_SIZE,
         ]);
 
@@ -281,14 +280,38 @@ class AdminController extends Controller
                 ->with('error', 'ETIKA: Anda tidak dapat memvalidasi pengajuan izin milik sendiri.');
         }
 
+        // PERBAIKAN: Validasi semua field yang bisa diedit di modal
         $validated = $request->validate([
+            'tipe_izin' => 'required|in:' . implode(',', self::LEAVE_TYPES),
+            'tanggal_mulai' => 'required|date',
+            'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+            'deskripsi' => 'required|string|max:500',
             'status' => 'required|in:pending,disetujui,ditolak',
             'catatan_admin' => 'nullable|string|max:255',
+            'file_bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:' . self::MAX_IMAGE_SIZE,
         ]);
 
-        $leave->update($validated);
+        DB::transaction(function () use ($leave, $validated, $request) {
+            // Cek jika ada file baru diupload
+            if ($request->hasFile('file_bukti')) {
+                // Hapus file lama jika ada (Opsional, gunakan Storage::delete($leave->file_bukti))
+                $validated['file_bukti'] = $this->handleFileUpload($request, 'file_bukti', 'bukti_izin');
+            }
 
-        return redirect()->back()->with('success', 'Status pengajuan izin berhasil diperbarui.');
+            // Update Semua Data
+            $leave->update([
+                'tipe_izin' => $validated['tipe_izin'],
+                'tanggal_mulai' => $validated['tanggal_mulai'],
+                'tanggal_selesai' => $validated['tanggal_selesai'],
+                'deskripsi' => $validated['deskripsi'],
+                'status' => $validated['status'],
+                'catatan_admin' => $validated['catatan_admin'],
+                // Hanya update file_bukti jika ada file baru
+                'file_bukti' => $validated['file_bukti'] ?? $leave->file_bukti
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Data izin berhasil diperbarui sepenuhnya.');
     }
 
     public function destroyIzin(int $id): \Illuminate\Http\RedirectResponse
@@ -311,12 +334,12 @@ class AdminController extends Controller
                 'tanggal_selesai' => $validated['tanggal_selesai'],
                 'deskripsi' => $validated['deskripsi'],
                 'file_bukti' => $filePath,
-                'status' => 'disetujui',
+                'status' => $validated['status'], // <-- Gunakan input status, jangan hardcode 'disetujui'
                 'catatan_admin' => 'Diinput manual oleh Admin.',
             ]);
         });
 
-        return redirect()->back()->with('success', 'Data izin berhasil ditambahkan dan disetujui.');
+        return redirect()->back()->with('success', 'Data izin berhasil ditambahkan.');
     }
 
     // =================================================================

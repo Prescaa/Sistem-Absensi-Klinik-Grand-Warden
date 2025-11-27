@@ -12,7 +12,7 @@
             </button>
         </div>
         <div class="card-body p-0">
-            
+
             {{-- Notifikasi hanya dari layout --}}
 
             <div class="table-responsive">
@@ -54,13 +54,20 @@
                                     <span class="text-muted small">-</span>
                                 @endif
                             </td>
-                            <td>
+                           <td>
                                 @if($att->validation)
                                     @if($att->validation->status_validasi_final == 'Valid')
                                         <span class="badge bg-primary"><i class="bi bi-check-circle me-1"></i>Valid</span>
+
+                                    {{-- PERBAIKAN: Tambahkan pengecekan khusus untuk Pending --}}
+                                    @elseif($att->validation->status_validasi_final == 'Pending')
+                                        <span class="badge bg-secondary text-light"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+
                                     @else
+                                        {{-- Sisa pilihan dianggap Invalid --}}
                                         <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Invalid</span>
                                     @endif
+
                                     @if($att->validation->catatan_admin)
                                         <div class="small text-muted fst-italic mt-1" style="font-size: 0.7rem; max-width: 150px;">
                                             {{ Str::limit($att->validation->catatan_admin, 30) }}
@@ -282,7 +289,7 @@
         background-color: #2a2a2a !important;
     }
     .dark-mode .text-dark-emphasis { color: #fff !important; }
-    
+
     .dark-mode .modal-content {
         background-color: #1e1e1e !important;
         color: #fff !important;
