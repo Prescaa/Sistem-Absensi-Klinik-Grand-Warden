@@ -25,7 +25,7 @@
         .sidebar .nav-link:hover { color: #fff; background-color: rgba(255,255,255,0.1); }
         .sidebar .nav-link.active { color: #fff; background-color: #0d6efd; box-shadow: 0 4px 6px rgba(13, 110, 253, 0.3); }
         
-        /* PERBAIKAN: Pastikan text-danger menang atas warna default sidebar */
+        /* Custom danger text for logout */
         .sidebar .nav-link.text-danger {
             color: #dc3545 !important;
         }
@@ -211,6 +211,8 @@
                     $initial = strtoupper(substr($namaLengkap, 0, 1));
                     $roleDisplay = ucfirst($user->role);
                     $fotoProfil = $employee->foto_profil ?? null;
+                    // PERBAIKAN: Ambil Email
+                    $emailUser = $user->email;
                 @endphp
 
                 <a href="{{ route('manajemen.profil') }}" class="d-flex align-items-center text-decoration-none text-dark profile-link">
@@ -224,7 +226,8 @@
                     </div>
                     <div class="ms-2">
                         <span class="fw-bold d-block" style="line-height: 1.2;">{{ $namaLengkap }}</span>
-                        <small class="text-muted">{{ $roleDisplay }}</small>
+                        {{-- PERBAIKAN: Tampilkan Email --}}
+                        <small class="text-muted">{{ $emailUser }}</small>
                     </div>
                 </a>
 

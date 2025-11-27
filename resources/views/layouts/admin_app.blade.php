@@ -75,7 +75,7 @@
             border-radius: 8px;
         }
         
-        /* PERBAIKAN: Pastikan text-danger menang atas warna default sidebar */
+        /* Custom danger text for logout */
         .sidebar .nav-link.text-danger {
             color: #dc3545 !important;
         }
@@ -209,7 +209,6 @@
                     </a>
                 </li>
                 <li class="nav-item mb-1">
-                    {{-- PERBAIKAN: Menambahkan class text-danger dan fw-bold --}}
                     <a href="/logout" class="nav-link text-danger fw-bold">
                         <i class="bi bi-box-arrow-left me-2"></i> Logout
                     </a>
@@ -252,7 +251,6 @@
                         <div style="max-height: 350px; overflow-y: auto;">
                             @forelse ($adminNotifList ?? [] as $n)
                                 <li>
-                                    {{-- Penting: Tambahkan data-id untuk JS tracking --}}
                                     <a href="{{ $n['url'] }}" class="dropdown-item p-0 notif-link-item" data-id="{{ $n['id'] }}" style="white-space: normal;">
                                         <div class="notif-item">
                                             @if($n['type'] == 'absensi')
@@ -293,6 +291,8 @@
                     $name = $employee->nama ?? $user->username;
                     $initial = strtoupper(substr($name, 0, 1));
                     $foto = $employee->foto_profil ?? null;
+                    // PERBAIKAN: Ambil Email Pengguna
+                    $emailUser = $user->email; 
                 @endphp
 
                 <a href="/admin/profil" class="d-flex align-items-center text-decoration-none text-dark">
@@ -307,7 +307,8 @@
 
                     <div class="ms-2">
                         <span class="fw-bold d-block">{{ $name }}</span>
-                        <small class="text-muted">Administrator</small>
+                        {{-- PERBAIKAN: Tampilkan Email alih-alih Role static --}}
+                        <small class="text-muted">{{ $emailUser }}</small>
                     </div>
                 </a>
 
@@ -315,7 +316,6 @@
         </header>
 
         <main class="p-4 flex-grow-1 overflow-auto">
-            {{-- Ganti blok @if(session...) lama dengan yang ini --}}
             @if (session('success'))
                 <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
                     <div class="d-flex align-items-center">
@@ -345,17 +345,12 @@
                 <span class="text-muted d-none d-md-inline">Jl. Medan Merdeka Timur No.11-13 Clash Universe</span>
             </div>
             <div class="d-flex">
-                {{-- Facebook --}}
                 <a href="https://www.facebook.com" target="_blank" class="text-decoration-none me-3">
                     <i class="bi bi-facebook fs-6 text-muted hover-primary"></i>
                 </a>
-
-                {{-- Twitter / X --}}
                 <a href="https://twitter.com" target="_blank" class="text-decoration-none me-3">
                     <i class="bi bi-twitter-x fs-6 text-muted hover-primary"></i>
                 </a>
-
-                {{-- Instagram --}}
                 <a href="https://www.instagram.com" target="_blank" class="text-decoration-none">
                     <i class="bi bi-instagram fs-6 text-muted hover-primary"></i>
                 </a>
@@ -413,13 +408,11 @@
         }
 
         // --- 3. NOTIFICATION LOGIC (FIXED) ---
-        // Ambil semua elemen notifikasi di DOM
         const notifLinks = document.querySelectorAll('.notif-link-item');
         const badge = document.getElementById('adminNotifBadge');
         const badgeLabel = document.getElementById('adminNotifCountLabel');
         const toggleBell = document.getElementById('adminNotifToggle');
 
-        // Helper untuk baca cookie
         function getSeenIds() {
             const match = document.cookie.match(new RegExp('(^| )admin_seen_notifs=([^;]+)'));
             if (match) {
@@ -430,25 +423,18 @@
             return [];
         }
 
-        // Helper untuk simpan cookie
         function saveSeenIds(ids) {
-            // Expire 30 hari
             const d = new Date();
             d.setTime(d.getTime() + (30*24*60*60*1000));
             const expires = "expires="+ d.toUTCString();
-            // Simpan array ID unik
             document.cookie = "admin_seen_notifs=" + encodeURIComponent(JSON.stringify(ids)) + ";" + expires + ";path=/";
         }
 
-        // 1. Hitung Unread saat load
         const seenIds = getSeenIds();
         const currentIds = Array.from(notifLinks).map(el => el.getAttribute('data-id'));
-
-        // Filter ID yang BELUM ada di cookie
         const unreadIds = currentIds.filter(id => !seenIds.includes(id));
         const unreadCount = unreadIds.length;
 
-        // Update tampilan Badge
         if (unreadCount > 0) {
             if(badge) {
                 badge.style.display = 'inline-block';
@@ -463,14 +449,10 @@
             if(badgeLabel) badgeLabel.style.display = 'none';
         }
 
-        // 2. Saat Lonceng di-Klik -> Tandai SEMUA yang ada di list sekarang sebagai SEEN
         if (toggleBell) {
             toggleBell.addEventListener('show.bs.dropdown', function () {
-                // Gabungkan seenIds lama dengan currentIds (hilangkan duplikat)
                 const updatedSeenIds = [...new Set([...seenIds, ...currentIds])];
                 saveSeenIds(updatedSeenIds);
-
-                // Sembunyikan badge secara visual langsung
                 if(badge) badge.style.display = 'none';
                 if(badgeLabel) badgeLabel.style.display = 'none';
             });

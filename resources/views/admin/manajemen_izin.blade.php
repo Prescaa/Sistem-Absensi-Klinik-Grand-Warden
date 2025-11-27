@@ -121,8 +121,10 @@
                 <div class="modal-body p-4">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Karyawan*</label>
-                            <select name="emp_id" class="form-select" required>
+                            <label class="form-label fw-bold small text-dark-emphasis">Karyawan*</label>
+                            <select name="emp_id" class="form-select" required
+                                    oninvalid="this.setCustomValidity('Silakan pilih karyawan dari daftar.')"
+                                    oninput="this.setCustomValidity('')">
                                 <option value="">-- Pilih Karyawan --</option>
                                 @foreach($employees as $emp)
                                     <option value="{{ $emp->emp_id }}">{{ $emp->nama }} ({{ $emp->nip }})</option>
@@ -130,36 +132,45 @@
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Tipe Izin*</label>
-                            <select name="tipe_izin" class="form-select" required>
+                            <label class="form-label fw-bold small text-dark-emphasis">Tipe Izin*</label>
+                            <select name="tipe_izin" class="form-select" required
+                                    oninvalid="this.setCustomValidity('Silakan pilih tipe izin.')"
+                                    oninput="this.setCustomValidity('')">
                                 <option value="izin">Izin</option>
                                 <option value="sakit">Sakit</option>
                                 <option value="cuti">Cuti</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Tanggal Mulai*</label>
-                            <input type="date" name="tanggal_mulai" class="form-control" required>
+                            <label class="form-label fw-bold small text-dark-emphasis">Tanggal Mulai*</label>
+                            <input type="date" name="tanggal_mulai" class="form-control" required
+                                   oninvalid="this.setCustomValidity('Tentukan tanggal mulai.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Tanggal Selesai*</label>
-                            <input type="date" name="tanggal_selesai" class="form-control" required>
+                            <label class="form-label fw-bold small text-dark-emphasis">Tanggal Selesai*</label>
+                            <input type="date" name="tanggal_selesai" class="form-control" required
+                                   oninvalid="this.setCustomValidity('Tentukan tanggal selesai.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
                         <div class="col-md-12 mb-3">
-                            <label class="form-label fw-bold small">Alasan / Deskripsi</label>
+                            <label class="form-label fw-bold small text-dark-emphasis">Alasan / Deskripsi</label>
                             <textarea name="deskripsi" class="form-control" rows="2"></textarea>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Status Persetujuan</label>
+                            <label class="form-label fw-bold small text-dark-emphasis">Status Persetujuan</label>
                             <select name="status" class="form-select">
                                 <option value="disetujui" selected>Disetujui</option>
                                 <option value="pending">Pending</option>
                                 <option value="ditolak">Ditolak</option>
                             </select>
                         </div>
+                        
+                        {{-- Hanya menerima Gambar & PDF --}}
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Upload Bukti (Opsional)</label>
+                            <label class="form-label fw-bold small text-dark-emphasis">Upload Bukti (Opsional)</label>
                             <input type="file" name="file_bukti" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                            <div class="form-text small text-muted">Format: JPG, PNG, PDF. Maks 2MB.</div>
                         </div>
                     </div>
                 </div>
@@ -185,28 +196,34 @@
                 @method('PUT')
                 <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">Karyawan (Read-only)</label>
+                        <label class="form-label fw-bold small text-dark-emphasis">Karyawan (Read-only)</label>
                         <input type="text" id="edit_nama" class="form-control bg-light" readonly>
                     </div>
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold small">Tipe Izin</label>
-                            <select name="tipe_izin" id="edit_tipe" class="form-select" required>
+                            <label class="form-label fw-bold small text-dark-emphasis">Tipe Izin</label>
+                            <select name="tipe_izin" id="edit_tipe" class="form-select" required
+                                    oninvalid="this.setCustomValidity('Silakan pilih tipe izin.')"
+                                    oninput="this.setCustomValidity('')">
                                 <option value="izin">Izin</option>
                                 <option value="sakit">Sakit</option>
                                 <option value="cuti">Cuti</option>
                             </select>
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold small">Mulai</label>
-                            <input type="date" name="tanggal_mulai" id="edit_mulai" class="form-control" required>
+                            <label class="form-label fw-bold small text-dark-emphasis">Mulai</label>
+                            <input type="date" name="tanggal_mulai" id="edit_mulai" class="form-control" required
+                                   oninvalid="this.setCustomValidity('Tentukan tanggal mulai.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold small">Selesai</label>
-                            <input type="date" name="tanggal_selesai" id="edit_selesai" class="form-control" required>
+                            <label class="form-label fw-bold small text-dark-emphasis">Selesai</label>
+                            <input type="date" name="tanggal_selesai" id="edit_selesai" class="form-control" required
+                                   oninvalid="this.setCustomValidity('Tentukan tanggal selesai.')"
+                                   oninput="this.setCustomValidity('')">
                         </div>
                         <div class="col-md-12 mb-3">
-                            <label class="form-label fw-bold small">Alasan</label>
+                            <label class="form-label fw-bold small text-dark-emphasis">Alasan</label>
                             <textarea name="deskripsi" id="edit_deskripsi" class="form-control" rows="2"></textarea>
                         </div>
 
@@ -215,7 +232,7 @@
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Status</label>
+                            <label class="form-label fw-bold small text-dark-emphasis">Status</label>
                             <select name="status" id="edit_status" class="form-select">
                                 <option value="pending">Pending</option>
                                 <option value="disetujui">Disetujui</option>
@@ -223,12 +240,15 @@
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold small">Catatan Admin</label>
+                            <label class="form-label fw-bold small text-dark-emphasis">Catatan Admin</label>
                             <input type="text" name="catatan_admin" id="edit_catatan" class="form-control" placeholder="Opsional...">
                         </div>
+                        
+                        {{-- Hanya menerima Gambar & PDF --}}
                         <div class="col-md-12 mb-3">
-                            <label class="form-label fw-bold small">Ganti Bukti (Opsional)</label>
+                            <label class="form-label fw-bold small text-dark-emphasis">Ganti Bukti (Opsional)</label>
                             <input type="file" name="file_bukti" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                            <div class="form-text small text-muted">Format: JPG, PNG, PDF. Maks 2MB.</div>
                         </div>
                     </div>
                 </div>
@@ -254,7 +274,7 @@
                 <div class="modal-body text-center p-4">
                     <i class="bi bi-trash-fill text-danger display-1 mb-3"></i>
                     <p class="mb-1">Anda yakin ingin menghapus data ini?</p>
-                    <strong id="delete_info" class="d-block text-dark"></strong>
+                    <strong id="delete_info" class="d-block text-dark-emphasis"></strong>
                     <small class="text-muted d-block mt-2">Data tidak dapat dikembalikan.</small>
                 </div>
                 <div class="modal-footer bg-light justify-content-center">
@@ -304,21 +324,27 @@
 
 @push('styles')
 <style>
-    /* CSS DARK MODE IZIN - PERBAIKAN LENGKAP */
+    /* === CSS DARK MODE IZIN (DIPERBAIKI) === */
+    
+    /* 1. Global Card & Background */
     .dark-mode .card {
         background-color: #1e1e1e !important;
         border-color: #333 !important;
         color: #e0e0e0 !important;
+    }
+    
+    /* 2. Card Header */
+    .dark-mode .bg-white {
+        background-color: #1e1e1e !important;
+        color: #fff !important;
     }
     .dark-mode .card-header {
         background-color: #252525 !important;
         border-bottom-color: #333 !important;
         color: #fff !important;
     }
-    .dark-mode .bg-white {
-        background-color: #1e1e1e !important;
-        color: #fff !important;
-    }
+    
+    /* 3. Tabel */
     .dark-mode .table {
         color: #e0e0e0 !important;
         border-color: #444 !important;
@@ -331,69 +357,18 @@
     .dark-mode .table tbody td {
         border-bottom-color: #333 !important;
         background-color: #1e1e1e !important;
-        color: #e0e0e0 !important; /* PERBAIKAN: Warna teks dalam sel */
+        color: #e0e0e0 !important;
     }
     .dark-mode .table-hover tbody tr:hover td {
         background-color: #2a2a2a !important;
         color: #fff !important;
     }
-    .dark-mode .text-dark-emphasis { 
-        color: #fff !important; 
-    }
-    .dark-mode .text-muted { 
-        color: #aaa !important; 
-    }
     
-    /* PERBAIKAN UTAMA: Kolom Alasan dan konten teks */
-    .dark-mode td span.text-truncate {
-        color: #e0e0e0 !important;
-    }
-    .dark-mode .badge.bg-secondary {
-        background-color: #6c757d !important;
-        color: #fff !important;
-    }
-    .dark-mode .badge.bg-success {
-        background-color: #198754 !important;
-        color: #fff !important;
-    }
-    .dark-mode .badge.bg-danger {
-        background-color: #dc3545 !important;
-        color: #fff !important;
-    }
+    /* 4. Typography & Colors */
+    .dark-mode .text-dark-emphasis { color: #fff !important; }
+    .dark-mode .text-muted { color: #aaa !important; }
     
-    /* Badge dengan opacity untuk dark mode */
-    .dark-mode .badge.bg-danger.bg-opacity-10 {
-        background-color: rgba(220, 53, 69, 0.15) !important;
-        color: #ff6b7a !important;
-        border-color: #dc3545 !important;
-    }
-    .dark-mode .badge.bg-info.bg-opacity-10 {
-        background-color: rgba(13, 202, 240, 0.15) !important;
-        color: #6edff6 !important;
-        border-color: #0dcaf0 !important;
-    }
-    .dark-mode .badge.bg-warning.bg-opacity-10 {
-        background-color: rgba(255, 193, 7, 0.15) !important;
-        color: #ffd352 !important;
-        border-color: #ffc107 !important;
-    }
-    
-    /* Modal Styles */
-    .dark-mode .modal-content {
-        background-color: #1e1e1e !important;
-        color: #fff !important;
-        border-color: #444 !important;
-    }
-    .dark-mode .modal-header {
-        border-bottom-color: #444 !important;
-    }
-    .dark-mode .modal-footer, .dark-mode .bg-light {
-        background-color: #252525 !important;
-        border-top-color: #333 !important;
-        color: #e0e0e0 !important;
-    }
-    
-    /* Form Controls */
+    /* 5. Form Controls */
     .dark-mode .form-control, .dark-mode .form-select {
         background-color: #2b2b2b !important;
         border-color: #444 !important;
@@ -416,10 +391,23 @@
         color-scheme: dark;
     }
     
-    /* Buttons */
-    .dark-mode .btn-close { 
-        filter: invert(1); 
+    /* 6. Modal Styles */
+    .dark-mode .modal-content {
+        background-color: #1e1e1e !important;
+        color: #fff !important;
+        border: 1px solid #444 !important;
     }
+    .dark-mode .modal-header, .dark-mode .modal-footer {
+        border-color: #333 !important;
+    }
+    .dark-mode .modal-footer, .dark-mode .bg-light {
+        background-color: #252525 !important;
+        border-top-color: #333 !important;
+        color: #e0e0e0 !important;
+    }
+    
+    /* 7. Buttons */
+    .dark-mode .btn-close { filter: invert(1); }
     .dark-mode .btn-light {
         background-color: #333 !important;
         border-color: #444 !important;
@@ -427,49 +415,16 @@
     }
     .dark-mode .btn-light:hover {
         background-color: #444 !important;
-        border-color: #555 !important;
     }
-    .dark-mode .btn-outline-warning {
-        color: #ffc107 !important;
-        border-color: #ffc107 !important;
-    }
-    .dark-mode .btn-outline-warning:hover {
-        background-color: #ffc107 !important;
-        color: #000 !important;
-    }
-    .dark-mode .btn-outline-danger {
-        color: #dc3545 !important;
-        border-color: #dc3545 !important;
-    }
-    .dark-mode .btn-outline-danger:hover {
-        background-color: #dc3545 !important;
+    
+    /* 8. Modal Delete Text */
+    .dark-mode .modal-body strong.text-dark-emphasis {
         color: #fff !important;
     }
     
-    /* Text dalam modal delete */
-    .dark-mode .modal-body strong.text-dark {
-        color: #fff !important;
-    }
-    .dark-mode .modal-body p {
-        color: #e0e0e0 !important;
-    }
-    
-    /* Border dan separator */
-    .dark-mode .border-top {
-        border-top-color: #444 !important;
-    }
-    .dark-mode .text-primary {
-        color: #6ea8fe !important;
-    }
-    
-    /* Label form */
+    /* 9. Form Label */
     .dark-mode .form-label {
         color: #e0e0e0 !important;
-    }
-    
-    /* Empty state */
-    .dark-mode .text-muted {
-        color: #888 !important;
     }
 </style>
 @endpush

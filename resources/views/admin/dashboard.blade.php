@@ -257,16 +257,19 @@
         <h5 class="modal-title fw-bold">Export Data Laporan</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <form action="{{ route('admin.laporan.export') }}" method="POST">
+      {{-- Menambahkan ID form untuk validasi JS --}}
+      <form action="{{ route('admin.laporan.export') }}" method="POST" id="exportForm">
           @csrf
           <div class="modal-body pt-4">
               <div class="mb-3">
                   <label class="form-label fw-bold small text-muted">Dari Tanggal</label>
-                  <input type="date" name="start_date" class="form-control" required>
+                  {{-- Menambahkan ID input --}}
+                  <input type="date" name="start_date" id="start_date" class="form-control" required>
               </div>
               <div class="mb-3">
                   <label class="form-label fw-bold small text-muted">Sampai Tanggal</label>
-                  <input type="date" name="end_date" class="form-control" required>
+                  {{-- Menambahkan ID input --}}
+                  <input type="date" name="end_date" id="end_date" class="form-control" required>
               </div>
           </div>
           <div class="modal-footer border-0 bg-light">
@@ -321,36 +324,21 @@
 
     .dark-mode .text-dark-emphasis { color: #e0e0e0 !important; }
     .dark-mode .text-body { color: #e0e0e0 !important; }
-    
     .dark-mode .card { background-color: #1e1e1e !important; border: 1px solid #333; }
-    .dark-mode .card-header {
-        background-color: #252525 !important;
-        border-bottom-color: #333 !important;
-        color: #fff !important;
-    }
-    .dark-mode .bg-white {
-        background-color: #1e1e1e !important;
-        color: #fff !important;
-    }
-    .dark-mode .text-muted { color: #aaa !important; }
-
-    .dark-mode .list-group-item {
-        border-color: #333 !important;
-        color: #e0e0e0 !important;
-    }
 
     /* Modal di Dark Mode */
     .dark-mode .modal-content { background-color: #1e1e1e; color: #fff; }
-    .dark-mode .modal-footer, .dark-mode .bg-light { background-color: #252525 !important; border-color: #333 !important; }
+    .dark-mode .modal-footer.bg-light { background-color: #252525 !important; }
     .dark-mode .btn-close { filter: invert(1); }
     .dark-mode .form-control { background-color: #2b2b2b; border-color: #444; color: #fff; }
-    .dark-mode input[type="date"] { color-scheme: dark; }
+    .dark-mode input[type="date"] { color-scheme: dark; } /* Fix Icon Kalender */
 </style>
 @endpush
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // --- 1. SKRIP JAM ---
         function updateClock() {
             const timeEl = document.getElementById('realtime-jam');
             const dateEl = document.getElementById('realtime-tanggal');
@@ -372,6 +360,40 @@
 
         updateClock();
         setInterval(updateClock, 60000);
+
+        // --- 2. VALIDASI TANGGAL EXPORT (Start <= End) ---
+        const startInput = document.getElementById('start_date');
+        const endInput = document.getElementById('end_date');
+        const exportForm = document.getElementById('exportForm');
+
+        if(startInput && endInput && exportForm) {
+            // Saat 'Dari Tanggal' berubah, set min attribute 'Sampai Tanggal'
+            startInput.addEventListener('change', function() {
+                endInput.min = this.value;
+                // Jika tanggal akhir saat ini lebih kecil dari tanggal mulai baru, reset
+                if(endInput.value && endInput.value < this.value) {
+                    endInput.value = this.value;
+                }
+            });
+
+            // Saat 'Sampai Tanggal' berubah, set max attribute 'Dari Tanggal'
+            endInput.addEventListener('change', function() {
+                startInput.max = this.value;
+            });
+
+            // Validasi Akhir saat Submit (Double Check)
+            exportForm.addEventListener('submit', function(e) {
+                const startVal = new Date(startInput.value);
+                const endVal = new Date(endInput.value);
+
+                if(startInput.value && endInput.value) {
+                    if(startVal > endVal) {
+                        e.preventDefault();
+                        alert('PERINGATAN:\n"Dari Tanggal" tidak boleh lebih besar dari "Sampai Tanggal".');
+                    }
+                }
+            });
+        }
     });
 </script>
 @endpush

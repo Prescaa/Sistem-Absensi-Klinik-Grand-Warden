@@ -16,14 +16,14 @@
         <div class="card-body">
             
             {{-- === FILTER & SORTING TOOLBAR === --}}
-            <form action="{{ route('manajemen.laporan.index') }}" method="GET" class="row g-3 mb-4 p-3 bg-light rounded border filter-box">
+            <form action="{{ route('manajemen.laporan.index') }}" method="GET" id="filterForm" class="row g-3 mb-4 p-3 bg-light rounded border filter-box">
                 <div class="col-md-3">
                     <label class="form-label fw-bold small text-muted">Dari Tanggal</label>
-                    <input type="date" name="start_date" class="form-control" value="{{ request('start_date') }}">
+                    <input type="date" name="start_date" id="start_date" class="form-control" value="{{ request('start_date') }}">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold small text-muted">Sampai Tanggal</label>
-                    <input type="date" name="end_date" class="form-control" value="{{ request('end_date') }}">
+                    <input type="date" name="end_date" id="end_date" class="form-control" value="{{ request('end_date') }}">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label fw-bold small text-muted">Urutkan Data</label>
@@ -97,21 +97,29 @@
         <h5 class="modal-title fw-bold">Export Data Laporan</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <form action="{{ route('manajemen.laporan.export') }}" method="POST">
+      {{-- Menambahkan ID form untuk validasi JS --}}
+      <form action="{{ route('manajemen.laporan.export') }}" method="POST" id="exportForm">
           @csrf
           <div class="modal-body pt-4">
               <div class="mb-3">
                   <label class="form-label fw-bold small text-muted">Dari Tanggal</label>
-                  <input type="date" name="start_date" class="form-control" required value="{{ request('start_date') }}">
+                  {{-- Menambahkan ID input --}}
+                  <input type="date" name="start_date" id="export_start_date" class="form-control" required value="{{ request('start_date') }}">
               </div>
               <div class="mb-3">
                   <label class="form-label fw-bold small text-muted">Sampai Tanggal</label>
-                  <input type="date" name="end_date" class="form-control" required value="{{ request('end_date') }}">
+                  {{-- Menambahkan ID input --}}
+                  <input type="date" name="end_date" id="export_end_date" class="form-control" required value="{{ request('end_date') }}">
+              </div>
+              {{-- Peringatan --}}
+              <div id="dateWarning" class="alert alert-warning alert-sm d-none mb-0">
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                  <small>"Dari Tanggal" tidak boleh lebih besar dari "Sampai Tanggal"!</small>
               </div>
           </div>
           <div class="modal-footer border-0 bg-light">
             <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-            <button type="submit" class="btn btn-success px-4 fw-bold">Download CSV</button>
+            <button type="submit" id="btnDownload" class="btn btn-success px-4 fw-bold">Download CSV</button>
           </div>
       </form>
     </div>
@@ -123,7 +131,7 @@
 <style>
     /* === CSS DARK MODE YANG DIPERBAIKI (KONTRAS TINGGI) === */
     
-    /* 1. Warna Kartu: Lebih terang dari background body */
+    /* 1. Warna Kartu */
     .dark-mode .card {
         background-color: #1e1e1e !important;
         border: 1px solid #444 !important;
@@ -141,13 +149,13 @@
         background-color: #2d2d2d !important;
     }
     
-    /* 3. Filter Box (Container Input) */
+    /* 3. Filter Box */
     .dark-mode .filter-box {
         background-color: #2d2d2d !important;
         border: 1px solid #444 !important;
     }
     
-    /* 4. Form Controls (Input & Select) */
+    /* 4. Form Controls */
     .dark-mode .form-control, 
     .dark-mode .form-select {
         background-color: #1e1e1e !important;
@@ -163,7 +171,7 @@
         color: #fff !important;
     }
 
-    /* 5. Input Date Icon Fix */
+    /* 5. Input Date Icon */
     .dark-mode input[type="date"] {
         color-scheme: dark;
     }
@@ -209,7 +217,7 @@
         background-color: #2d2d2d !important;
     }
     
-    /* 8. Badges dengan Opacity (Perbaikan Khusus) */
+    /* 8. Badges */
     .dark-mode .badge.bg-success.bg-opacity-10 {
         background-color: rgba(25, 135, 84, 0.2) !important;
         color: #75b798 !important;
@@ -282,12 +290,12 @@
         filter: invert(1) grayscale(100%) brightness(200%);
     }
     
-    /* 11. Icons dalam Tabel Kosong */
+    /* 11. Icons */
     .dark-mode .bi-inbox {
         color: #6c757d !important;
     }
     
-    /* 12. Shadow Effects */
+    /* 12. Shadow */
     .dark-mode .shadow-sm {
         box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.4) !important;
     }
@@ -296,4 +304,57 @@
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.5) !important;
     }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        /* ===== VALIDASI TANGGAL EXPORT (Start <= End) ===== */
+        function setupExportDateValidation() {
+            const startInput = document.getElementById('export_start_date');
+            const endInput   = document.getElementById('export_end_date');
+            const form       = document.getElementById('exportForm');
+            const submitBtn  = form.querySelector('button[type="submit"]');
+            const warning    = document.createElement('div');
+            warning.className = 'alert alert-warning alert-sm mt-2 mb-0 d-none';
+            warning.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i><small>"Dari Tanggal" tidak boleh lebih besar dari "Sampai Tanggal"!</small>';
+            endInput.parentElement.appendChild(warning);
+
+            function validate() {
+                const start = new Date(startInput.value);
+                const end   = new Date(endInput.value);
+
+                if (!startInput.value || !endInput.value) {
+                    submitBtn.disabled = true;
+                    warning.classList.add('d-none');
+                    return;
+                }
+
+                if (start > end) {
+                    warning.classList.remove('d-none');
+                    submitBtn.disabled = true;
+                } else {
+                    warning.classList.add('d-none');
+                    submitBtn.disabled = false;
+                }
+            }
+
+            // Pasang listener
+            startInput.addEventListener('change', () => {
+                endInput.min = startInput.value;
+                if (endInput.value && endInput.value < startInput.value) {
+                    endInput.value = startInput.value;
+                }
+                validate();
+            });
+
+            endInput.addEventListener('change', validate);
+
+            // Jalankan sekali
+            validate();
+        }
+
+        setupExportDateValidation();
+    });
+</script>
 @endpush
