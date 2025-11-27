@@ -5,14 +5,14 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\WorkArea;
 use App\Models\Attendance;
-use App\Models\Validation; 
+use App\Models\Validation;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Models\Leave;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cookie;
-use App\Models\User; 
+use App\Models\User;
 use App\Models\Employee;
 
 class KaryawanController extends Controller
@@ -109,7 +109,7 @@ class KaryawanController extends Controller
             'radius_geofence',
             'jam_kerja',
             DB::raw('ST_AsText(koordinat_pusat) as location_str')
-        )->first(); 
+        )->first();
 
         $latitude = 0;
         $longitude = 0;
@@ -117,10 +117,10 @@ class KaryawanController extends Controller
         if ($workAreaQuery && $workAreaQuery->location_str) {
             $cleanStr = str_replace(['POINT(', ')'], '', $workAreaQuery->location_str);
             $parts = explode(' ', $cleanStr);
-            
+
             if (count($parts) == 2) {
-                $longitude = (float) $parts[0]; 
-                $latitude = (float) $parts[1];  
+                $longitude = (float) $parts[0];
+                $latitude = (float) $parts[1];
             }
         }
 
@@ -128,7 +128,7 @@ class KaryawanController extends Controller
             $workAreaQuery->latitude = $latitude;
             $workAreaQuery->longitude = $longitude;
         }
-        
+
         $data['workArea'] = $workAreaQuery;
 
         return view('karyawan.unggah', $data);
@@ -162,7 +162,7 @@ class KaryawanController extends Controller
 
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
-            $chartLabels[] = $date->format('d M'); 
+            $chartLabels[] = $date->format('d M');
 
             $isPresent = Attendance::where('emp_id', $karyawan->emp_id)
                 ->whereDate('waktu_unggah', $date)
@@ -170,7 +170,7 @@ class KaryawanController extends Controller
                 ->whereDoesntHave('validation', function($q) {
                     $q->whereIn('status_validasi_final', ['Invalid', 'Rejected']);
                 })
-                ->exists(); 
+                ->exists();
 
             $chartData[] = $isPresent ? 1 : 0;
         }
@@ -202,16 +202,17 @@ class KaryawanController extends Controller
             'tipe_izin' => 'required|in:sakit,izin,cuti',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'deskripsi' => 'required|string|max:500',
+            'deskripsi' => ['required', 'string', 'max:500', 'regex:/^[a-zA-Z0-9\s]+$/'],
             'file_bukti' => 'required_if:tipe_izin,sakit|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ], [
-            'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.'
+            'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.',
+            'deskripsi.regex' => 'Alasan hanya boleh berisi huruf, angka, dan spasi (tidak boleh menggunakan simbol seperti titik, koma, strip, dll).'
         ]);
 
         $empId = auth()->user()->employee->emp_id;
 
         $checkOverlap = Leave::where('emp_id', $empId)
-            ->where('status', '!=', 'ditolak') 
+            ->where('status', '!=', 'ditolak')
             ->where(function($q) use ($request) {
                 $start = $request->tanggal_mulai;
                 $end = $request->tanggal_selesai;
@@ -263,10 +264,18 @@ class KaryawanController extends Controller
         $employee = auth()->user()->employee;
 
         $request->validate([
-            'nama' => 'required|string|max:255',
-            'alamat' => 'nullable|string|max:255',
+            'nama' => 'required|string|max:255|regex:/^[a-zA-Z0-9\s\.\,\-\/]+$/',
+            'alamat' => [
+                'nullable',
+                'string',
+                'max:500',
+                'regex:/^[a-zA-Z0-9\s\.\,\-\/]+$/'
+            ],
             'no_telepon' => 'nullable|numeric|digits_between:10,15',
-            'foto_profil' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'foto_profil' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ], [
+            'nama.regex' => 'Nama hanya boleh berisi huruf, angka, titik.',
+            'alamat.regex' => 'Alamat hanya boleh berisi huruf, angka, titik, koma, strip, dan garis miring.'
         ]);
 
         $employee->nama = $request->nama;
@@ -352,7 +361,7 @@ class KaryawanController extends Controller
         $workArea = WorkArea::select(
             'area_id', 'radius_geofence', 'jam_kerja',
             DB::raw('ST_AsText(koordinat_pusat) as location_str')
-        )->first(); 
+        )->first();
 
         if (!$workArea) {
             return redirect()->back()->with('error', 'Konfigurasi lokasi kantor belum diset.');
@@ -360,14 +369,14 @@ class KaryawanController extends Controller
 
         $cleanStr = str_replace(['POINT(', ')'], '', $workArea->location_str);
         $parts = explode(' ', $cleanStr);
-        $officeLng = (float) $parts[0]; 
-        $officeLat = (float) $parts[1]; 
+        $officeLng = (float) $parts[0];
+        $officeLat = (float) $parts[1];
 
         // Hitung Jarak
         $browserDistance = $this->haversineDistance($request->browser_lat, $request->browser_lng, $officeLat, $officeLng);
         $exifLat = isset($exif['GPSLatitude']) ? $this->gpsDmsToDecimal($exif['GPSLatitude'], $exif['GPSLatitudeRef'] ?? 'N') : null;
         $exifLng = isset($exif['GPSLongitude']) ? $this->gpsDmsToDecimal($exif['GPSLongitude'], $exif['GPSLongitudeRef'] ?? 'E') : null;
-        
+
         $photoDistance = null;
         if ($exifLat && $exifLng) {
             $photoDistance = $this->haversineDistance($exifLat, $exifLng, $officeLat, $officeLng);
@@ -393,9 +402,9 @@ class KaryawanController extends Controller
         // 7. CEK JAM KERJA & STATUS VALIDASI
         $now = Carbon::now();
         $jamKerjaConfig = $workArea->jam_kerja;
-        $hariIni = $now->dayOfWeek; 
-        $hariKerja = $jamKerjaConfig['hari_kerja'] ?? [1,2,3,4,5]; 
-        
+        $hariIni = $now->dayOfWeek;
+        $hariKerja = $jamKerjaConfig['hari_kerja'] ?? [1,2,3,4,5];
+
         if (!in_array($hariIni, $hariKerja)) {
             return redirect()->back()->with('error', 'Hari ini bukan jadwal hari kerja.');
         }
@@ -411,7 +420,7 @@ class KaryawanController extends Controller
         // PERUBAHAN PENTING: STATUS FINAL SELALU PENDING
         // Agar semua absensi masuk ke dashboard approval manajer
         // =====================================================================
-        $statusFinal = 'Pending'; 
+        $statusFinal = 'Pending';
 
         // Logika Cek Keterlambatan (Hanya mempengaruhi Status Otomatis)
         if ($request->type == 'masuk') {
@@ -428,17 +437,17 @@ class KaryawanController extends Controller
                     return redirect()->back()->with('error', 'Absensi Masuk ditolak! Jam kerja telah berakhir.');
                 }
             }
-            
+
             if (!$isEntryForTomorrow && $now->lessThan($jamMasukCarbon->copy()->subHours(2))) {
                  return redirect()->back()->with('error', 'Terlalu awal! Absensi belum dibuka.');
             }
 
             if (!$isEntryForTomorrow && $now->greaterThan($jamMasukCarbon)) {
-                $statusValidasiOtomatis = 'Need Review'; 
+                $statusValidasiOtomatis = 'Need Review';
                 $catatanValidasi = 'Terlambat (Otomatis): Absen pukul ' . $now->format('H:i') . ' (Jadwal: ' . $jamMasukBatas . ')';
             }
         }
-        
+
         if ($request->type == 'pulang') {
             $jamPulangCarbon = Carbon::createFromTimeString($jamPulangBatas);
             if ($now->lessThan($jamPulangCarbon)) {
@@ -474,7 +483,7 @@ class KaryawanController extends Controller
             'att_id' => $attendance->att_id,
             'status_validasi_otomatis' => $statusValidasiOtomatis, // Bisa Valid/Need Review (Sistem)
             'status_validasi_final' => $statusFinal,               // Selalu Pending (Manusia)
-            'catatan_admin' => $catatanValidasi, 
+            'catatan_admin' => $catatanValidasi,
             'timestamp_validasi' => $now
         ]);
 
