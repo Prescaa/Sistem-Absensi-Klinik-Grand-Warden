@@ -96,7 +96,9 @@
                                                                     <input type="hidden" name="status_validasi" value="Valid">
                                                                     <div class="mb-3">
                                                                         <label class="form-label small fw-bold">Catatan (Opsional)</label>
-                                                                        <input type="text" name="catatan_validasi" class="form-control" placeholder="Contoh: OK, Tepat Waktu">
+                                                                        <input type="text" name="catatan_validasi" class="form-control" placeholder="Contoh: OK, Tepat Waktu"
+                                                                               oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
+                                                                        <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                                                                     </div>
                                                                 </div>
                                                                 <div class="modal-footer border-0 bg-light">
@@ -180,7 +182,9 @@
                                                                     </div>
                                                                     <div class="mb-3">
                                                                         <label class="form-label small fw-bold">Catatan Admin</label>
-                                                                        <textarea name="catatan_admin" class="form-control" rows="2"></textarea>
+                                                                        <textarea name="catatan_admin" class="form-control" rows="2"
+                                                                                  oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')"></textarea>
+                                                                        <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                                                                     </div>
                                                                 </div>
                                                                 <div class="modal-footer border-0 bg-light">
@@ -215,7 +219,7 @@
         background-color: #fff3cd !important;
     }
     
-    /* === DARK MODE (VALIDASI) - DIPERBAIKI === */
+    /* === DARK MODE (VALIDASI) === */
     
     /* 1. Card & Global */
     .dark-mode .card {

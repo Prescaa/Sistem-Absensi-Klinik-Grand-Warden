@@ -62,6 +62,7 @@ class EmployeeSeeder extends Seeder
                 'nip'           => '1234567890',
                 'departemen'    => 'Eksekutif',
                 'posisi'        => 'Manajer',
+                'no_telepon'    => '085389399781',
             ]);
         }
     }
