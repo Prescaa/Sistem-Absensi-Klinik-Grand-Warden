@@ -17,6 +17,11 @@ use App\Models\Employee;
 
 class KaryawanController extends Controller
 {
+    // Regex untuk NAMA: Huruf, Spasi, ., , -
+    private const NAMA_TEXT_REGEX = '/^[a-zA-Z\s\.\,\-]+$/'; 
+    // Regex untuk Teks Umum/Alamat/Deskripsi: Huruf, Angka, Spasi, ., , -, /
+    private const GENERAL_TEXT_REGEX = '/^[a-zA-Z0-9\s\.\,\-\/]+$/';
+
     /**
      * Helper: Ambil Data Absensi & Izin Hari Ini
      * Absensi dianggap sah jika status finalnya BUKAN 'Invalid'.
@@ -165,7 +170,6 @@ class KaryawanController extends Controller
 
     /**
      * Menampilkan Riwayat Absensi & Statistik
-     * [FIX UTAMA FLEKSIBILITAS] Statistik menggunakan filter bulan ini (Overlap Check)
      */
     public function riwayat()
     {
@@ -173,45 +177,34 @@ class KaryawanController extends Controller
         $karyawan = $user->employee;
         $now = Carbon::now();
         
-        // Definisikan periode bulan berjalan (untuk statistik izin/sakit/cuti)
         $startOfMonth = $now->copy()->startOfMonth();
         $endOfMonth = $now->copy()->endOfMonth();
 
-        // Ambil data absensi milik user (semua, untuk riwayat log)
         $riwayatAbsensi = Attendance::with('validation')
             ->where('emp_id', $karyawan->emp_id)
             ->orderBy('waktu_unggah', 'desc')
             ->get();
 
-        // Ambil riwayat izin (semua, untuk riwayat log)
         $riwayatIzin = Leave::where('emp_id', $karyawan->emp_id)
             ->orderBy('created_at', 'desc')
             ->get();
             
-        // 1. [FIX FLEKSIBILITAS] Statistik Filter BULAN INI (Overlap Check)
-        // Menghitung semua pengajuan yang tumpang tindih (overlap) dengan bulan ini.
         $leaveQuery = Leave::where('emp_id', $karyawan->emp_id)
             ->where('status', 'disetujui')
-            // Logika Overlap: (Tanggal mulai <= Akhir Bulan) AND (Tanggal selesai >= Awal Bulan)
             ->whereDate('tanggal_mulai', '<=', $endOfMonth)
             ->whereDate('tanggal_selesai', '>=', $startOfMonth);
 
-        // Menggunakan clone agar query dasar bisa dipakai berulang kali
         $izinCount = (clone $leaveQuery)->where('tipe_izin', 'izin')->count();
         $sakitCount = (clone $leaveQuery)->where('tipe_izin', 'sakit')->count();
         $cutiCount = (clone $leaveQuery)->where('tipe_izin', 'cuti')->count();
-        // -------------------------------------------------------------
 
-        // 2. Grafik Menggabungkan Absensi Fisik & Izin Resmi (Logika sudah benar)
         $chartData = [];
         $chartLabels = [];
 
-        // Loop 7 hari terakhir
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
             $chartLabels[] = $date->format('d M'); 
 
-            // Cek 1: Apakah ada Absensi Masuk (yang tidak invalid)?
             $isHadirFisik = Attendance::where('emp_id', $karyawan->emp_id)
                 ->whereDate('waktu_unggah', $date)
                 ->where('type', 'masuk')
@@ -220,21 +213,17 @@ class KaryawanController extends Controller
                 })
                 ->exists(); 
 
-            // Cek 2: Jika Tidak Hadir Fisik, Apakah sedang Izin/Sakit/Cuti Resmi?
             $isIzinResmi = false;
             if (!$isHadirFisik) {
                 $isIzinResmi = Leave::where('emp_id', $karyawan->emp_id)
-                    ->where('status', 'disetujui') // Hanya yang disetujui
+                    ->where('status', 'disetujui')
                     ->whereDate('tanggal_mulai', '<=', $date)
                     ->whereDate('tanggal_selesai', '>=', $date)
                     ->exists();
             }
 
-            // Nilai 1 jika Hadir Fisik ATAU Izin Resmi. Nilai 0 jika Alpha.
             $chartData[] = ($isHadirFisik || $isIzinResmi) ? 1 : 0;
         }
-        // -------------------------------------------------------------
-
 
         return view('karyawan.riwayat', compact(
             'karyawan', 'riwayatAbsensi', 'izinCount', 'sakitCount', 'cutiCount',
@@ -265,24 +254,20 @@ class KaryawanController extends Controller
      */
     public function storeIzin(Request $request)
     {
-        // === [PERBAIKAN] MENGGUNAKAN ARRAY UNTUK VALIDASI AGAR REGEX AMAN ===
         $request->validate([
             'tipe_izin' => ['required', 'in:sakit,izin,cuti'],
             'tanggal_mulai' => ['required', 'date'],
             'tanggal_selesai' => ['required', 'date', 'after_or_equal:tanggal_mulai'],
-            // REGEX: Hanya huruf, angka, spasi, titik, koma, strip, slash, petik, kurung. (Tanpa # $ % &)
-            'deskripsi' => ['required', 'string', 'max:500', 'regex:/^[a-zA-Z0-9\s\.\,\-\/\'\"\(\)]+$/'],
+            'deskripsi' => ['required', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX],
             'file_bukti' => ['required_if:tipe_izin,sakit', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
         ], [
-            // Pesan Error Kustom
             'tanggal_selesai.after_or_equal' => 'Tanggal selesai harus sama atau setelah tanggal mulai.',
             'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.',
             'tipe_izin.required' => 'Jenis izin wajib dipilih.',
             'tanggal_mulai.required' => 'Tanggal mulai wajib diisi.',
             'tanggal_selesai.required' => 'Tanggal selesai wajib diisi.',
             'deskripsi.required' => 'Alasan/Keterangan wajib diisi.',
-            // Pesan khusus jika ada simbol terlarang
-            'deskripsi.regex' => 'Alasan tidak boleh mengandung simbol spesial (seperti #, $, %, &).',
+            'deskripsi.regex' => 'Alasan tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
         ]);
 
         $empId = auth()->user()->employee->emp_id;
@@ -339,52 +324,68 @@ class KaryawanController extends Controller
     }
 
     /**
-     * Memperbarui Data Profil Karyawan
+     * Memperbarui Data Profil Karyawan (Termasuk Hapus Foto)
      */
     public function updateProfil(Request $request)
     {
         $employee = auth()->user()->employee;
 
-        // === [PERBAIKAN] MENGGUNAKAN ARRAY UNTUK VALIDASI AGAR REGEX AMAN ===
+        // Pesan Error untuk Regex
+        $messages = [
+            'nama.regex' => 'Nama hanya boleh berisi huruf, titik, dan koma.',
+            'alamat.regex' => 'Alamat hanya boleh berisi huruf, angka, titik, koma, strip (-), dan garis miring (/).',
+            'no_telepon.regex' => 'Nomor telepon hanya boleh berisi angka.',
+        ];
+
+        // Validasi PERBAIKAN: Regex Alamat terima angka
         $request->validate([
-            // NAMA: Hanya huruf, spasi, titik, koma, petik, dan strip. (Tanpa Angka & Simbol)
-            'nama' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s\.\,\'\-]+$/'],
-            
-            // ALAMAT: Boleh angka, huruf, dan tanda baca alamat biasa. (Tanpa # $ % &)
-            'alamat' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9\s\.\,\-\/\'\"\(\)]+$/'],
-            
-            'no_telepon' => ['nullable', 'numeric', 'digits_between:10,15'],
+            'nama' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s.,]+$/'],
+            'alamat' => ['nullable', 'string', 'max:500', 'regex:/^[a-zA-Z0-9\s.,\-\/]+$/'],
+            'no_telepon' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]+$/'], 
             'foto_profil' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
-        ], [
-            // Pesan Error Kustom untuk Profil
-            'nama.regex' => 'Nama hanya boleh berisi huruf, titik, koma, dan petik (Tanpa angka/simbol).',
-            'alamat.regex' => 'Alamat tidak boleh mengandung simbol spesial (seperti #, $, %, &).',
-            'no_telepon.numeric' => 'Nomor telepon harus berupa angka.',
-        ]);
+        ], $messages);
 
         $employee->nama = $request->nama;
         $employee->alamat = $request->alamat;
         $employee->no_telepon = $request->no_telepon;
 
-        if ($request->hasFile('foto_profil')) {
+        // 1. LOGIKA HAPUS FOTO
+        // Cek jika input hidden 'hapus_foto' bernilai '1'
+        if ($request->input('hapus_foto') == '1') {
             if ($employee->foto_profil) {
+                // Hapus file fisik
                 $oldPath = str_replace('/storage/', '', $employee->foto_profil);
                 Storage::disk('public')->delete($oldPath);
             }
+            // Set null di database
+            $employee->foto_profil = null;
+        }
+
+        // 2. LOGIKA UPLOAD FOTO BARU
+        if ($request->hasFile('foto_profil')) {
+            // Hapus foto lama jika ada (dan belum dihapus oleh logika di atas)
+            if ($employee->foto_profil && $request->input('hapus_foto') != '1') {
+                $oldPath = str_replace('/storage/', '', $employee->foto_profil);
+                Storage::disk('public')->delete($oldPath);
+            }
+            
             $file = $request->file('foto_profil');
             $fileName = $employee->emp_id . '-profil-' . now()->format('YmdHis') . '.' . $file->extension();
             $path = $file->storeAs('foto_profil', $fileName, 'public');
             $employee->foto_profil = Storage::url($path);
         }
+
         $employee->save();
         return redirect()->route('karyawan.profil')->with('success', 'Profil berhasil diperbarui.');
     }
 
     /**
-     * Menghapus Foto Profil Karyawan
+     * Menghapus Foto Profil Karyawan (Opsional / Legacy Route)
      */
     public function deleteFotoProfil()
     {
+        // Method ini mungkin tidak dipakai jika logika hapus sudah digabung di updateProfil
+        // tapi dibiarkan untuk fallback route
         $employee = auth()->user()->employee;
         if ($employee->foto_profil) {
             $oldPath = str_replace('/storage/', '', $employee->foto_profil);
@@ -545,9 +546,7 @@ class KaryawanController extends Controller
             }
         }
 
-        // Jika tidak ada catatan otomatis (tepat waktu), beri catatan default
         if (!$catatanValidasi) {
-            // [CATATAN]: status_validasi_otomatis tetap 'Valid'
             $catatanValidasi = 'Tepat Waktu - Menunggu Validasi Manajer';
         }
 
@@ -571,8 +570,8 @@ class KaryawanController extends Controller
         // 9. SIMPAN VALIDATION (STATUS FINAL = PENDING)
         Validation::create([
             'att_id' => $attendance->att_id,
-            'status_validasi_otomatis' => $statusValidasiOtomatis, // Bisa Valid/Need Review (Sistem)
-            'status_validasi_final' => $statusFinal,               // Selalu Pending (Manusia)
+            'status_validasi_otomatis' => $statusValidasiOtomatis, 
+            'status_validasi_final' => $statusFinal,               
             'catatan_admin' => $catatanValidasi, 
             'timestamp_validasi' => $now
         ]);

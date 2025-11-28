@@ -14,18 +14,14 @@ class ProfileController extends Controller
 {
     public function index()
     {
-        // Ambil user yang sedang login beserta data karyawannya
         $user = Auth::user();
         $employee = $user->employee;
 
-        // Normalisasi role agar tidak sensitif huruf besar/kecil
         $role = strtolower(trim($user->role));
 
-        // Tentukan view berdasarkan role
         if ($role === 'admin') {
             return view('admin.profil', compact('user', 'employee'));
         } elseif ($role === 'manajemen') {
-            // ✅ PERBAIKAN: Tambahkan View Manajemen
             return view('manajemen.profil', compact('user', 'employee'));
         } else {
             return view('karyawan.profil', compact('user', 'employee'));
@@ -41,7 +37,6 @@ class ProfileController extends Controller
         Log::info('hapus_foto value:', ['hapus_foto' => $request->input('hapus_foto')]);
 
         $user = Auth::user();
-        // ✅ PERBAIKAN: Normalisasi Role
         $role = strtolower(trim($user->role));
         
         Log::info('User Info:', [
@@ -53,7 +48,6 @@ class ProfileController extends Controller
         if (!$user->employee) {
             Log::error('Employee relation not found for user: ' . $user->user_id);
             
-            // ✅ PERBAIKAN: Redirect Error Sesuai Role (Agar tidak logout)
             if ($role === 'admin') {
                 return redirect()->route('admin.profil')->with('error', 'Data karyawan tidak ditemukan.');
             } elseif ($role === 'manajemen') {
@@ -72,30 +66,39 @@ class ProfileController extends Controller
             'current_foto_profil' => $employee->foto_profil
         ]);
 
-        // Validasi
+        // PERBAIKAN: Regex dipisah antara Nama dan Alamat
+        // Nama: Hanya Huruf, Titik, Koma, Spasi
+        $nameRegex = 'regex:/^[a-zA-Z\s.,]+$/';
+        // Alamat: Boleh Angka, Huruf, Spasi, Titik, Koma, Strip, Garis Miring
+        $addressRegex = 'regex:/^[a-zA-Z0-9\s.,\-\/]+$/';
+
+        $messages = [
+            'nama.regex' => 'Nama hanya boleh berisi huruf, titik, dan koma.',
+            'alamat.regex' => 'Alamat hanya boleh berisi huruf, angka, titik, koma, strip (-), dan garis miring (/).',
+        ];
+
         if ($role === 'admin') {
             Log::info('Validating Admin data...');
             $validated = $request->validate([
-                'nama' => 'required|string|max:255',
+                'nama' => ['required', 'string', 'max:255', $nameRegex],
                 'nip' => 'nullable|string|max:50',
                 'username' => 'required|string|max:100|unique:USER,username,' . $user->user_id . ',user_id',
                 'email' => 'required|email|max:100|unique:USER,email,' . $user->user_id . ',user_id',
                 'posisi' => 'nullable|string|max:100',
                 'departemen' => 'nullable|string|max:100',
-                'alamat' => 'nullable|string|max:500',
+                'alamat' => ['nullable', 'string', 'max:500', $addressRegex],
                 'no_telepon' => 'nullable|string|max:20',
                 'foto_profil' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            ]);
+            ], $messages);
             Log::info('Admin validation passed', $validated);
         } else {
-            // Validasi Karyawan & Manajemen
             Log::info('Validating User data...');
             $validated = $request->validate([
-                'nama' => 'required|string|max:255', 
-                'alamat' => 'nullable|string|max:500',
+                'nama' => ['required', 'string', 'max:255', $nameRegex], 
+                'alamat' => ['nullable', 'string', 'max:500', $addressRegex],
                 'no_telepon' => 'nullable|string|max:20',
                 'foto_profil' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            ]);
+            ], $messages);
             Log::info('User validation passed', $validated);
         }
 
@@ -107,7 +110,6 @@ class ProfileController extends Controller
             if ($role === 'admin') {
                 Log::info('Processing Admin update...');
                 
-                // Update User data
                 $userUpdateResult = DB::table('USER')
                     ->where('user_id', $user->user_id)
                     ->update([
@@ -117,7 +119,6 @@ class ProfileController extends Controller
 
                 Log::info('User update result:', ['affected_rows' => $userUpdateResult]);
 
-                // Update Employee data
                 $employeeData = [
                     'nama' => $request->nama,
                     'nip' => $request->nip,
@@ -127,7 +128,6 @@ class ProfileController extends Controller
                     'no_telepon' => $request->no_telepon,
                 ];
 
-                // ✅ PERBAIKAN UTAMA: Logika Hapus Foto yang Konsisten dan Diperbaiki
                 Log::info('Checking hapus_foto value:', ['hapus_foto' => $request->input('hapus_foto')]);
                 
                 if ($request->input('hapus_foto') == '1') {
@@ -144,11 +144,9 @@ class ProfileController extends Controller
                     Log::info('Photo marked for deletion in database');
                 }
 
-                // Handle Upload Foto Baru
                 if ($request->hasFile('foto_profil')) {
                     Log::info('Processing photo upload for admin...');
                     
-                    // Hapus foto lama jika ada
                     if ($employee->foto_profil && $request->input('hapus_foto') != '1') {
                         $oldPath = str_replace('/storage/', '', $employee->foto_profil);
                         Log::info('Deleting old photo before upload:', ['path' => $oldPath]);
@@ -167,7 +165,6 @@ class ProfileController extends Controller
 
                 Log::info('Final employee data to update:', $employeeData);
 
-                // Update Employee menggunakan Query Builder
                 $employeeUpdateResult = DB::table('EMPLOYEE')
                     ->where('emp_id', $employee->emp_id)
                     ->update($employeeData);
@@ -175,15 +172,12 @@ class ProfileController extends Controller
                 Log::info('Employee update result:', ['affected_rows' => $employeeUpdateResult]);
 
             } else {
-                // Blok ini untuk Karyawan DAN Manajemen
                 Log::info('Processing User (Karyawan/Manajemen) update...');
                 
-                // ✅ PERBAIKAN: Update data employee
                 $employee->nama = $request->nama;
                 $employee->alamat = $request->alamat;
                 $employee->no_telepon = $request->no_telepon;
 
-                // ✅ PERBAIKAN UTAMA: Logika Hapus Foto yang Konsisten untuk Semua Role
                 Log::info('Checking hapus_foto value for user:', ['hapus_foto' => $request->input('hapus_foto')]);
                 
                 if ($request->input('hapus_foto') == '1') {
@@ -200,11 +194,9 @@ class ProfileController extends Controller
                     Log::info('User photo marked for deletion in database');
                 }
 
-                // Handle Upload Foto
                 if ($request->hasFile('foto_profil')) {
                     Log::info('Processing user photo upload...');
                     
-                    // Hanya hapus foto lama jika tidak dalam mode hapus
                     if ($employee->foto_profil && $request->input('hapus_foto') != '1') {
                         $oldPath = str_replace('/storage/', '', $employee->foto_profil);
                         Log::info('Deleting user old photo before upload:', ['path' => $oldPath]);
@@ -234,7 +226,6 @@ class ProfileController extends Controller
             
             Log::info('Update successful: ' . $successMessage);
 
-            // ✅ PERBAIKAN UTAMA: Redirect Benar agar TIDAK Logout
             if ($role === 'admin') {
                 return redirect()->route('admin.profil')->with('success', $successMessage);
             } elseif ($role === 'manajemen') {
@@ -253,7 +244,6 @@ class ProfileController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            // Redirect error juga harus benar
             if ($role === 'admin') {
                 return redirect()->route('admin.profil')->with('error', $errorMessage);
             } elseif ($role === 'manajemen') {

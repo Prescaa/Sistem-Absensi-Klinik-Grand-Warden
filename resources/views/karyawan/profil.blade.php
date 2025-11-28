@@ -1,57 +1,58 @@
 @extends('layouts.app')
 
-@section('page-title', 'Pengaturan Profil')
+@section('page-title', 'Profil Karyawan')
 
 @section('content')
-    {{-- Pesan Sukses --}}
+
+    {{-- SECTION FEEDBACK / ALERT (DITAMBAHKAN KEMBALI) --}}
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
             <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
 
-    {{-- Pesan Error --}}
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+
     @if($errors->any())
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <div class="alert alert-danger mb-4">
             <ul class="mb-0">
-                @foreach ($errors->all() as $error)
+                @foreach($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+    {{-- END SECTION FEEDBACK --}}
 
     <div class="card shadow-sm border-0">
         <div class="card-body p-4 p-md-5">
-            {{-- Form Update Profil --}}
             <form action="{{ route('karyawan.profil.update') }}" method="POST" enctype="multipart/form-data" id="profileForm">
                 @csrf
-                @method('PUT')
+                @method('PUT') 
                 
-                {{-- ✅ PERBAIKAN: Input Hidden untuk Logika Hapus Foto (0=Tidak, 1=Hapus) --}}
                 <input type="hidden" name="hapus_foto" id="hapus_foto_input" value="0">
-                
+
                 <div class="row align-items-center">
                     
-                    {{-- KOLOM KIRI: FOTO PROFIL --}}
                     <div class="col-md-4 text-center d-flex flex-column justify-content-center align-items-center mb-5 mb-md-0" style="border-right: 1px solid #dee2e6; min-height: 400px;">
                         
                         <div class="position-relative mb-4">
-                            {{-- Container Preview Foto --}}
                             <div id="foto-preview-container">
                                 @if(isset($employee->foto_profil) && $employee->foto_profil)
                                     <img src="{{ asset($employee->foto_profil) }}" id="img-preview" class="rounded-circle shadow-lg object-fit-cover" alt="Foto Profil" style="width: 280px; height: 280px; border: 5px solid #fff;">
                                 @else
-                                    {{-- Placeholder Inisial --}}
                                     <div id="initial-preview" class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow-lg" style="width: 280px; height: 280px; font-size: 7rem; border: 5px solid #fff;">
                                         {{ strtoupper(substr(Auth::user()->employee->nama ?? Auth::user()->username, 0, 1)) }}
                                     </div>
                                 @endif
                             </div>
                             
-                            {{-- Input File Hidden --}}
                             <input type="file" id="foto_input" name="foto_profil" class="d-none" accept="image/*">
                         </div>
                         
@@ -60,7 +61,6 @@
                                 <i class="bi bi-camera-fill me-2"></i> Ganti Foto
                             </button>
 
-                            {{-- ✅ PERBAIKAN: Tombol Hapus Trigger Modal (Hanya muncul jika ada foto) --}}
                             <button type="button" class="btn btn-outline-danger" id="btn-hapus-trigger" 
                                     data-bs-toggle="modal" data-bs-target="#deleteFotoModal"
                                     style="{{ (isset($employee->foto_profil) && $employee->foto_profil) ? '' : 'display:none;' }}">
@@ -69,7 +69,6 @@
                         </div>
                     </div>
 
-                    {{-- KOLOM KANAN: FORM DATA --}}
                     <div class="col-md-8 ps-md-5">
                         
                         <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-person-lines-fill me-2"></i>Informasi Pribadi</h5>
@@ -77,7 +76,9 @@
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">Nama Lengkap</label>
-                                <input type="text" name="nama" class="form-control bg-white border" value="{{ Auth::user()->employee->nama }}" required>
+                                <input type="text" name="nama" class="form-control bg-white border" value="{{ Auth::user()->employee->nama }}" required
+                                       oninput="this.value = this.value.replace(/[^a-zA-Z\s.,]/g, '')">
+                                <div class="form-text small">Hanya huruf, titik, dan koma.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">NIP</label>
@@ -107,7 +108,10 @@
   
                         <div class="mb-3">
                             <label for="alamat" class="form-label fw-bold text-muted small">Alamat Rumah</label>
-                            <textarea class="form-control" id="alamat" name="alamat" rows="2" placeholder="Masukkan alamat lengkap...">{{ Auth::user()->employee->alamat ?? '' }}</textarea>
+                            <textarea class="form-control" id="alamat" name="alamat" rows="2" placeholder="Masukkan alamat lengkap..."
+                                      oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">{{ Auth::user()->employee->alamat ?? '' }}</textarea>
+                            {{-- PERBAIKAN: Update Helper Text --}}
+                            <div class="form-text small">Hanya huruf, angka, titik, koma, strip, dan garis miring.</div>
                         </div>
                         
                         <div class="mb-4">
@@ -124,7 +128,6 @@
 
                         <div class="d-flex justify-content-end gap-2 mt-5">
                             <a href="{{ route('karyawan.dashboard') }}" class="btn btn-light text-muted px-4">Batalkan</a>
-                            {{-- Tombol Submit Utama --}}
                             <button type="submit" class="btn btn-warning text-white px-4 fw-bold shadow-sm">
                                 Simpan Perubahan
                             </button>
@@ -135,11 +138,6 @@
         </div>
     </div>
 
-    {{-- 
-        ✅ PERBAIKAN MODAL (SAMA SEPERTI MANAJEMEN):
-        - Menghapus tag <form> agar tidak submit otomatis.
-        - Menambahkan ID pada tombol untuk dikontrol JS.
-    --}}
     <div class="modal fade" id="deleteFotoModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-sm modal-dialog-centered">
             <div class="modal-content border-0 shadow">
@@ -154,9 +152,7 @@
                     <p class="text-muted small mb-4">Foto akan dihapus permanen dan diganti dengan inisial nama setelah Anda menyimpan perubahan.</p>
                     
                     <div class="d-grid gap-2">
-                        {{-- Tombol Konfirmasi via JS --}}
                         <button type="button" class="btn btn-danger fw-bold" id="btn-confirm-hapus">Ya, Hapus</button>
-                        {{-- Tombol Batal --}}
                         <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal" id="btn-close-modal-batal">Batal</button>
                     </div>
                 </div>
@@ -184,48 +180,21 @@
         .ps-md-5 { padding-left: 0.75rem !important; }
     }
 
-    /* CSS Dark Mode */
-    .dark-mode .card {
-        background-color: #1e1e1e !important;
-        border-color: #333 !important;
-        color: #e0e0e0;
-    }
-    .dark-mode .form-control {
-        background-color: #2b2b2b !important;
-        border-color: #444 !important;
-        color: #fff !important;
-    }
-    .dark-mode .form-control:disabled, .dark-mode .form-control[readonly] {
-        background-color: #333 !important; 
-        color: #aaa !important;
-    }
-    .dark-mode .form-control:focus {
-        border-color: #0d6efd !important;
-    }
-    .dark-mode .input-group-text {
-        background-color: #333 !important;
-        border-color: #444 !important;
-        color: #fff !important;
-    }
+    .dark-mode .card { background-color: #1e1e1e !important; border-color: #333 !important; color: #e0e0e0; }
+    .dark-mode .form-control { background-color: #2b2b2b !important; border-color: #444 !important; color: #fff !important; }
+    .dark-mode .form-control:disabled, .dark-mode .form-control[readonly] { background-color: #333 !important; color: #aaa !important; }
+    .dark-mode .form-control:focus { border-color: #0d6efd !important; }
+    .dark-mode .input-group-text { background-color: #333 !important; border-color: #444 !important; color: #fff !important; }
     .dark-mode .text-muted { color: #aaa !important; }
-    .dark-mode .col-md-4[style*="border-right"] {
-        border-right-color: #444 !important;
-    }
-    @media (max-width: 768px) {
-        .dark-mode .col-md-4 { border-bottom-color: #444 !important; }
-    }
-    .dark-mode .modal-content {
-        background-color: #1e1e1e !important;
-        border-color: #444;
-        color: #fff;
-    }
+    .dark-mode .col-md-4[style*="border-right"] { border-right-color: #444 !important; }
+    @media (max-width: 768px) { .dark-mode .col-md-4 { border-bottom-color: #444 !important; } }
+    .dark-mode .modal-content { background-color: #1e1e1e !important; border-color: #444; color: #fff; }
     .dark-mode .btn-close { filter: invert(1); }
 </style>
 @endpush
 
 @push('scripts')
 <script>
-    // Definisi Elemen
     const fotoInput = document.getElementById('foto_input');
     const container = document.getElementById('foto-preview-container');
     const hapusInput = document.getElementById('hapus_foto_input');
@@ -233,21 +202,16 @@
     const btnConfirmHapus = document.getElementById('btn-confirm-hapus');
     const btnBatal = document.getElementById('btn-close-modal-batal');
 
-    // Template Inisial
     const initialHTML = `
         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow-lg" style="width: 280px; height: 280px; font-size: 7rem; border: 5px solid #fff;">
             {{ strtoupper(substr(Auth::user()->employee->nama ?? Auth::user()->username, 0, 1)) }}
         </div>
     `;
 
-    // 1. Ganti Foto (Upload Baru)
     fotoInput.addEventListener('change', function(event) {
         const [file] = event.target.files;
         if (file) {
-            // Reset flag hapus
             hapusInput.value = "0";
-            
-            // Render Image Baru
             container.innerHTML = ''; 
             const newImg = document.createElement('img');
             newImg.src = URL.createObjectURL(file);
@@ -257,27 +221,17 @@
             newImg.style.border = "5px solid #fff";
             container.appendChild(newImg);
 
-            // Munculkan tombol hapus
             if(btnHapusTrigger) btnHapusTrigger.style.display = 'inline-block';
         }
     });
 
-    // 2. Konfirmasi Hapus (JS Only - Defer Submit)
     if(btnConfirmHapus) {
         btnConfirmHapus.addEventListener('click', function() {
-            // a. Set Flag Hapus -> 1
             hapusInput.value = "1";
-            
-            // b. Reset input file
             fotoInput.value = '';
-
-            // c. Ganti Preview menjadi Inisial
             container.innerHTML = initialHTML;
-
-            // d. Sembunyikan tombol hapus
             if(btnHapusTrigger) btnHapusTrigger.style.display = 'none';
 
-            // e. Tutup Modal secara manual
             if(btnBatal) {
                 btnBatal.click();
             } else {

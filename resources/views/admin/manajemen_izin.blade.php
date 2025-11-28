@@ -155,7 +155,10 @@
                         </div>
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold small text-dark-emphasis">Alasan / Deskripsi</label>
-                            <textarea name="deskripsi" class="form-control" rows="2"></textarea>
+                            <textarea name="deskripsi" class="form-control" rows="2"
+                                      oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')"></textarea>
+                            {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                            <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small text-dark-emphasis">Status Persetujuan</label>
@@ -224,7 +227,10 @@
                         </div>
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold small text-dark-emphasis">Alasan</label>
-                            <textarea name="deskripsi" id="edit_deskripsi" class="form-control" rows="2"></textarea>
+                            <textarea name="deskripsi" id="edit_deskripsi" class="form-control" rows="2"
+                                      oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')"></textarea>
+                            {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                            <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                         </div>
 
                         <div class="col-12 border-top pt-3 mt-2">
@@ -241,7 +247,10 @@
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small text-dark-emphasis">Catatan Admin</label>
-                            <input type="text" name="catatan_admin" id="edit_catatan" class="form-control" placeholder="Opsional...">
+                            <input type="text" name="catatan_admin" id="edit_catatan" class="form-control" placeholder="Opsional..."
+                                   oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
+                            {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                            <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                         </div>
                         
                         {{-- Hanya menerima Gambar & PDF --}}

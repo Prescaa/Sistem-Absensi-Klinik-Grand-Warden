@@ -173,7 +173,10 @@
 
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Nama Lengkap*</label>
-                      <input type="text" name="nama" class="form-control" required>
+                      <input type="text" name="nama" class="form-control" required
+                             oninput="this.value = this.value.replace(/[^a-zA-Z\s.,-]/g, '')">
+                      {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                      <div class="form-text small">Hanya huruf, spasi, titik, koma, dan strip.</div>
                   </div>
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">NIP*</label>
@@ -191,18 +194,27 @@
 
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Departemen</label>
-                      <input type="text" name="departemen" class="form-control">
+                      <input type="text" name="departemen" class="form-control"
+                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
+                      {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                      <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                   </div>
 
                   {{-- Input Alamat --}}
                   <div class="col-md-12 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Alamat Lengkap</label>
-                      <textarea name="alamat" class="form-control" rows="2" placeholder="Alamat domisili..."></textarea>
+                      <textarea name="alamat" class="form-control" rows="2" placeholder="Alamat domisili..."
+                                oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')"></textarea>
+                      {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                      <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                   </div>
 
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Posisi / Jabatan</label>
-                      <input type="text" name="posisi" class="form-control">
+                      <input type="text" name="posisi" class="form-control"
+                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
+                      {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                      <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                   </div>
 
                   <div class="col-12 mt-3 mb-3">
@@ -282,7 +294,10 @@
 
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Nama Lengkap*</label>
-                      <input type="text" id="edit_nama" name="nama" class="form-control" required>
+                      <input type="text" id="edit_nama" name="nama" class="form-control" required
+                             oninput="this.value = this.value.replace(/[^a-zA-Z\s.,-]/g, '')">
+                      {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                      <div class="form-text small">Hanya huruf, spasi, titik, koma, dan strip.</div>
                   </div>
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">NIP*</label>
@@ -296,17 +311,26 @@
 
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Departemen</label>
-                      <input type="text" id="edit_departemen" name="departemen" class="form-control">
+                      <input type="text" id="edit_departemen" name="departemen" class="form-control"
+                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
+                      {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                      <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                   </div>
 
                   <div class="col-md-12 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Alamat Lengkap</label>
-                      <textarea id="edit_alamat" name="alamat" class="form-control" rows="2"></textarea>
+                      <textarea id="edit_alamat" name="alamat" class="form-control" rows="2"
+                                oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')"></textarea>
+                      {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                      <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                   </div>
 
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Posisi</label>
-                      <input type="text" id="edit_posisi" name="posisi" class="form-control">
+                      <input type="text" id="edit_posisi" name="posisi" class="form-control"
+                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
+                      {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                      <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                   </div>
 
                   <div class="col-12 mt-3 mb-3">

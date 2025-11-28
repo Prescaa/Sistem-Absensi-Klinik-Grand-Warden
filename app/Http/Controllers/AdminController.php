@@ -25,6 +25,15 @@ class AdminController extends Controller
     private const ATTENDANCE_TYPES = ['masuk', 'pulang'];
     private const LEAVE_TYPES = ['sakit', 'izin', 'cuti'];
 
+    // Regex untuk Teks Umum/Alamat/Deskripsi: Huruf, Angka, Spasi, ., , -, /
+    private const GENERAL_TEXT_REGEX = '/^[a-zA-Z0-9\s\.\,\-\/]+$/';
+    // Regex untuk NAMA: Huruf, Spasi, ., , -
+    private const NAMA_TEXT_REGEX = '/^[a-zA-Z\s\.\,\-]+$/';
+    // Regex untuk Username/Email (Hanya Admin Management): Huruf, Angka, ., -, _, @
+    private const USER_EMAIL_REGEX = '/^[a-zA-Z0-9\.\-\_@]+$/';
+    // Regex untuk Telepon (Hanya Angka)
+    private const PHONE_REGEX = '/^[0-9]+$/';
+
     // =================================================================
     // DASHBOARD
     // =================================================================
@@ -124,6 +133,11 @@ class AdminController extends Controller
 
     public function storeAbsensi(Request $request): \Illuminate\Http\RedirectResponse
     {
+        // Pesan error khusus untuk regex
+        $messages = [
+            'catatan_admin.regex' => 'Catatan Admin tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+        ];
+
         // 1. Validasi Input
         $validated = $request->validate([
             'emp_id' => 'required|exists:employee,emp_id',
@@ -131,8 +145,8 @@ class AdminController extends Controller
             'type' => 'required|in:' . implode(',', self::ATTENDANCE_TYPES),
             'foto' => 'nullable|image|mimes:' . self::ALLOWED_IMAGE_TYPES . '|max:' . self::MAX_IMAGE_SIZE,
             'status_validasi' => 'required|in:Valid,Invalid,Pending', // Ambil input dari form
-            'catatan_admin' => 'nullable|string|max:255',
-        ]);
+            'catatan_admin' => ['nullable', 'string', 'max:255', 'regex:' . self::GENERAL_TEXT_REGEX],
+        ], $messages);
 
         if ($this->isSelfAttendance($validated['emp_id'])) {
             return redirect()->back()
@@ -151,13 +165,18 @@ class AdminController extends Controller
                 ->with('error', 'AKSES DITOLAK: Anda tidak dapat mengedit data absensi milik sendiri.');
         }
 
+        // Pesan error khusus untuk regex
+        $messages = [
+            'catatan_admin.regex' => 'Catatan Admin tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+        ];
+
         $validated = $request->validate([
             'waktu_unggah' => 'required|date',
             'type' => 'required|in:' . implode(',', self::ATTENDANCE_TYPES),
             'foto' => 'nullable|image|max:' . self::MAX_IMAGE_SIZE,
             'status_validasi' => 'required|in:Valid,Invalid,Pending', // Ambil input dari form
-            'catatan_admin' => 'nullable|string|max:255',
-        ]);
+            'catatan_admin' => ['nullable', 'string', 'max:255', 'regex:' . self::GENERAL_TEXT_REGEX],
+        ], $messages);
 
         return $this->handleAttendanceUpdate($attendance, $validated, $request);
     }
@@ -253,15 +272,22 @@ class AdminController extends Controller
 
     public function storeIzin(Request $request): \Illuminate\Http\RedirectResponse
     {
+        // Pesan error khusus untuk regex
+        $messages = [
+            'deskripsi.regex' => 'Deskripsi Izin tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'catatan_admin.regex' => 'Catatan Admin tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+        ];
+
         $validated = $request->validate([
             'emp_id' => 'required|exists:employee,emp_id',
             'tipe_izin' => 'required|in:' . implode(',', self::LEAVE_TYPES),
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'deskripsi' => 'required|string|max:500',
+            'deskripsi' => ['required', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX],
             'status' => 'required|in:disetujui,pending,ditolak', // Tambahkan validasi status
             'file_bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:' . self::MAX_IMAGE_SIZE,
-        ]);
+            'catatan_admin' => ['nullable', 'string', 'max:255', 'regex:' . self::GENERAL_TEXT_REGEX],
+        ], $messages);
 
         if ($this->isSelfAttendance($validated['emp_id'])) {
             return redirect()->back()
@@ -280,16 +306,22 @@ class AdminController extends Controller
                 ->with('error', 'ETIKA: Anda tidak dapat memvalidasi pengajuan izin milik sendiri.');
         }
 
+        // Pesan error khusus untuk regex
+        $messages = [
+            'deskripsi.regex' => 'Deskripsi Izin tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'catatan_admin.regex' => 'Catatan Admin tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+        ];
+
         // PERBAIKAN: Validasi semua field yang bisa diedit di modal
         $validated = $request->validate([
             'tipe_izin' => 'required|in:' . implode(',', self::LEAVE_TYPES),
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-            'deskripsi' => 'required|string|max:500',
+            'deskripsi' => ['required', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX],
             'status' => 'required|in:pending,disetujui,ditolak',
-            'catatan_admin' => 'nullable|string|max:255',
+            'catatan_admin' => ['nullable', 'string', 'max:255', 'regex:' . self::GENERAL_TEXT_REGEX],
             'file_bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:' . self::MAX_IMAGE_SIZE,
-        ]);
+        ], $messages);
 
         DB::transaction(function () use ($leave, $validated, $request) {
             // Cek jika ada file baru diupload
@@ -305,7 +337,7 @@ class AdminController extends Controller
                 'tanggal_selesai' => $validated['tanggal_selesai'],
                 'deskripsi' => $validated['deskripsi'],
                 'status' => $validated['status'],
-                'catatan_admin' => $validated['catatan_admin'],
+                'catatan_admin' => $validated['catatan_admin'] ?? null,
                 // Hanya update file_bukti jika ada file baru
                 'file_bukti' => $validated['file_bukti'] ?? $leave->file_bukti
             ]);
@@ -335,7 +367,7 @@ class AdminController extends Controller
                 'deskripsi' => $validated['deskripsi'],
                 'file_bukti' => $filePath,
                 'status' => $validated['status'], // <-- Gunakan input status, jangan hardcode 'disetujui'
-                'catatan_admin' => 'Diinput manual oleh Admin.',
+                'catatan_admin' => $validated['catatan_admin'] ?? 'Diinput manual oleh Admin.',
             ]);
         });
 
@@ -363,22 +395,26 @@ class AdminController extends Controller
             'min' => ':attribute minimal :min karakter.',
             'max' => ':attribute maksimal :max karakter.',
             'image' => ':attribute harus berupa gambar.',
-            // Tambahkan pesan error khusus regex
-            'alamat.regex' => 'Alamat tidak boleh mengandung simbol aneh (hanya huruf, angka, titik, koma, strip, dan garis miring).',
+            // Pesan error khusus regex
+            'nama.regex' => 'Nama tidak boleh mengandung simbol spesial atau angka. Hanya huruf, spasi, titik (.), koma (,), dan strip (-) yang diizinkan.',
+            'departemen.regex' => 'Departemen tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'posisi.regex' => 'Posisi tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'username.regex' => 'Username/Email hanya boleh mengandung huruf, angka, titik (.), strip (-), underscore (_), dan tanda @.',
+            'no_telepon.regex' => 'Nomor telepon hanya boleh mengandung angka.',
+            'alamat.regex' => 'Alamat tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
         ];
 
         $validated = $request->validate([
-            'nama' => ['required', 'string', 'max:255'],
+            'nama' => ['required', 'string', 'max:255', 'regex:' . self::NAMA_TEXT_REGEX],
             'nip' => ['required', 'string', 'max:50', 'unique:employee'],
-            'departemen' => ['nullable', 'string', 'max:100'],
-            'posisi' => ['nullable', 'string', 'max:100'],
-            'username' => ['required', 'string', 'max:100', 'unique:user'],
+            'departemen' => ['nullable', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
+            'posisi' => ['nullable', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
+            'username' => ['required', 'string', 'max:100', 'unique:user', 'regex:' . self::USER_EMAIL_REGEX],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', 'in:Karyawan,Admin,Manajemen'],
-            'no_telepon' => ['nullable', 'string', 'max:20'],
+            'no_telepon' => ['nullable', 'string', 'max:20', 'regex:' . self::PHONE_REGEX],
 
-            // PERBAIKAN: Tambahkan Regex di sini
-            'alamat' => ['nullable', 'string', 'max:500', 'regex:/^[a-zA-Z0-9\s\.\,\-\/]+$/'],
+            'alamat' => ['nullable', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX],
 
             'foto_profil' => ['nullable', 'image', 'mimes:' . self::ALLOWED_IMAGE_TYPES, 'max:' . self::MAX_IMAGE_SIZE],
         ], $messages);
@@ -399,22 +435,26 @@ class AdminController extends Controller
             'min' => ':attribute minimal :min karakter.',
             'max' => ':attribute maksimal :max karakter.',
             'image' => ':attribute harus berupa gambar.',
-            // Tambahkan pesan error khusus regex
-            'alamat.regex' => 'Alamat tidak boleh mengandung simbol aneh (hanya huruf, angka, titik, koma, strip, dan garis miring).',
+            // Pesan error khusus regex
+            'nama.regex' => 'Nama tidak boleh mengandung simbol spesial atau angka. Hanya huruf, spasi, titik (.), koma (,), dan strip (-) yang diizinkan.',
+            'departemen.regex' => 'Departemen tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'posisi.regex' => 'Posisi tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'username.regex' => 'Username/Email hanya boleh mengandung huruf, angka, titik (.), strip (-), underscore (_), dan tanda @.',
+            'no_telepon.regex' => 'Nomor telepon hanya boleh mengandung angka.',
+            'alamat.regex' => 'Alamat tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
         ];
 
         $validated = $request->validate([
-            'nama' => ['required', 'string', 'max:255'],
+            'nama' => ['required', 'string', 'max:255', 'regex:' . self::NAMA_TEXT_REGEX],
             'nip' => ['required', 'string', 'max:50', 'unique:employee,nip,' . $employee->emp_id . ',emp_id'],
-            'departemen' => ['nullable', 'string', 'max:100'],
-            'posisi' => ['nullable', 'string', 'max:100'],
-            'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id'],
+            'departemen' => ['nullable', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
+            'posisi' => ['nullable', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
+            'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id', 'regex:' . self::USER_EMAIL_REGEX],
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', 'in:Karyawan,Admin,Manajemen'],
-            'no_telepon' => ['nullable', 'string', 'max:20'],
+            'no_telepon' => ['nullable', 'string', 'max:20', 'regex:' . self::PHONE_REGEX],
 
-            // PERBAIKAN: Tambahkan Regex di sini
-            'alamat' => ['nullable', 'string', 'max:500', 'regex:/^[a-zA-Z0-9\s\.\,\-\/]+$/'],
+            'alamat' => ['nullable', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX],
 
             'foto_profil' => ['nullable', 'image', 'mimes:' . self::ALLOWED_IMAGE_TYPES, 'max:' . self::MAX_IMAGE_SIZE],
         ], $messages);
@@ -616,15 +656,20 @@ class AdminController extends Controller
 
     public function saveGeofencing(Request $request): \Illuminate\Http\RedirectResponse
     {
+        // Pesan error khusus untuk regex
+        $messages = [
+            'nama_area.regex' => 'Nama Area tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+        ];
+
         $validated = $request->validate([
-            'nama_area' => 'required|string|max:100',
+            'nama_area' => ['required', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'radius' => 'required|numeric|min:50',
             'jam_masuk' => 'required',
             'jam_pulang' => 'required',
             'hari_kerja' => 'array'
-        ]);
+        ], $messages);
 
         $workArea = WorkArea::firstOrNew(['area_id' => self::WORK_AREA_ID]);
         $workArea->fill([
@@ -646,7 +691,83 @@ class AdminController extends Controller
     // =================================================================
     // SELF ATTENDANCE (ADMIN SELF-SERVICE)
     // =================================================================
+    
+    public function showProfil(): \Illuminate\View\View
+    {
+        $user = Auth::user();
+        // Asumsi admin juga punya entri di tabel employee untuk data profil
+        $employee = $user->employee; 
+        
+        return view('admin.profil', compact('user', 'employee'));
+    }
 
+    public function updateProfil(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $user = Auth::user();
+        $employee = $user->employee;
+
+        if (!$employee) {
+             return redirect()->back()->with('error', 'Data karyawan Admin tidak ditemukan. Hubungi IT.');
+        }
+
+        $messages = [
+            'nama.regex' => 'Nama tidak boleh mengandung simbol spesial atau angka. Hanya huruf, spasi, titik (.), koma (,), dan strip (-) yang diizinkan.',
+            'nip.regex' => 'NIP hanya boleh mengandung huruf dan angka.',
+            'alamat.regex' => 'Alamat tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'username.regex' => 'Username hanya boleh mengandung huruf, angka, titik (.), strip (-), underscore (_), dan tanda @.',
+            'posisi.regex' => 'Jabatan/Posisi tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'departemen.regex' => 'Departemen tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'no_telepon.regex' => 'Nomor telepon hanya boleh mengandung angka.',
+            'email.unique' => 'Email ini sudah digunakan oleh akun lain.',
+        ];
+
+        // Validasi diperketat untuk input dari form profil admin
+        $validated = $request->validate([
+            'nama' => ['required', 'string', 'max:255', 'regex:' . self::NAMA_TEXT_REGEX],
+            'nip' => ['nullable', 'string', 'max:50', 'regex:/^[a-zA-Z0-9]+$/', 'unique:employee,nip,' . $employee->emp_id . ',emp_id'], 
+            'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id', 'regex:' . self::USER_EMAIL_REGEX],
+            'email' => ['required', 'email', 'max:255', 'unique:user,email,' . $user->user_id . ',user_id'], 
+            'posisi' => ['nullable', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
+            'departemen' => ['nullable', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
+            'no_telepon' => ['nullable', 'string', 'max:20', 'regex:' . self::PHONE_REGEX],
+            'alamat' => ['nullable', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX],
+            'foto_profil' => ['nullable', 'image', 'mimes:' . self::ALLOWED_IMAGE_TYPES, 'max:' . self::MAX_IMAGE_SIZE],
+            'hapus_foto' => ['in:0,1'],
+        ], $messages);
+
+        DB::transaction(function () use ($user, $employee, $validated, $request) {
+            $user->update([
+                'username' => $validated['username'],
+                'email' => $validated['email'],
+                // Password tidak diupdate di form ini
+            ]);
+
+            $fotoPath = $employee->foto_profil;
+            if (isset($validated['hapus_foto']) && $validated['hapus_foto'] == 1) {
+                // Hapus foto lama jika diminta
+                if ($fotoPath) {
+                    Storage::delete(str_replace('/storage/', 'public/', $fotoPath));
+                }
+                $fotoPath = null;
+            } elseif ($request->hasFile('foto_profil')) {
+                // Upload foto baru jika ada
+                $fotoPath = $this->handlePhotoUpload($request, 'photos');
+            }
+
+            $employee->update([
+                'nama' => $validated['nama'],
+                'nip' => $validated['nip'] ?? $employee->nip,
+                'departemen' => $validated['departemen'] ?? $employee->departemen,
+                'posisi' => $validated['posisi'] ?? $employee->posisi,
+                'no_telepon' => $validated['no_telepon'],
+                'alamat' => $validated['alamat'],
+                'foto_profil' => $fotoPath,
+            ]);
+        });
+
+        return redirect()->route('admin.profil.show')->with('success', 'Profil Admin berhasil diperbarui.');
+    }
+    
     public function showUnggah(): \Illuminate\View\View|\Illuminate\Http\RedirectResponse
     {
         $user = Auth::user();
@@ -830,11 +951,14 @@ class AdminController extends Controller
 
     private function handlePhotoUpload(Request $request, string $folder, ?string $default = null): ?string
     {
-        if (!$request->hasFile('foto') && !$request->hasFile('foto_profil')) {
+        // Periksa 'foto' (untuk absensi manual) atau 'foto_profil' (untuk update profil)
+        $fileInputName = $request->hasFile('foto') ? 'foto' : ($request->hasFile('foto_profil') ? 'foto_profil' : null);
+
+        if (!$fileInputName) {
             return $default;
         }
 
-        $file = $request->file('foto') ?? $request->file('foto_profil');
+        $file = $request->file($fileInputName);
         $path = $file->store("public/{$folder}");
 
         return str_replace('public/', 'storage/', $path);

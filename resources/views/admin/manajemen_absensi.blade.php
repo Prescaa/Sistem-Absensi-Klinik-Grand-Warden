@@ -59,12 +59,10 @@
                                     @if($att->validation->status_validasi_final == 'Valid')
                                         <span class="badge bg-primary"><i class="bi bi-check-circle me-1"></i>Valid</span>
 
-                                    {{-- PERBAIKAN: Tambahkan pengecekan khusus untuk Pending --}}
                                     @elseif($att->validation->status_validasi_final == 'Pending')
                                         <span class="badge bg-secondary text-light"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
 
                                     @else
-                                        {{-- Sisa pilihan dianggap Invalid --}}
                                         <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Invalid</span>
                                     @endif
 
@@ -155,7 +153,10 @@
                             <option value="Invalid">❌ Invalid (Ditolak)</option>
                             <option value="Pending">⏳ Pending (Menunggu)</option>
                         </select>
-                        <input type="text" name="catatan_admin" class="form-control form-control-sm" placeholder="Catatan admin (opsional)">
+                        <input type="text" name="catatan_admin" class="form-control form-control-sm" placeholder="Catatan admin (opsional)"
+                               oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
+                        {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                        <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                     </div>
 
                     <div class="mb-3">
@@ -209,7 +210,10 @@
                             <option value="Invalid">❌ Invalid</option>
                             <option value="Pending">⏳ Pending</option>
                         </select>
-                        <textarea name="catatan_admin" id="edit_catatan" class="form-control form-control-sm" rows="2" placeholder="Catatan admin..."></textarea>
+                        <textarea name="catatan_admin" id="edit_catatan" class="form-control form-control-sm" rows="2" placeholder="Catatan admin..."
+                                  oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')"></textarea>
+                        {{-- PERBAIKAN: Pemberitahuan Regex --}}
+                        <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                     </div>
 
                     <div class="mb-3 p-2 border rounded d-flex gap-3 align-items-center">
