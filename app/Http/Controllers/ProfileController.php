@@ -66,28 +66,40 @@ class ProfileController extends Controller
             'current_foto_profil' => $employee->foto_profil
         ]);
 
-        // Regex untuk Nama: Hanya huruf dan spasi
+        // Regex untuk Nama: Hanya huruf dan spasi (Sesuai permintaan terbaru)
         $nameRegex = 'regex:/^[a-zA-Z\s]+$/';
         // Regex untuk Alamat: Angka, Huruf, Spasi, Titik, Koma, Strip, Garis Miring
         $addressRegex = 'regex:/^[a-zA-Z0-9\s.,\-\/]+$/';
+        // Regex untuk Username: Hanya Huruf dan Angka (Sesuai permintaan terbaru)
+        $usernameRegex = 'regex:/^[a-zA-Z0-9]+$/';
+        // Regex untuk Departemen/Posisi: Hanya Huruf dan Spasi (Sesuai permintaan terbaru)
+        $deptPosisiRegex = 'regex:/^[a-zA-Z\s]+$/';
+        // Regex untuk NIP/Telepon: Hanya Angka
+        $phoneRegex = 'regex:/^[0-9]+$/';
 
         $messages = [
             'nama.regex' => 'Nama hanya boleh berisi huruf dan spasi.',
             'alamat.regex' => 'Alamat hanya boleh berisi huruf, angka, titik, koma, strip (-), dan garis miring (/).',
             'nip.regex' => 'NIP hanya boleh berisi angka (0-9).',
+            // Peran Admin
+            'username.regex' => 'Username hanya boleh mengandung huruf dan angka (tanpa spasi atau simbol).',
+            'departemen.regex' => 'Departemen hanya boleh mengandung huruf dan spasi.',
+            'posisi.regex' => 'Posisi hanya boleh mengandung huruf dan spasi.',
+            'no_telepon.regex' => 'Nomor telepon hanya boleh berisi angka (0-9).',
         ];
 
         if ($role === 'admin') {
             Log::info('Validating Admin data...');
+            // Menggunakan regex yang lebih ketat
             $validated = $request->validate([
                 'nama' => ['required', 'string', 'max:255', $nameRegex],
-                'nip' => 'nullable|string|max:50|regex:/^[0-9]+$/', // Admin bisa edit NIP, validasi angka
-                'username' => 'required|string|max:100|unique:USER,username,' . $user->user_id . ',user_id',
+                'nip' => ['nullable', 'string', 'max:50', $phoneRegex], // Admin bisa edit NIP, validasi angka
+                'username' => ['required', 'string', 'max:100', 'unique:USER,username,' . $user->user_id . ',user_id', $usernameRegex],
                 'email' => 'required|email|max:100|unique:USER,email,' . $user->user_id . ',user_id',
-                'posisi' => 'nullable|string|max:100',
-                'departemen' => 'nullable|string|max:100',
+                'posisi' => ['nullable', 'string', 'max:100', $deptPosisiRegex],
+                'departemen' => ['nullable', 'string', 'max:100', $deptPosisiRegex],
                 'alamat' => ['nullable', 'string', 'max:500', $addressRegex],
-                'no_telepon' => 'nullable|string|max:20',
+                'no_telepon' => ['nullable', 'string', 'max:20', $phoneRegex],
                 'foto_profil' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             ], $messages);
             Log::info('Admin validation passed', $validated);
@@ -96,7 +108,7 @@ class ProfileController extends Controller
             $validated = $request->validate([
                 'nama' => ['required', 'string', 'max:255', $nameRegex], 
                 'alamat' => ['nullable', 'string', 'max:500', $addressRegex],
-                'no_telepon' => 'nullable|string|max:20',
+                'no_telepon' => ['nullable', 'string', 'max:20', $phoneRegex],
                 'foto_profil' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             ], $messages);
             Log::info('User validation passed', $validated);

@@ -68,8 +68,8 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">Username</label>
                                 <input type="text" name="username" class="form-control bg-white border" value="{{ Auth::user()->username }}" required
-                                       oninput="this.value = this.value.replace(/[^a-zA-Z0-9._-]/g, '')">
-                                <div class="form-text small">Huruf, angka, titik, strip, underscore.</div>
+                                       oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')">
+                                <div class="form-text small">Hanya huruf dan angka (tanpa spasi atau simbol)</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">Email</label>
@@ -81,16 +81,16 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">Jabatan</label>
                                 <input type="text" name="posisi" class="form-control bg-white border" value="{{ Auth::user()->employee->posisi ?? '-' }}"
-                                       oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
+                                       oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
                                 {{-- PERBAIKAN CAPTION --}}
-                                <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
+                                <div class="form-text small">Hanya huruf dan spasi.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">Departemen</label>
                                 <input type="text" name="departemen" class="form-control bg-white border" value="{{ Auth::user()->employee->departemen ?? '-' }}"
-                                       oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
+                                       oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
                                 {{-- PERBAIKAN CAPTION --}}
-                                <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
+                                <div class="form-text small">Hanya huruf dan spasi.</div>
                             </div>
                         </div>
 

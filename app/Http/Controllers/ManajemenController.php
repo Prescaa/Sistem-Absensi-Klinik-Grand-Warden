@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Log;
 
 class ManajemenController extends Controller
 {
+    // Regex untuk Teks Umum/Alamat/Deskripsi: Huruf, Angka, Spasi, ., , -, HAPUS /
+    private const GENERAL_TEXT_REGEX_NO_SLASH = '/^[a-zA-Z0-9\s\.\,\-]+$/';
+
     /**
      * Menampilkan Dashboard Manajemen (Statistik & Analisis)
      */
@@ -105,11 +108,17 @@ class ManajemenController extends Controller
      */
     public function submitValidasi(Request $request)
     {
+        // Pesan kustom untuk validasi regex
+        $messages = [
+            'catatan_validasi.regex' => 'Catatan Validasi tidak boleh mengandung simbol khusus seperti garis miring (/).',
+        ];
+
         $request->validate([
             'att_id' => 'required|exists:ATTENDANCE,att_id',
             'status_validasi' => 'required|in:Valid,Invalid',
-            'catatan_validasi' => 'nullable|string|max:500'
-        ]);
+            // PERBAIKAN: Menerapkan regex yang melarang '/'
+            'catatan_validasi' => ['nullable', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX_NO_SLASH]
+        ], $messages);
 
         $att = Attendance::findOrFail($request->att_id);
 
@@ -138,11 +147,15 @@ class ManajemenController extends Controller
      */
     public function submitValidasiIzin(Request $request)
     {
+        $messages = [
+            'catatan_admin.regex' => 'Catatan Admin tidak boleh mengandung simbol khusus seperti garis miring (/).',
+        ];
+
         $request->validate([
             'leave_id' => 'required|exists:leaves,leave_id',
             'status' => 'required|in:disetujui,ditolak',
-            'catatan_admin' => 'nullable|string|max:500',
-        ]);
+            'catatan_admin' => ['nullable', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX_NO_SLASH],
+        ], $messages);
 
         $leave = Leave::findOrFail($request->leave_id);
 

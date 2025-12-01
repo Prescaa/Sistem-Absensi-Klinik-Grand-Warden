@@ -7,9 +7,10 @@
     <div class="card shadow-sm border-0">
         <div class="card-header d-flex justify-content-between align-items-center bg-white py-3 border-0">
             <h5 class="mb-0 fw-bold text-dark-emphasis">Data Riwayat Absensi</h5>
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAbsensiModal">
+            {{-- Tombol Tambah Manual (Opsional/Disembunyikan) --}}
+            {{-- <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAbsensiModal">
                 <i class="bi bi-plus-lg me-2"></i>Tambah Absensi Manual
-            </button>
+            </button> --}}
         </div>
         <div class="card-body p-0">
 
@@ -76,15 +77,20 @@
                                 @endif
                             </td>
                             <td class="text-center pe-4">
-                                {{-- PERBAIKAN: Tombol Edit Dihapus --}}
-                                
-                                {{-- TOMBOL HAPUS --}}
-                                <button class="btn btn-sm btn-outline-danger"
+                                {{-- TOMBOL LIHAT DETAIL (PENGGANTI DELETE) --}}
+                                <button class="btn btn-sm btn-outline-info"
                                         data-bs-toggle="modal"
-                                        data-bs-target="#deleteAbsensiModal"
-                                        data-id="{{ $att->att_id }}"
-                                        data-info="{{ $att->employee->nama ?? '' }} - {{ $att->waktu_unggah->format('d M Y H:i') }}">
-                                    <i class="bi bi-trash-fill"></i>
+                                        data-bs-target="#detailAbsensiModal"
+                                        data-nama="{{ $att->employee->nama ?? '-' }}"
+                                        data-nip="{{ $att->employee->nip ?? '-' }}"
+                                        data-waktu="{{ $att->waktu_unggah->translatedFormat('l, d F Y H:i') }}"
+                                        data-type="{{ ucfirst($att->type) }}"
+                                        data-foto="{{ $att->nama_file_foto ? asset($att->nama_file_foto) : '' }}"
+                                        data-status="{{ $att->validation->status_validasi_final ?? 'Pending' }}"
+                                        data-catatan="{{ $att->validation->catatan_admin ?? '-' }}"
+                                        data-lat="{{ $att->latitude }}"
+                                        data-long="{{ $att->longitude }}">
+                                    <i class="bi bi-eye-fill"></i> Detail
                                 </button>
                             </td>
                         </tr>
@@ -100,8 +106,74 @@
     </div>
 </div>
 
+{{-- MODAL DETAIL ABSENSI --}}
+<div class="modal fade" id="detailAbsensiModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-info-circle-fill me-2"></i>Detail Absensi</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                {{-- Foto Besar --}}
+                <div class="bg-light text-center p-4 border-bottom position-relative">
+                    <img id="detail_foto" src="" alt="Bukti Absensi" class="img-fluid rounded shadow-sm" style="max-height: 300px; object-fit: contain;">
+                    <div class="mt-3">
+                        <span id="detail_status_badge" class="badge bg-secondary fs-6 px-3 py-2 rounded-pill">Pending</span>
+                    </div>
+                </div>
+
+                {{-- Informasi Detail --}}
+                <div class="p-4">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block fw-bold">Nama Karyawan</small>
+                            <span id="detail_nama" class="fs-5 text-dark-emphasis">Nama</span>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block fw-bold">NIP</small>
+                            <span id="detail_nip" class="fs-5 text-dark-emphasis">12345</span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block fw-bold">Waktu Absen</small>
+                            <span id="detail_waktu">Senin, 01 Jan 2025 08:00</span>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block fw-bold">Tipe</small>
+                            <span id="detail_type" class="fw-bold text-primary">Masuk</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <small class="text-muted d-block fw-bold">Lokasi (Koordinat)</small>
+                        <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded border">
+                            <span id="detail_lokasi" class="font-monospace small">0,0</span>
+                            <a id="detail_map_link" href="#" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-map-fill me-1"></i> Buka Map
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <small class="text-muted d-block fw-bold">Catatan Validasi</small>
+                        <div class="alert alert-light border text-dark-emphasis mb-0" id="detail_catatan">
+                            -
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- MODAL TAMBAH --}}
-<div class="modal fade" id="addAbsensiModal" tabindex="-1" aria-hidden="true">
+{{--<div class="modal fade" id="addAbsensiModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-primary text-white">
@@ -158,34 +230,8 @@
             </form>
         </div>
     </div>
-</div>
+</div>--}}
 
-{{-- PERBAIKAN: MODAL EDIT DIHAPUS --}}
-
-{{-- MODAL DELETE --}}
-<div class="modal fade" id="deleteAbsensiModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title fw-bold">Hapus Data Absensi</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="deleteForm" method="POST">
-                @csrf @method('DELETE')
-                <div class="modal-body text-center p-4">
-                    <i class="bi bi-trash-fill text-danger display-1 mb-3"></i>
-                    <p class="mb-1">Anda yakin ingin menghapus data absensi ini?</p>
-                    <strong id="delete_info" class="d-block text-dark"></strong>
-                    <small class="text-muted d-block mt-2">Validasi terkait juga akan terhapus permanen.</small>
-                </div>
-                <div class="modal-footer bg-light justify-content-center">
-                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-danger px-4 fw-bold">Ya, Hapus</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('styles')
@@ -223,39 +269,80 @@
     }
     .dark-mode .text-dark-emphasis { color: #fff !important; }
 
+    /* Modal Dark Mode */
     .dark-mode .modal-content {
         background-color: #1e1e1e !important;
         color: #fff !important;
     }
     .dark-mode .modal-footer, .dark-mode .bg-light {
         background-color: #252525 !important;
-        border-top-color: #333 !important;
+        border-color: #333 !important;
         color: #e0e0e0 !important;
     }
-    .dark-mode .form-control, .dark-mode .form-select {
+    .dark-mode .btn-close { filter: invert(1); }
+    
+    .dark-mode .alert-light {
         background-color: #2b2b2b !important;
         border-color: #444 !important;
-        color: #fff !important;
+        color: #ddd !important;
     }
-    .dark-mode input[type="datetime-local"] {
-        color-scheme: dark;
-    }
-    .dark-mode .btn-close { filter: invert(1); }
 </style>
 @endpush
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Javascript untuk Edit dihapus karena fitur edit dihilangkan
         
-        var deleteModal = document.getElementById('deleteAbsensiModal');
-        if(deleteModal){
-            deleteModal.addEventListener('show.bs.modal', function(event) {
+        // Logic untuk Modal Detail
+        var detailModal = document.getElementById('detailAbsensiModal');
+        if(detailModal){
+            detailModal.addEventListener('show.bs.modal', function(event) {
                 var btn = event.relatedTarget;
-                var id = btn.getAttribute('data-id');
-                document.getElementById('deleteForm').action = '/admin/manajemen-absensi/destroy/' + id;
-                document.getElementById('delete_info').textContent = btn.getAttribute('data-info');
+                
+                // Ambil data dari atribut tombol
+                var nama = btn.getAttribute('data-nama');
+                var nip = btn.getAttribute('data-nip');
+                var waktu = btn.getAttribute('data-waktu');
+                var type = btn.getAttribute('data-type');
+                var foto = btn.getAttribute('data-foto');
+                var status = btn.getAttribute('data-status');
+                var catatan = btn.getAttribute('data-catatan');
+                var lat = btn.getAttribute('data-lat');
+                var long = btn.getAttribute('data-long');
+
+                // Isi elemen modal
+                document.getElementById('detail_nama').textContent = nama;
+                document.getElementById('detail_nip').textContent = nip;
+                document.getElementById('detail_waktu').textContent = waktu;
+                document.getElementById('detail_type').textContent = type;
+                document.getElementById('detail_catatan').textContent = catatan;
+                document.getElementById('detail_lokasi').textContent = lat + ', ' + long;
+                
+                // Update Foto
+                var imgEl = document.getElementById('detail_foto');
+                if(foto) {
+                    imgEl.src = foto;
+                    imgEl.style.display = 'inline-block';
+                } else {
+                    imgEl.style.display = 'none';
+                }
+
+                // Update Map Link
+                var mapLink = document.getElementById('detail_map_link');
+                mapLink.href = 'https://maps.google.com/?q=' + lat + ',' + long;
+
+                // Update Badge Status
+                var badge = document.getElementById('detail_status_badge');
+                badge.className = 'badge fs-6 px-3 py-2 rounded-pill'; // Reset class
+                badge.textContent = status;
+
+                if(status === 'Valid') {
+                    badge.classList.add('bg-primary');
+                } else if (status === 'Invalid') {
+                    badge.classList.add('bg-danger');
+                } else {
+                    badge.classList.add('bg-secondary');
+                }
             });
         }
     });

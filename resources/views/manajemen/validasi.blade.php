@@ -112,8 +112,8 @@
                                                 {{-- Textarea Catatan --}}
                                                 <div class="mb-3">
                                                     <textarea name="catatan_validasi" class="form-control form-control-sm" 
-                                                              rows="2" placeholder="Catatan admin (opsional)..."
-                                                              oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')"></textarea>
+                                                              rows="2" placeholder="Catatan validasi (opsional). Hanya huruf, angka, spasi, titik, koma, atau strip yang diizinkan."
+                                                              oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-]/g, '')"></textarea>
                                                 </div>
 
                                                 {{-- Tombol Aksi (Grid 2 Kolom) --}}
@@ -159,9 +159,10 @@
                             <table class="table table-hover align-middle">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Tanggal</th>
+                                        <th>Tanggal Pengajuan</th>
                                         <th>Karyawan</th>
                                         <th>Jenis</th>
+                                        <th>Bukti</th>
                                         <th>Ket.</th>
                                         <th>Aksi</th>
                                     </tr>
@@ -181,15 +182,16 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <span class="badge {{ $leave->tipe_izin == 'sakit' ? 'bg-danger' : 'bg-warning text-dark' }}">{{ ucfirst($leave->tipe_izin) }}</span>
-                                                
-                                                @if($leave->file_bukti)
-                                                    <a href="{{ asset($leave->file_bukti) }}" target="_blank" class="btn btn-sm btn-light border text-primary fw-bold py-0 px-2 shadow-sm" title="Klik untuk lihat bukti">
-                                                        <i class="bi bi-image me-1"></i> Lihat Bukti
-                                                    </a>
-                                                @endif
-                                            </div>
+                                            <span class="badge {{ $leave->tipe_izin == 'sakit' ? 'bg-danger' : ($leave->tipe_izin == 'cuti' ? 'bg-info' : 'bg-warning text-dark') }}">{{ ucfirst($leave->tipe_izin) }}</span>
+                                        </td>
+                                        <td>
+                                            @if($leave->file_bukti)
+                                                <a href="{{ asset($leave->file_bukti) }}" target="_blank" class="btn btn-sm btn-light border text-primary fw-bold py-0 px-2 shadow-sm" title="Klik untuk lihat bukti">
+                                                    <i class="bi bi-image me-1"></i> Lihat Bukti
+                                                </a>
+                                            @else
+                                                <span class="text-muted small">-</span>
+                                            @endif
                                         </td>
                                         <td class="text-truncate" style="max-width: 150px;">{{ $leave->deskripsi }}</td>
                                         <td>
@@ -222,8 +224,8 @@
                                                                     <div class="mb-3">
                                                                         <label class="form-label small fw-bold">Catatan Admin</label>
                                                                         <textarea name="catatan_admin" class="form-control" rows="2"
-                                                                                  oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')"></textarea>
-                                                                        <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
+                                                                                  oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-]/g, '')"></textarea>
+                                                                        <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, dan strip (-) yang diizinkan.</div>
                                                                     </div>
                                                                 </div>
                                                                 <div class="modal-footer border-0 bg-light">
@@ -238,7 +240,7 @@
                                         </td>
                                     </tr>
                                     @empty
-                                    <tr><td colspan="5" class="text-center text-muted py-5">Tidak ada pengajuan izin.</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted py-5">Tidak ada pengajuan izin.</td></tr>
                                     @endforelse
                                 </tbody>
                             </table>
@@ -427,12 +429,11 @@
     }
     
     /* 11. Link in Dark Mode */
-    .dark-mode .btn-link.text-muted {
-        color: #adb5bd !important;
+    .dark-mode a.text-dark {
+        color: #6ea8fe !important;
     }
-    
-    .dark-mode .btn-link.text-muted:hover {
-        color: #fff !important;
+    .dark-mode a.text-dark:hover {
+        color: #8bb9fe !important;
     }
     
     /* 12. Validasi Absensi Box Light */

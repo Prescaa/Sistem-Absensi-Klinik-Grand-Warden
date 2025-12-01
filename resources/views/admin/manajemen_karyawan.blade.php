@@ -13,6 +13,7 @@
         </div>
         <div class="card-body p-0">
 
+            {{-- BLOK INI AKAN MENAMPILKAN ERROR VALIDASI DARI LARAVEL --}}
             @if ($errors->any())
                 <div class="alert alert-danger m-3 pb-0">
                     <h5 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>Terjadi Kesalahan!</h5>
@@ -167,7 +168,8 @@
                       <div class="mb-2">
                         <label class="form-label fw-bold small text-dark-emphasis">Foto Profil</label>
                       </div>
-                      <input type="file" name="foto_profil" class="form-control form-control-sm w-75 mx-auto" accept="image/*">
+                      {{-- Perbaikan accept file type --}}
+                      <input type="file" name="foto_profil" class="form-control form-control-sm w-75 mx-auto" accept="image/jpeg,image/png,image/jpg">
                       <div class="form-text small">Format: JPG, PNG. Maks 2MB.</div>
                   </div>
 
@@ -194,11 +196,12 @@
                       </div>
                   </div>
 
+                  {{-- Input Departemen --}}
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Departemen</label>
                       <input type="text" name="departemen" class="form-control"
-                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
-                      <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
+                             oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                      <div class="form-text small">Hanya huruf dan spasi.</div>
                   </div>
 
                   {{-- Input Alamat --}}
@@ -209,11 +212,12 @@
                       <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                   </div>
 
+                  {{-- Input Posisi --}}
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Posisi / Jabatan</label>
                       <input type="text" name="posisi" class="form-control"
-                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
-                      <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
+                             oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                      <div class="form-text small">Hanya huruf dan spasi.</div>
                   </div>
 
                   <div class="col-12 mt-3 mb-3">
@@ -228,9 +232,12 @@
                           <option value="Manajemen">Manajemen</option>
                       </select>
                   </div>
+                  {{-- Input Username --}}
                   <div class="col-md-8 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Username Login*</label>
-                      <input type="text" name="username" class="form-control" required>
+                      <input type="text" name="username" class="form-control" required
+                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')">
+                      <div class="form-text small">Hanya huruf dan angka (tanpa spasi atau simbol).</div>
                   </div>
 
                   <div class="col-md-6 mb-3">
@@ -286,7 +293,8 @@
                       </div>
                       <div class="flex-grow-1">
                           <label class="form-label fw-bold small text-dark-emphasis">Ganti Foto Baru</label>
-                          <input type="file" name="foto_profil" class="form-control form-control-sm" accept="image/*">
+                          {{-- PERBAIKAN: Membatasi tipe file di client-side --}}
+                          <input type="file" name="foto_profil" class="form-control form-control-sm" accept="image/jpeg,image/png,image/jpg">
                           <div class="form-text small">Biarkan kosong jika tidak ingin mengubah foto.</div>
                       </div>
                   </div>
@@ -310,11 +318,12 @@
                              oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                   </div>
 
+                  {{-- Input Departemen --}}
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Departemen</label>
                       <input type="text" id="edit_departemen" name="departemen" class="form-control"
-                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
-                      <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
+                             oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                      <div class="form-text small">Hanya huruf dan spasi.</div>
                   </div>
 
                   <div class="col-md-12 mb-3">
@@ -324,11 +333,12 @@
                       <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                   </div>
 
+                  {{-- Input Posisi --}}
                   <div class="col-md-6 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Posisi</label>
                       <input type="text" id="edit_posisi" name="posisi" class="form-control"
-                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
-                      <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
+                             oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                      <div class="form-text small">Hanya huruf dan spasi.</div>
                   </div>
 
                   <div class="col-12 mt-3 mb-3">
@@ -343,9 +353,12 @@
                           <option value="Manajemen">Manajemen</option>
                       </select>
                   </div>
+                  {{-- Input Username --}}
                   <div class="col-md-8 mb-3">
                       <label class="form-label fw-bold small text-dark-emphasis">Username*</label>
-                      <input type="text" id="edit_username" name="username" class="form-control" required>
+                      <input type="text" id="edit_username" name="username" class="form-control" required
+                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')">
+                      <div class="form-text small">Hanya huruf dan angka (tanpa spasi atau simbol).</div>
                   </div>
 
                   <div class="col-md-6 mb-3">
@@ -415,6 +428,7 @@
     .dark-mode .table { color: #e0e0e0; border-color: #444; }
     .dark-mode .table-light th { background-color: #333 !important; color: #fff !important; border-color: #444 !important; }
     .dark-mode .table td { border-bottom-color: #333 !important; background-color: #1e1e1e !important; }
+    .dark-mode .table-hover tbody tr:hover td { background-color: #2a2a2a !important; }
     .dark-mode .bg-light { background-color: #2b2b2b !important; }
     .dark-mode .text-dark-emphasis { color: #e0e0e0 !important; }
 </style>
