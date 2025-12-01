@@ -706,9 +706,67 @@ class AdminController extends Controller
 
     public function updateProfil(Request $request): \Illuminate\Http\RedirectResponse
     {
-        // ... (Kode profil admin lama, bisa disesuaikan atau dibiarkan jika menggunakan ProfileController)
-        // Jika route profil menggunakan ProfileController, method ini mungkin tidak terpakai
-        // tapi saya biarkan untuk kompatibilitas jika masih ada route yang mengarah ke sini.
+        $user = Auth::user();
+        $employee = $user->employee;
+
+        if (!$employee) {
+             return redirect()->back()->with('error', 'Data karyawan Admin tidak ditemukan. Hubungi IT.');
+        }
+
+        $messages = [
+            'nama.regex' => 'Nama tidak boleh mengandung simbol spesial atau angka. Hanya huruf, spasi, titik (.), koma (,), dan strip (-) yang diizinkan.',
+            'nip.regex' => 'NIP hanya boleh mengandung huruf dan angka.',
+            'alamat.regex' => 'Alamat tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'username.regex' => 'Username hanya boleh mengandung huruf, angka, titik (.), strip (-), underscore (_), dan tanda @.',
+            'posisi.regex' => 'Jabatan/Posisi tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'departemen.regex' => 'Departemen tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'no_telepon.regex' => 'Nomor telepon hanya boleh mengandung angka.',
+            'email.unique' => 'Email ini sudah digunakan oleh akun lain.',
+        ];
+
+        // Validasi diperketat untuk input dari form profil admin
+        $validated = $request->validate([
+            'nama' => ['required', 'string', 'max:255', 'regex:' . self::NAMA_TEXT_REGEX],
+            'nip' => ['nullable', 'string', 'max:50', 'regex:/^[a-zA-Z0-9]+$/', 'unique:employee,nip,' . $employee->emp_id . ',emp_id'], 
+            'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id', 'regex:' . self::USER_EMAIL_REGEX],
+            'email' => ['required', 'email', 'max:255', 'unique:user,email,' . $user->user_id . ',user_id'], 
+            'posisi' => ['nullable', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
+            'departemen' => ['nullable', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
+            'no_telepon' => ['nullable', 'string', 'max:20', 'regex:' . self::PHONE_REGEX],
+            'alamat' => ['nullable', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX],
+            'foto_profil' => ['nullable', 'image', 'mimes:' . self::ALLOWED_IMAGE_TYPES, 'max:' . self::MAX_IMAGE_SIZE],
+            'hapus_foto' => ['in:0,1'],
+        ], $messages);
+
+        DB::transaction(function () use ($user, $employee, $validated, $request) {
+            $user->update([
+                'username' => $validated['username'],
+                'email' => $validated['email'],
+                // Password tidak diupdate di form ini
+            ]);
+
+            $fotoPath = $employee->foto_profil;
+            if (isset($validated['hapus_foto']) && $validated['hapus_foto'] == 1) {
+                // Hapus foto lama jika diminta
+                if ($fotoPath) {
+                    Storage::delete(str_replace('/storage/', 'public/', $fotoPath));
+                }
+                $fotoPath = null;
+            } elseif ($request->hasFile('foto_profil')) {
+                // Upload foto baru jika ada
+                $fotoPath = $this->handlePhotoUpload($request, 'photos');
+            }
+
+            $employee->update([
+                'nama' => $validated['nama'],
+                'nip' => $validated['nip'] ?? $employee->nip,
+                'departemen' => $validated['departemen'] ?? $employee->departemen,
+                'posisi' => $validated['posisi'] ?? $employee->posisi,
+                'no_telepon' => $validated['no_telepon'],
+                'alamat' => $validated['alamat'],
+                'foto_profil' => $fotoPath,
+            ]);
+        });
         return redirect()->route('admin.profil');
     }
     
