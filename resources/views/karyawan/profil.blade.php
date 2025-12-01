@@ -82,8 +82,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">NIP</label>
-                                <input type="text" class="form-control bg-light" value="{{ Auth::user()->employee->nip ?? '-' }}" readonly disabled
-                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                <input type="text" class="form-control bg-light" value="{{ Auth::user()->employee->nip ?? '-' }}" readonly disabled>
                             </div>
                         </div>
 
@@ -120,8 +119,7 @@
                                 <span class="input-group-text bg-white"><i class="bi bi-telephone"></i></span>
                                 <input type="number" class="form-control" id="no_telepon" name="no_telepon" 
                                        value="{{ Auth::user()->employee->no_telepon ?? '' }}" 
-                                       placeholder="Contoh: 081234567890"
-                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                       placeholder="Contoh: 081234567890">
                             </div>
                             <div class="form-text small text-muted">Hanya boleh diisi angka.</div>
                         </div>
