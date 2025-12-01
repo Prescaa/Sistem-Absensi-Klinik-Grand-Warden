@@ -201,10 +201,12 @@ class KaryawanController extends Controller
         $chartData = [];
         $chartLabels = [];
 
+        // Loop 7 hari terakhir
         for ($i = 6; $i >= 0; $i--) {
             $date = Carbon::today()->subDays($i);
             $chartLabels[] = $date->format('d M'); 
 
+            // Cek: Apakah ada Absensi Masuk (yang tidak invalid)?
             $isHadirFisik = Attendance::where('emp_id', $karyawan->emp_id)
                 ->whereDate('waktu_unggah', $date)
                 ->where('type', 'masuk')
@@ -213,16 +215,8 @@ class KaryawanController extends Controller
                 })
                 ->exists(); 
 
-            $isIzinResmi = false;
-            if (!$isHadirFisik) {
-                $isIzinResmi = Leave::where('emp_id', $karyawan->emp_id)
-                    ->where('status', 'disetujui')
-                    ->whereDate('tanggal_mulai', '<=', $date)
-                    ->whereDate('tanggal_selesai', '>=', $date)
-                    ->exists();
-            }
-
-            $chartData[] = ($isHadirFisik || $isIzinResmi) ? 1 : 0;
+            // ✅ PERBAIKAN: HANYA MENGHITUNG KEHADIRAN FISIK (ABSENSI), TIDAK TERMASUK IZIN/SAKIT
+            $chartData[] = $isHadirFisik ? 1 : 0;
         }
 
         return view('karyawan.riwayat', compact(
@@ -254,7 +248,6 @@ class KaryawanController extends Controller
      */
     public function storeIzin(Request $request)
     {
-        // Validasi PERBAIKAN: Hanya mimes gambar (jpg,jpeg,png)
         $request->validate([
             'tipe_izin' => ['required', 'in:sakit,izin,cuti'],
             'tanggal_mulai' => ['required', 'date'],
@@ -339,7 +332,7 @@ class KaryawanController extends Controller
             'no_telepon.regex' => 'Nomor telepon hanya boleh berisi angka.',
         ];
 
-        // Validasi
+        // Validasi PERBAIKAN: Regex Alamat terima angka
         $request->validate([
             'nama' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s.,]+$/'],
             'alamat' => ['nullable', 'string', 'max:500', 'regex:/^[a-zA-Z0-9\s.,\-\/]+$/'],

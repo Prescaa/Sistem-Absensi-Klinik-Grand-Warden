@@ -356,9 +356,15 @@
                 <span class="text-muted d-none d-md-inline">Jl. Medan Merdeka Timur No.11-13 Clash Universe</span>
             </div>
             <div class="d-flex">
-                <i class="bi bi-facebook fs-6 me-3 text-muted hover-primary"></i>
-                <i class="bi bi-twitter-x fs-6 me-3 text-muted hover-primary"></i>
-                <i class="bi bi-instagram fs-6 text-muted hover-primary"></i>
+                <a href="https://www.facebook.com" target="_blank" class="text-decoration-none me-3">
+                    <i class="bi bi-facebook fs-6 text-muted hover-primary"></i>
+                </a>
+                <a href="https://twitter.com" target="_blank" class="text-decoration-none me-3">
+                    <i class="bi bi-twitter-x fs-6 text-muted hover-primary"></i>
+                </a>
+                <a href="https://www.instagram.com" target="_blank" class="text-decoration-none">
+                    <i class="bi bi-instagram fs-6 text-muted hover-primary"></i>
+                </a>
             </div>
         </footer>
     </div>
