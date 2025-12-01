@@ -103,8 +103,8 @@
 
                         <div class="mb-4">
                             <label for="file_bukti" class="form-label fw-semibold">Bukti Pendukung (Wajib diunggah jika sakit)</label>
-                            <input type="file" name="file_bukti" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                            <div class="form-text text-muted small">Format: JPG, PNG, PDF. Max: 2MB. (Wajib untuk Sakit)</div>
+                            <input type="file" name="file_bukti" class="form-control" accept=".jpg,.jpeg,.png">
+                            <div class="form-text text-muted small">Format: JPG, PNG. Max: 2MB. (Wajib untuk Sakit)</div>
                         </div>
 
                         <div class="d-grid">

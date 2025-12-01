@@ -23,106 +23,135 @@
 
         <div class="tab-content" id="pills-tabContent">
 
-            {{-- TAB ABSENSI --}}
+            {{-- TAB ABSENSI (GRID CARD LAYOUT) --}}
             <div class="tab-pane fade show active" id="pills-absensi">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Waktu</th>
-                                        <th>Karyawan</th>
-                                        <th>Tipe</th>
-                                        <th>Foto</th>
-                                        <th>Lokasi</th>
-                                        <th>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($pendingAbsensi as $att)
-                                    @php
-                                        $isOwnData = (Auth::user()->employee->emp_id == $att->emp_id);
-                                    @endphp
-                                    <tr class="{{ $isOwnData ? 'table-warning-soft' : '' }}">
-                                        <td>{{ $att->waktu_unggah->format('d M H:i') }}</td>
-                                        <td>
-                                            <div class="fw-bold text-dark-emphasis">{{ $att->employee->nama }}</div>
-                                            <div class="small text-muted">{{ $att->employee->nip }}</div>
-                                            @if($isOwnData) 
-                                                <span class="badge bg-danger mt-1" style="font-size: 0.65rem;">Milik Anda</span> 
-                                            @endif
-                                        </td>
-                                        <td><span class="badge {{ $att->type == 'masuk' ? 'bg-success' : 'bg-warning text-dark' }}">{{ ucfirst($att->type) }}</span></td>
-                                        <td>
-                                            <img src="{{ asset($att->nama_file_foto) }}" class="rounded border" width="50" height="50" style="cursor:pointer; object-fit:cover;" data-bs-toggle="modal" data-bs-target="#img{{ $att->att_id }}">
-                                            {{-- Modal Preview --}}
-                                            <div class="modal fade" id="img{{ $att->att_id }}">
-                                                <div class="modal-dialog modal-dialog-centered">
-                                                    <div class="modal-content">
-                                                        <div class="modal-body p-0">
-                                                            <img src="{{ asset($att->nama_file_foto) }}" class="w-100 rounded">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <a href="https://maps.google.com/?q={{ $att->latitude }},{{ $att->longitude }}" target="_blank" class="btn btn-sm btn-outline-info"><i class="bi bi-geo-alt me-1"></i>Map</a>
-                                        </td>
-                                        <td>
+                
+                @if($pendingAbsensi->count() > 0)
+                    <div class="row g-4">
+                        @foreach($pendingAbsensi as $att)
+                            @php
+                                $isOwnData = (Auth::user()->employee->emp_id == $att->emp_id);
+                                
+                                // Logika Sederhana Keterlambatan (Ambil dari workArea relation, default 08:00)
+                                $jamMasukBatas = $att->workArea->jam_kerja['masuk'] ?? '08:00';
+                                if(strlen($jamMasukBatas) == 5) $jamMasukBatas .= ':00'; // Ensure H:i:s
+
+                                $isLate = $att->type == 'masuk' && $att->waktu_unggah->format('H:i:s') > $jamMasukBatas;
+                            @endphp
+                            
+                            <div class="col-md-6 col-xl-4">
+                                <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                                    
+                                    {{-- 1. FOTO BESAR DI ATAS --}}
+                                    <div class="position-relative" style="height: 220px; background-color: #f0f0f0;">
+                                        <a href="{{ asset($att->nama_file_foto) }}" target="_blank">
+                                            <img src="{{ asset($att->nama_file_foto) }}" class="w-100 h-100 object-fit-cover" alt="Bukti Absensi">
+                                        </a>
+                                        
+                                        {{-- Badge Tipe di Pojok Kanan Atas Foto --}}
+                                        <span class="position-absolute top-0 end-0 m-3 badge {{ $att->type == 'masuk' ? 'bg-success' : 'bg-warning text-dark' }} px-3 py-2 shadow-sm rounded-pill fw-bold">
+                                            {{ ucfirst($att->type) }}
+                                        </span>
+                                    </div>
+
+                                    <div class="card-body p-4 d-flex flex-column">
+                                        
+                                        {{-- 2. INFORMASI KARYAWAN --}}
+                                        <div class="mb-3">
+                                            <h5 class="fw-bold text-dark-emphasis mb-0">{{ $att->employee->nama }}</h5>
+                                            <small class="text-muted">{{ $att->employee->nip }}</small>
+                                            
                                             @if($isOwnData)
-                                                <span class="badge bg-secondary fst-italic py-2 px-3"><i class="bi bi-hourglass-split me-1"></i> Menunggu Manajer Lain</span>
-                                            @else
-                                                <div class="d-flex gap-2">
-                                                    <form action="{{ route('manajemen.validasi.submit') }}" method="POST">
-                                                        @csrf
-                                                        <input type="hidden" name="att_id" value="{{ $att->att_id }}">
-                                                        <input type="hidden" name="status_validasi" value="Invalid">
-                                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Tolak absensi ini?')"><i class="bi bi-x-lg"></i></button>
-                                                    </form>
-                                                    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#acc{{ $att->att_id }}"><i class="bi bi-check-lg"></i></button>
+                                                <div class="mt-1"><span class="badge bg-danger">Milik Anda</span></div>
+                                            @endif
+                                        </div>
+
+                                        {{-- 3. INFORMASI WAKTU & LOKASI (BOX ABU) --}}
+                                        <div class="bg-light p-3 rounded border mb-3 small">
+                                            {{-- Baris Waktu & Status --}}
+                                            <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-calendar-event text-primary me-2 fs-6"></i>
+                                                    <span class="text-dark fw-bold">{{ $att->waktu_unggah->format('d M Y, H:i') }}</span>
+                                                </div>
+                                                
+                                                {{-- Status Terlambat/Tepat Waktu --}}
+                                                @if($att->type == 'masuk')
+                                                    @if($isLate)
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.65rem;">Terlambat (> {{ substr($jamMasukBatas, 0, 5) }})</span>
+                                                    @else
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 0.65rem;">Tepat Waktu</span>
+                                                    @endif
+                                                @endif
+                                            </div>
+
+                                            {{-- Baris Lokasi & Link Map --}}
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <div class="d-flex align-items-center text-truncate me-2" style="max-width: 60%;">
+                                                    <i class="bi bi-geo-alt text-danger me-2 fs-6"></i>
+                                                    {{-- Koordinat jadi Link --}}
+                                                    <a href="https://maps.google.com/?q={{ $att->latitude }},{{ $att->longitude }}" 
+                                                       target="_blank" 
+                                                       class="text-decoration-none text-dark fw-bold text-truncate"
+                                                       title="Klik untuk lihat di Google Maps">
+                                                        {{ $att->latitude }}, {{ $att->longitude }}
+                                                    </a>
+                                                </div>
+                                                <a href="https://maps.google.com/?q={{ $att->latitude }},{{ $att->longitude }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2 shadow-sm" style="font-size: 0.75rem;">
+                                                    <i class="bi bi-map-fill me-1"></i> Cek Map
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        {{-- 4. FORM VALIDASI (INPUT & BUTTONS) --}}
+                                        @if(!$isOwnData)
+                                            <form action="{{ route('manajemen.validasi.submit') }}" method="POST" class="mt-auto">
+                                                @csrf
+                                                <input type="hidden" name="att_id" value="{{ $att->att_id }}">
+
+                                                {{-- Textarea Catatan --}}
+                                                <div class="mb-3">
+                                                    <textarea name="catatan_validasi" class="form-control form-control-sm" 
+                                                              rows="2" placeholder="Catatan admin (opsional)..."
+                                                              oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')"></textarea>
                                                 </div>
 
-                                                {{-- Modal Validasi --}}
-                                                <div class="modal fade" id="acc{{ $att->att_id }}">
-                                                    <div class="modal-dialog modal-dialog-centered">
-                                                        <form action="{{ route('manajemen.validasi.submit') }}" method="POST">
-                                                            @csrf
-                                                            <div class="modal-content">
-                                                                <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold">Validasi: {{ $att->employee->nama }}</h6></div>
-                                                                <div class="modal-body">
-                                                                    <input type="hidden" name="att_id" value="{{ $att->att_id }}">
-                                                                    <input type="hidden" name="status_validasi" value="Valid">
-                                                                    <div class="mb-3">
-                                                                        <label class="form-label small fw-bold">Catatan (Opsional)</label>
-                                                                        <input type="text" name="catatan_validasi" class="form-control" placeholder="Contoh: OK, Tepat Waktu"
-                                                                               oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">
-                                                                        <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="modal-footer border-0 bg-light">
-                                                                    <button type="button" class="btn btn-link text-decoration-none text-muted" data-bs-dismiss="modal">Batal</button>
-                                                                    <button type="submit" class="btn btn-success px-4 fw-bold">Setujui</button>
-                                                                </div>
-                                                            </div>
-                                                        </form>
+                                                {{-- Tombol Aksi (Grid 2 Kolom) --}}
+                                                <div class="row g-2">
+                                                    <div class="col-6">
+                                                        <button type="submit" name="status_validasi" value="Valid" class="btn btn-success w-100 fw-bold text-white py-2">
+                                                            <i class="bi bi-check-lg me-1"></i> Terima
+                                                        </button>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <button type="submit" name="status_validasi" value="Invalid" class="btn btn-danger w-100 fw-bold text-white py-2" onclick="return confirm('Yakin ingin menolak absensi ini?')">
+                                                            <i class="bi bi-x-lg me-1"></i> Tolak
+                                                        </button>
                                                     </div>
                                                 </div>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr><td colspan="6" class="text-center text-muted py-5">Tidak ada antrean absensi saat ini.</td></tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
+                                            </form>
+                                        @else
+                                            <div class="alert alert-secondary text-center small mt-auto mb-0">
+                                                <i class="bi bi-info-circle me-1"></i> Menunggu validasi manajer lain.
+                                            </div>
+                                        @endif
+
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
-                </div>
+                @else
+                    <div class="text-center py-5 text-muted bg-white rounded shadow-sm">
+                        <i class="bi bi-check-circle display-1 text-success d-block mb-3"></i>
+                        <h5 class="fw-bold">Semua Bersih!</h5>
+                        <p class="mb-0">Tidak ada antrean absensi yang perlu divalidasi saat ini.</p>
+                    </div>
+                @endif
+
             </div>
 
-            {{-- TAB IZIN --}}
+            {{-- TAB IZIN (Tabel) --}}
             <div class="tab-pane fade" id="pills-izin">
                 <div class="card shadow-sm border-0">
                     <div class="card-body">
@@ -152,15 +181,25 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <span class="badge {{ $leave->tipe_izin == 'sakit' ? 'bg-danger' : 'bg-warning text-dark' }}">{{ ucfirst($leave->tipe_izin) }}</span>
-                                            @if($leave->file_bukti) <a href="{{ asset($leave->file_bukti) }}" target="_blank" class="ms-1"><i class="bi bi-paperclip"></i></a> @endif
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge {{ $leave->tipe_izin == 'sakit' ? 'bg-danger' : 'bg-warning text-dark' }}">{{ ucfirst($leave->tipe_izin) }}</span>
+                                                
+                                                @if($leave->file_bukti)
+                                                    <a href="{{ asset($leave->file_bukti) }}" target="_blank" class="btn btn-sm btn-light border text-primary fw-bold py-0 px-2 shadow-sm" title="Klik untuk lihat bukti">
+                                                        <i class="bi bi-image me-1"></i> Lihat Bukti
+                                                    </a>
+                                                @endif
+                                            </div>
                                         </td>
                                         <td class="text-truncate" style="max-width: 150px;">{{ $leave->deskripsi }}</td>
                                         <td>
                                             @if($isOwnData)
                                                 <span class="badge bg-secondary fst-italic"><i class="bi bi-hourglass-split me-1"></i> Menunggu Approval</span>
                                             @else
-                                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#izin{{ $leave->leave_id }}">Proses</button>
+                                                {{-- PERBAIKAN UI TOMBOL PROSES --}}
+                                                <button class="btn btn-primary btn-sm px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#izin{{ $leave->leave_id }}">
+                                                    <i class="bi bi-pencil-square me-1"></i> Proses
+                                                </button>
 
                                                 <div class="modal fade" id="izin{{ $leave->leave_id }}">
                                                     <div class="modal-dialog modal-dialog-centered">
@@ -394,6 +433,32 @@
     
     .dark-mode .btn-link.text-muted:hover {
         color: #fff !important;
+    }
+    
+    /* 12. Validasi Absensi Box Light */
+    .dark-mode .bg-light.p-3.rounded.border {
+        background-color: #2b2b2b !important;
+        border-color: #444 !important;
+    }
+    
+    /* 13. Map Link in Dark Mode */
+    .dark-mode a.text-dark {
+        color: #6ea8fe !important;
+    }
+    .dark-mode a.text-dark:hover {
+        color: #8bb9fe !important;
+    }
+    
+    /* 14. Badge subtles for Dark Mode */
+    .dark-mode .badge.bg-danger-subtle {
+        background-color: rgba(220, 53, 69, 0.2) !important;
+        color: #ea868f !important;
+        border-color: #842029 !important;
+    }
+    .dark-mode .badge.bg-success-subtle {
+        background-color: rgba(25, 135, 84, 0.2) !important;
+        color: #75b798 !important;
+        border-color: #0f5132 !important;
     }
 </style>
 @endpush

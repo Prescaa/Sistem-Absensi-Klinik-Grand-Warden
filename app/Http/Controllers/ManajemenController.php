@@ -403,7 +403,7 @@ class ManajemenController extends Controller
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'deskripsi' => 'required|string|max:500',
-            'file_bukti' => 'required_if:tipe_izin,sakit|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'file_bukti' => 'required_if:tipe_izin,sakit|file|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $empId = auth()->user()->employee->emp_id;

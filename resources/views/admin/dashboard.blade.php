@@ -82,10 +82,9 @@
             </div>
 
             {{--
-                === FITUR BARU: ANALISIS TREN KEHADIRAN ===
-                Menampilkan grafik batang sederhana menggunakan CSS
+                === ANALISIS TREN KEHADIRAN ===
             --}}
-            <div class="card shadow-sm border-0 mb-4">
+            <div class="card shadow-sm border-0 mb-4 flex-grow-1">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom-0">
                     <h5 class="card-title fw-bold mb-0 text-dark-emphasis">
                         <i class="bi bi-graph-up-arrow me-2 text-primary"></i>Analisis Tren Kehadiran
@@ -108,11 +107,7 @@
                                         $colorClass = $heightPercent >= 80 ? 'bg-primary' : ($heightPercent >= 50 ? 'bg-warning' : 'bg-danger');
                                     @endphp
 
-                                    {{--
-                                        ✅ PERBAIKAN ERROR VS CODE:
-                                        Menggunakan CSS Variable (--bar-h) agar VS Code tidak bingung membaca sintaks Blade {{ }}
-                                        di dalam properti height.
-                                    --}}
+                                    {{-- Grafik Batang --}}
                                     <div class="rounded-top {{ $colorClass }} w-100"
                                          style="--bar-h: {{ $heightPercent }}%; height: var(--bar-h); min-height: 4px; opacity: 0.8; transition: height 0.5s ease;"
                                          title="{{ $data }} Karyawan Hadir">
@@ -131,10 +126,10 @@
                 </div>
             </div>
 
-            <div class="card shadow-sm border-0 mb-4 flex-grow-1">
+            {{-- RIWAYAT AKTIVITAS TERBARU --}}
+            <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center mb-3">
-                        {{-- Judul Disesuaikan --}}
                         <h5 class="card-title fw-bold mb-0 me-2 text-dark-emphasis">Riwayat Aktivitas Terbaru</h5>
                     </div>
 
@@ -146,12 +141,9 @@
                                     {{-- LOGIKA TAMPILAN: ABSENSI vs IZIN --}}
                                     @if(class_basename($act) == 'Attendance')
                                         {{-- === TAMPILAN ABSENSI === --}}
-
-                                        {{-- Avatar --}}
                                         <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
                                             <i class="bi bi-camera-fill"></i>
                                         </div>
-
                                         <div>
                                             <span class="fw-bold text-dark-emphasis d-block">{{ $act->employee->nama ?? 'Karyawan' }}</span>
                                             <div class="text-muted small">
@@ -162,12 +154,9 @@
 
                                     @else
                                         {{-- === TAMPILAN IZIN === --}}
-
-                                        {{-- Icon Izin --}}
                                         <div class="rounded-circle bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
                                             <i class="bi bi-file-earmark-text-fill"></i>
                                         </div>
-
                                         <div>
                                             <span class="fw-bold text-dark-emphasis d-block">{{ $act->employee->nama ?? 'Karyawan' }}</span>
                                             <div class="text-muted small">
@@ -176,13 +165,11 @@
                                             </div>
                                         </div>
                                     @endif
-
                                 </div>
 
                                 {{-- BADGE STATUS --}}
                                 <div>
                                     @if(class_basename($act) == 'Attendance')
-                                        {{-- Status Absensi --}}
                                         @if($act->validation)
                                             @if($act->validation->status_validasi_final == 'Valid')
                                                 <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Valid</span>
@@ -193,7 +180,6 @@
                                             <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-2">Pending</span>
                                         @endif
                                     @else
-                                        {{-- Status Izin --}}
                                         @if($act->status == 'disetujui')
                                             <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2">Disetujui</span>
                                         @elseif($act->status == 'ditolak')
@@ -228,7 +214,7 @@
             </div>
 
             {{-- DOWNLOAD LAPORAN --}}
-            <div class="card shadow-sm border-0 mb-4 flex-grow-1">
+            <div class="card shadow-sm border-0 mb-4 flex-grow-1 bg-white">
                 <div class="card-body p-4 d-flex flex-column justify-content-center align-items-center text-center">
                     <div class="mb-4 p-3 bg-success bg-opacity-10 rounded-circle">
                         <i class="bi bi-file-earmark-spreadsheet-fill text-success display-4"></i>
@@ -310,28 +296,102 @@
     .card-stat:hover { transform: translateY(-3px); }
 
     /* === DARK MODE OVERRIDES === */
-    .dark-mode .bg-success-soft { background-color: #052c1e !important; border: 1px solid #0f5132; }
+    
+    /* Background White Global Override */
+    .dark-mode .bg-white {
+        background-color: #1e1e1e !important;
+        color: #fff !important;
+    }
+
+    /* Card Override */
+    .dark-mode .card {
+        background-color: #1e1e1e !important;
+        border: 1px solid #444 !important;
+        color: #fff !important;
+    }
+    
+    /* Text Colors */
+    .dark-mode .text-dark-emphasis {
+        color: #f8f9fa !important;
+    }
+    .dark-mode .text-muted {
+        color: #adb5bd !important;
+    }
+
+    /* Override Kartu Statistik (Background Transparan + Border Warna) */
+    .dark-mode .bg-success-soft {
+        background-color: rgba(25, 135, 84, 0.15) !important;
+        border: 1px solid #198754 !important;
+    }
     .dark-mode .text-success-dark { color: #75b798 !important; }
 
-    .dark-mode .bg-primary-soft { background-color: #031633 !important; border: 1px solid #084298; }
-    .dark-mode .text-primary-dark { color: #6ea8fe !important; }
+    .dark-mode .bg-primary-soft {
+        background-color: rgba(13, 110, 253, 0.15) !important;
+        border: 1px solid #0d6efd !important;
+    }
+    .dark-mode .text-primary-dark { color: #9ec5fe !important; }
 
-    .dark-mode .bg-warning-soft { background-color: #332701 !important; border: 1px solid #664d03; }
+    .dark-mode .bg-warning-soft {
+        background-color: rgba(255, 193, 7, 0.1) !important;
+        border: 1px solid #ffc107 !important;
+    }
     .dark-mode .text-warning-dark { color: #ffda6a !important; }
 
-    .dark-mode .bg-danger-soft { background-color: #2c0b0e !important; border: 1px solid #842029; }
+    .dark-mode .bg-danger-soft {
+        background-color: rgba(220, 53, 69, 0.15) !important;
+        border: 1px solid #dc3545 !important;
+    }
     .dark-mode .text-danger-dark { color: #ea868f !important; }
 
-    .dark-mode .text-dark-emphasis { color: #e0e0e0 !important; }
-    .dark-mode .text-body { color: #e0e0e0 !important; }
-    .dark-mode .card { background-color: #1e1e1e !important; border: 1px solid #333; }
+    /* Border List Group */
+    .dark-mode .border-bottom {
+        border-bottom-color: #444 !important;
+    }
 
-    /* Modal di Dark Mode */
-    .dark-mode .modal-content { background-color: #1e1e1e; color: #fff; }
-    .dark-mode .modal-footer.bg-light { background-color: #252525 !important; }
-    .dark-mode .btn-close { filter: invert(1); }
-    .dark-mode .form-control { background-color: #2b2b2b; border-color: #444; color: #fff; }
-    .dark-mode input[type="date"] { color-scheme: dark; } /* Fix Icon Kalender */
+    /* === PERBAIKAN MODAL DI DARK MODE === */
+    .dark-mode .modal-content {
+        background-color: #1e1e1e !important;
+        border: 1px solid #444 !important;
+        color: #fff !important;
+    }
+    .dark-mode .modal-header {
+        border-bottom-color: #444 !important;
+    }
+    .dark-mode .modal-footer {
+        border-top-color: #444 !important;
+    }
+    .dark-mode .modal-footer.bg-light {
+        background-color: #252525 !important;
+    }
+    .dark-mode .btn-close { 
+        filter: invert(1); 
+    }
+    
+    /* Tombol Batal di Modal (Agar tidak terlalu terang) */
+    .dark-mode .btn-light {
+        background-color: #333 !important;
+        border-color: #555 !important;
+        color: #ddd !important;
+    }
+    .dark-mode .btn-light:hover {
+        background-color: #444 !important;
+    }
+
+    /* Input Form di Modal */
+    .dark-mode .form-control {
+        background-color: #2b2b2b !important;
+        border-color: #555 !important;
+        color: #fff !important;
+    }
+    .dark-mode .form-control:focus {
+        border-color: #0d6efd !important;
+        background-color: #2b2b2b !important;
+    }
+    
+    /* Fix Icon Kalender agar putih */
+    .dark-mode input[type="date"] {
+        color-scheme: dark;
+    }
 </style>
 @endpush
 

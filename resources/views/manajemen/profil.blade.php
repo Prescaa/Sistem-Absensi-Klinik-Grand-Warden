@@ -54,11 +54,12 @@
                                 <label class="form-label fw-bold small text-muted">Nama Lengkap</label>
                                 <input type="text" name="nama" class="form-control bg-white border" value="{{ Auth::user()->employee->nama }}" required
                                        oninput="this.value = this.value.replace(/[^a-zA-Z\s.,]/g, '')">
-                                <div class="form-text small">Hanya huruf, titik, dan koma.</div>
+                                <div class="form-text small">Hanya huruf, spasi, titik, dan koma.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">NIP</label>
-                                <input type="text" class="form-control bg-light" value="{{ Auth::user()->employee->nip ?? '-' }}" readonly disabled>
+                                <input type="text" class="form-control bg-light" value="{{ Auth::user()->employee->nip ?? '-' }}" readonly disabled
+                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                             </div>
                         </div>
 
@@ -86,7 +87,6 @@
                             <label for="alamat" class="form-label fw-bold text-muted small">Alamat Rumah</label>
                             <textarea class="form-control" id="alamat" name="alamat" rows="2" placeholder="Masukkan alamat lengkap..."
                                       oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">{{ Auth::user()->employee->alamat ?? '' }}</textarea>
-                            {{-- PERBAIKAN: Update Helper Text --}}
                             <div class="form-text small">Hanya huruf, angka, titik, koma, strip, dan garis miring.</div>
                         </div>
                         
@@ -217,4 +217,4 @@
         });
     }
 </script>
-@endpush
+@endpushd

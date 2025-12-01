@@ -4,9 +4,7 @@
 
 @section('content')
 
-    {{-- 
-        PERBAIKAN: Alert global sudah dihandle layout untuk mencegah double alert
-    --}}
+    {{-- PERBAIKAN: Alert global sudah dihandle layout untuk mencegah double alert --}}
 
     <div class="card shadow-sm border-0">
         <div class="card-body p-4 p-md-5">
@@ -55,12 +53,14 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">Nama Lengkap</label>
                                 <input type="text" name="nama" class="form-control bg-white border" value="{{ Auth::user()->employee->nama }}" required
-                                       oninput="this.value = this.value.replace(/[^a-zA-Z\s.,]/g, '')">
-                                <div class="form-text small">Hanya huruf, titik, dan koma.</div>
+                                       oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+                                <div class="form-text small">Hanya huruf dan spasi.</div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">NIP</label>
-                                <input type="text" name="nip" class="form-control bg-white border" value="{{ Auth::user()->employee->nip ?? '-' }}">
+                                <input type="text" name="nip" class="form-control bg-white border" value="{{ Auth::user()->employee->nip ?? '-' }}"
+                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                <div class="form-text small">Hanya angka.</div>
                             </div>
                         </div>
 
@@ -94,7 +94,6 @@
                             <label for="alamat" class="form-label fw-bold text-muted small">Alamat Rumah</label>
                             <textarea class="form-control" id="alamat" name="alamat" rows="2" placeholder="Masukkan alamat lengkap..."
                                       oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">{{ Auth::user()->employee->alamat ?? '' }}</textarea>
-                            {{-- PERBAIKAN: Update Helper Text --}}
                             <div class="form-text small">Hanya huruf, angka, titik, koma, strip, dan garis miring.</div>
                         </div>
                         

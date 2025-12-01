@@ -72,11 +72,11 @@ class KaryawanController extends Controller
     public function checkExif(Request $request)
     {
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-            'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:7000',
+            'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:5120',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'message' => 'File foto tidak valid atau terlalu besar.'], 400);
+            return response()->json(['status' => 'error', 'message' => 'File foto tidak valid atau terlalu besar (>5MB).'], 400);
         }
 
         $file = $request->file('foto_absensi');
@@ -106,8 +106,8 @@ class KaryawanController extends Controller
            $serverTime = now();
            $diffInMinutes = $serverTime->diffInMinutes($fotoTime);
 
-           if ($diffInMinutes > 15) {
-               return response()->json(['status' => 'error', 'message' => 'Foto kadaluarsa (Diambil '.$diffInMinutes.' menit lalu). Harap ambil foto baru.'], 400);
+           if ($diffInMinutes > 5) {
+               return response()->json(['status' => 'error', 'message' => 'Foto kadaluarsa (Diambil '.$diffInMinutes.' menit lalu). Maksimal 5 menit.'], 400);
            }
         } catch (\Exception $e) {
            return response()->json(['status' => 'error', 'message' => 'Format tanggal foto rusak.'], 400);
@@ -254,12 +254,13 @@ class KaryawanController extends Controller
      */
     public function storeIzin(Request $request)
     {
+        // Validasi PERBAIKAN: Hanya mimes gambar (jpg,jpeg,png)
         $request->validate([
             'tipe_izin' => ['required', 'in:sakit,izin,cuti'],
             'tanggal_mulai' => ['required', 'date'],
             'tanggal_selesai' => ['required', 'date', 'after_or_equal:tanggal_mulai'],
             'deskripsi' => ['required', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX],
-            'file_bukti' => ['required_if:tipe_izin,sakit', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
+            'file_bukti' => ['required_if:tipe_izin,sakit', 'file', 'mimes:jpg,jpeg,png', 'max:2048'],
         ], [
             'tanggal_selesai.after_or_equal' => 'Tanggal selesai harus sama atau setelah tanggal mulai.',
             'file_bukti.required_if' => 'Wajib mengunggah bukti surat sakit jika mengajukan tipe Sakit.',
@@ -268,6 +269,7 @@ class KaryawanController extends Controller
             'tanggal_selesai.required' => 'Tanggal selesai wajib diisi.',
             'deskripsi.required' => 'Alasan/Keterangan wajib diisi.',
             'deskripsi.regex' => 'Alasan tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
+            'file_bukti.mimes' => 'Format file bukti harus berupa gambar (JPG/PNG).',
         ]);
 
         $empId = auth()->user()->employee->emp_id;
@@ -337,7 +339,7 @@ class KaryawanController extends Controller
             'no_telepon.regex' => 'Nomor telepon hanya boleh berisi angka.',
         ];
 
-        // Validasi PERBAIKAN: Regex Alamat terima angka
+        // Validasi
         $request->validate([
             'nama' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s.,]+$/'],
             'alamat' => ['nullable', 'string', 'max:500', 'regex:/^[a-zA-Z0-9\s.,\-\/]+$/'],
@@ -412,7 +414,7 @@ class KaryawanController extends Controller
 
         // 2. VALIDASI INPUT
         $request->validate([
-            'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:5000',
+            'foto_absensi' => 'required|image|mimes:jpeg,png,jpg|max:5120',
             'type'         => 'required|in:masuk,pulang',
             'browser_lat'  => 'required|numeric',
             'browser_lng'  => 'required|numeric',

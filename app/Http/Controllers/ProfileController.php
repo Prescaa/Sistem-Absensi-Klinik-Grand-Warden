@@ -66,22 +66,22 @@ class ProfileController extends Controller
             'current_foto_profil' => $employee->foto_profil
         ]);
 
-        // PERBAIKAN: Regex dipisah antara Nama dan Alamat
-        // Nama: Hanya Huruf, Titik, Koma, Spasi
-        $nameRegex = 'regex:/^[a-zA-Z\s.,]+$/';
-        // Alamat: Boleh Angka, Huruf, Spasi, Titik, Koma, Strip, Garis Miring
+        // Regex untuk Nama: Hanya huruf dan spasi
+        $nameRegex = 'regex:/^[a-zA-Z\s]+$/';
+        // Regex untuk Alamat: Angka, Huruf, Spasi, Titik, Koma, Strip, Garis Miring
         $addressRegex = 'regex:/^[a-zA-Z0-9\s.,\-\/]+$/';
 
         $messages = [
-            'nama.regex' => 'Nama hanya boleh berisi huruf, titik, dan koma.',
+            'nama.regex' => 'Nama hanya boleh berisi huruf dan spasi.',
             'alamat.regex' => 'Alamat hanya boleh berisi huruf, angka, titik, koma, strip (-), dan garis miring (/).',
+            'nip.regex' => 'NIP hanya boleh berisi angka (0-9).',
         ];
 
         if ($role === 'admin') {
             Log::info('Validating Admin data...');
             $validated = $request->validate([
                 'nama' => ['required', 'string', 'max:255', $nameRegex],
-                'nip' => 'nullable|string|max:50',
+                'nip' => 'nullable|string|max:50|regex:/^[0-9]+$/', // Admin bisa edit NIP, validasi angka
                 'username' => 'required|string|max:100|unique:USER,username,' . $user->user_id . ',user_id',
                 'email' => 'required|email|max:100|unique:USER,email,' . $user->user_id . ',user_id',
                 'posisi' => 'nullable|string|max:100',

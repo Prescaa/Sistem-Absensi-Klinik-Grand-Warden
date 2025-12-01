@@ -120,7 +120,7 @@
         .notification-badge {
             font-size: 0.6rem;
             padding: 0.25em 0.4em;
-            display: none;
+            display: none; /* Hidden by default, JS enables it */
         }
 
         .dark-mode { background-color: #121212 !important; color: #e0e0e0; }
@@ -135,8 +135,9 @@
         .dark-mode .text-muted { color: #aaa !important; }
         .dark-mode .border { border-color: #444 !important; }
 
+        /* Dropdown Custom Style */
         .notification-dropdown {
-            position: absolute; top: 100%; right: 0; width: 300px; background: white;
+            position: absolute; top: 100%; right: 0; width: 320px; background: white;
             border: 1px solid #dee2e6; border-radius: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             z-index: 1000; display: none;
         }
@@ -230,11 +231,6 @@
     </div>
 
     <div class="sidebar-footer mt-auto">
-        {{-- 
-            PERBAIKAN: HANYA TAMPILKAN PROFIL & LOGOUT JIKA ROLE ADALAH KARYAWAN.
-            Admin & Manajemen tidak perlu melihat ini di Portal Absensi karena
-            sudah ada di dashboard utama mereka.
-        --}}
         @if($role === 'karyawan')
             <ul class="nav nav-pills flex-column">
                 <li class="nav-item">
@@ -243,7 +239,6 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    {{-- Logout dengan warna merah (text-danger) --}}
                     <a href="{{ route('logout') }}" class="nav-link text-danger fw-bold">
                         <i class="bi bi-box-arrow-left me-2"></i> Logout
                     </a>
@@ -268,12 +263,14 @@
                     <i class="bi bi-moon-fill fs-5 hover-primary dark-mode-toggle text-dark"></i>
                 </div>
 
+                {{-- NOTIFIKASI PERSONAL (PORTAL ABSENSI) --}}
                 <div class="position-relative me-3">
                     <i class="bi bi-bell-fill fs-5 hover-primary notification-bell text-dark" style="cursor: pointer;"></i>
 
+                    {{-- Badge Merah (Akan diisi oleh JS) --}}
                     <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge">0</span>
 
-                    <div class="notification-dropdown" style="width: 320px;">
+                    <div class="notification-dropdown">
                         <div class="notification-header d-flex justify-content-between align-items-center">
                             <span>Notifikasi</span>
                             <span class="badge bg-primary rounded-pill" id="notificationCountBadge">0 Baru</span>
@@ -282,14 +279,19 @@
                         <div style="max-height: 300px; overflow-y: auto;" id="notificationList">
                             @if(isset($globalNotifications) && count($globalNotifications) > 0)
                                 @foreach($globalNotifications as $notif)
+                                    {{-- 
+                                        PERBAIKAN: 
+                                        - Tambahkan class 'notification-link' untuk deteksi klik JS.
+                                        - Tambahkan data-attribute ID untuk penyimpanan status 'seen'.
+                                    --}}
                                     <a href="{{ $notif['url'] }}" class="text-decoration-none text-dark notification-link" data-notification-id="{{ $notif['id'] ?? '' }}">
                                         <div class="notification-item">
                                             <div class="d-flex align-items-start">
                                                 <div class="me-2 mt-1">
                                                     @if($notif['type'] == 'absensi')
-                                                        <i class="bi bi-x-circle-fill text-danger"></i>
+                                                        <i class="bi bi-calendar-check-fill text-primary"></i>
                                                     @else
-                                                        <i class="bi bi-info-circle-fill text-primary"></i>
+                                                        <i class="bi bi-envelope-fill text-warning"></i>
                                                     @endif
                                                 </div>
                                                 <div>
@@ -320,7 +322,14 @@
                         $initial = strtoupper(substr($name, 0, 1));
                     @endphp
 
-                    <a href="/profil" class="d-flex align-items-center text-decoration-none text-dark">
+                    {{-- Profil Link: Arahkan sesuai Role --}}
+                    @php
+                        $profilRoute = route('karyawan.profil'); 
+                        if($role == 'admin') $profilRoute = route('admin.profil');
+                        if($role == 'manajemen') $profilRoute = route('manajemen.profil');
+                    @endphp
+
+                    <a href="{{ $profilRoute }}" class="d-flex align-items-center text-decoration-none text-dark">
                         @if($foto)
                             <img src="{{ asset($foto) }}" class="rounded-circle shadow-sm" alt="Profil" style="width: 40px; height: 40px; object-fit: cover;">
                         @else
@@ -332,11 +341,6 @@
                             <small class="text-muted">{{ $user->email }}</small>
                         </div>
                     </a>
-                @else
-                    <div class="d-flex align-items-center">
-                         <div class="avatar-initial shadow-sm">T</div>
-                         <div class="ms-2"><span class="fw-bold">Tamu</span></div>
-                    </div>
                 @endauth
 
             </div>
@@ -408,90 +412,93 @@
                 });
             }
 
-            // --- NOTIFICATION SYSTEM ---
-            const serverNotifCount = {{ count($globalNotifications ?? []) }};
+            // --- NOTIFICATION SYSTEM JS (LOGIKA BADGE DIPERBAIKI) ---
+            
             const notifBell = document.querySelector('.notification-bell');
             const notifDrop = document.querySelector('.notification-dropdown');
             const notifBadge = document.getElementById('notificationBadge');
             const notifCountBadge = document.getElementById('notificationCountBadge');
             const notifLinks = document.querySelectorAll('.notification-link');
 
+            // 1. Ambil Cookie
             function getSeenNotifications() {
                 try {
                     const cookieValue = document.cookie
                         .split('; ')
-                        .find(row => row.startsWith('seen_notifications='));
+                        .find(row => row.startsWith('personal_seen_notifs='));
 
                     return cookieValue ? JSON.parse(decodeURIComponent(cookieValue.split('=')[1])) : [];
                 } catch (error) { return []; }
             }
 
-            function markNotificationsAsSeen(notificationIds) {
-                try {
-                    const seenNotifications = getSeenNotifications();
-                    const updatedSeenNotifications = [...new Set([...seenNotifications, ...notificationIds])];
-                    const expires = new Date();
-                    expires.setDate(expires.getDate() + 30);
-                    document.cookie = 'seen_notifications=' + encodeURIComponent(JSON.stringify(updatedSeenNotifications)) + '; expires=' + expires.toUTCString() + '; path=/';
-
-                    const remainingCount = Math.max(0, serverNotifCount - updatedSeenNotifications.length);
-                    if (notifBadge) {
-                        notifBadge.style.display = remainingCount <= 0 ? 'none' : 'inline-block';
-                        notifBadge.textContent = remainingCount;
-                    }
-                    if (notifCountBadge) {
-                        notifCountBadge.style.display = remainingCount <= 0 ? 'none' : 'inline-block';
-                        notifCountBadge.textContent = remainingCount + ' Baru';
-                    }
-                } catch (error) {}
+            // 2. Simpan Cookie
+            function saveSeenIds(ids) {
+                const d = new Date();
+                d.setTime(d.getTime() + (30*24*60*60*1000)); // 30 hari
+                const expires = "expires="+ d.toUTCString();
+                document.cookie = "personal_seen_notifs=" + encodeURIComponent(JSON.stringify(ids)) + ";" + expires + ";path=/";
             }
 
+            // 3. Update UI Badge
+            function updateBadgeUI() {
+                const seenIds = getSeenNotifications();
+                const allCurrentIds = Array.from(notifLinks).map(link => link.getAttribute('data-notification-id'));
+                
+                const unreadCount = allCurrentIds.filter(id => !seenIds.includes(id)).length;
+
+                if (notifBadge) {
+                    if (unreadCount > 0) {
+                        notifBadge.style.display = 'inline-block';
+                        notifBadge.innerText = unreadCount;
+                    } else {
+                        notifBadge.style.display = 'none';
+                    }
+                }
+                
+                if (notifCountBadge) {
+                    notifCountBadge.textContent = unreadCount > 0 ? unreadCount + ' Baru' : '0 Baru';
+                    if(unreadCount === 0) {
+                        notifCountBadge.classList.replace('bg-primary', 'bg-secondary');
+                    } else {
+                        notifCountBadge.classList.replace('bg-secondary', 'bg-primary');
+                    }
+                }
+            }
+
+            // 4. Toggle Dropdown
             if(notifBell) {
                 notifBell.addEventListener('click', function(e) {
                     e.stopPropagation();
                     const isVisible = notifDrop.style.display === 'block';
                     notifDrop.style.display = isVisible ? 'none' : 'block';
-
-                    if (!isVisible) {
-                        const notificationIds = [];
-                        notifLinks.forEach(function(link) {
-                            const notifId = link.getAttribute('data-notification-id');
-                            if (notifId) notificationIds.push(notifId);
-                        });
-                        if (notificationIds.length > 0) markNotificationsAsSeen(notificationIds);
-                    }
+                    
                 });
             }
 
+            // 5. Klik Item Notifikasi
             notifLinks.forEach(function(link) {
                 link.addEventListener('click', function(e) {
-                    const notifId = this.getAttribute('data-notification-id');
-                    if (notifId) markNotificationsAsSeen([notifId]);
+                    const id = this.getAttribute('data-notification-id');
+                    const seenIds = getSeenNotifications();
+                    
+                    if (!seenIds.includes(id)) {
+                        seenIds.push(id);
+                        saveSeenIds(seenIds);
+                        updateBadgeUI(); // Update UI (meskipun halaman akan reload)
+                    }
                 });
             });
 
+            // 6. Tutup dropdown jika klik di luar
             document.addEventListener('click', function() {
                 if(notifDrop) notifDrop.style.display = 'none';
             });
-
             if(notifDrop) {
                 notifDrop.addEventListener('click', function(e) { e.stopPropagation(); });
             }
 
-            function initializeNotificationBadge() {
-                const seenNotifications = getSeenNotifications();
-                const remainingCount = Math.max(0, serverNotifCount - seenNotifications.length);
-                if (notifBadge) {
-                    notifBadge.style.display = remainingCount <= 0 ? 'none' : 'inline-block';
-                    notifBadge.textContent = remainingCount;
-                }
-                if (notifCountBadge) {
-                    notifCountBadge.style.display = remainingCount <= 0 ? 'none' : 'inline-block';
-                    notifCountBadge.textContent = remainingCount + ' Baru';
-                }
-            }
-
-            initializeNotificationBadge();
+            // 7. Jalankan saat load
+            updateBadgeUI();
         });
     </script>
 

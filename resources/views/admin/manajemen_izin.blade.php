@@ -169,11 +169,11 @@
                             </select>
                         </div>
                         
-                        {{-- Hanya menerima Gambar & PDF --}}
+                        {{-- Hanya menerima Gambar --}}
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-bold small text-dark-emphasis">Upload Bukti (Opsional)</label>
-                            <input type="file" name="file_bukti" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                            <div class="form-text small text-muted">Format: JPG, PNG, PDF. Maks 2MB.</div>
+                            <input type="file" name="file_bukti" class="form-control" accept=".jpg,.jpeg,.png">
+                            <div class="form-text small text-muted">Format: JPG, PNG. Maks 2MB.</div>
                         </div>
                     </div>
                 </div>
@@ -253,11 +253,11 @@
                             <div class="form-text small">Hanya huruf, angka, spasi, titik, koma, strip, dan garis miring.</div>
                         </div>
                         
-                        {{-- Hanya menerima Gambar & PDF --}}
+                        {{-- Hanya menerima Gambar --}}
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold small text-dark-emphasis">Ganti Bukti (Opsional)</label>
-                            <input type="file" name="file_bukti" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                            <div class="form-text small text-muted">Format: JPG, PNG, PDF. Maks 2MB.</div>
+                            <input type="file" name="file_bukti" class="form-control" accept=".jpg,.jpeg,.png">
+                            <div class="form-text small text-muted">Format: JPG, PNG. Maks 2MB.</div>
                         </div>
                     </div>
                 </div>
