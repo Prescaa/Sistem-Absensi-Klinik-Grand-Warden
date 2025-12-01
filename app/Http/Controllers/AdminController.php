@@ -443,7 +443,6 @@ class AdminController extends Controller
             'min' => ':attribute minimal :min karakter.',
             'max' => ':attribute maksimal :max karakter.',
             'image' => ':attribute harus berupa gambar.',
-            // Pesan error khusus regex
             'nama.regex' => 'Nama tidak boleh mengandung simbol spesial atau angka. Hanya huruf, spasi, titik (.), koma (,), dan strip (-) yang diizinkan.',
             'departemen.regex' => 'Departemen tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
             'posisi.regex' => 'Posisi tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
@@ -454,7 +453,7 @@ class AdminController extends Controller
 
         $validated = $request->validate([
             'nama' => ['required', 'string', 'max:255', 'regex:' . self::NAMA_TEXT_REGEX],
-            'nip' => ['required', 'string', 'max:50', 'unique:employee,nip,' . $employee->emp_id . ',emp_id'],
+            'nip' => ['required', 'string', 'max:50', 'regex:/^[0-9]+$/', 'unique:employee,nip,' . $employee->emp_id . ',emp_id'],
             'departemen' => ['nullable', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
             'posisi' => ['nullable', 'string', 'max:100', 'regex:' . self::GENERAL_TEXT_REGEX],
             'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id', 'regex:' . self::USER_EMAIL_REGEX],
