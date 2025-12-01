@@ -287,7 +287,7 @@ class AdminController extends Controller
             'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
             'deskripsi' => ['required', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX],
             'status' => 'required|in:disetujui,pending,ditolak', // Tambahkan validasi status
-            'file_bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:' . self::MAX_IMAGE_SIZE,
+            'file_bukti' => 'nullable|file|mimes:jpg,jpeg,png|max:' . self::MAX_IMAGE_SIZE,
             'catatan_admin' => ['nullable', 'string', 'max:255', 'regex:' . self::GENERAL_TEXT_REGEX],
         ], $messages);
 
@@ -322,7 +322,7 @@ class AdminController extends Controller
             'deskripsi' => ['required', 'string', 'max:500', 'regex:' . self::GENERAL_TEXT_REGEX],
             'status' => 'required|in:pending,disetujui,ditolak',
             'catatan_admin' => ['nullable', 'string', 'max:255', 'regex:' . self::GENERAL_TEXT_REGEX],
-            'file_bukti' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:' . self::MAX_IMAGE_SIZE,
+            'file_bukti' => 'nullable|file|mimes:jpg,jpeg,png|max:' . self::MAX_IMAGE_SIZE,
         ], $messages);
 
         DB::transaction(function () use ($leave, $validated, $request) {
