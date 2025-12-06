@@ -10,14 +10,14 @@
         <div class="card-body p-4 p-md-5">
             <form action="{{ route('admin.profil.update') }}" method="POST" enctype="multipart/form-data" id="profileForm">
                 @csrf
-                @method('POST') 
-                
+                @method('POST')
+
                 <input type="hidden" name="hapus_foto" id="hapus_foto_input" value="0">
 
                 <div class="row align-items-center">
-                    
+
                     <div class="col-md-4 text-center d-flex flex-column justify-content-center align-items-center mb-5 mb-md-0" style="border-right: 1px solid #dee2e6; min-height: 400px;">
-                        
+
                         <div class="position-relative mb-4">
                             <div id="foto-preview-container">
                                 @if(isset($employee->foto_profil) && $employee->foto_profil)
@@ -28,16 +28,16 @@
                                     </div>
                                 @endif
                             </div>
-                            
+
                             <input type="file" id="foto_input" name="foto_profil" class="d-none" accept="image/*">
                         </div>
-                        
+
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-outline-primary px-4" onclick="document.getElementById('foto_input').click()">
                                 <i class="bi bi-camera-fill me-2"></i> Ganti Foto
                             </button>
 
-                            <button type="button" class="btn btn-outline-danger" id="btn-hapus-trigger" 
+                            <button type="button" class="btn btn-outline-danger" id="btn-hapus-trigger"
                                     data-bs-toggle="modal" data-bs-target="#deleteFotoModal"
                                     style="{{ (isset($employee->foto_profil) && $employee->foto_profil) ? '' : 'display:none;' }}">
                                 <i class="bi bi-trash-fill"></i>
@@ -46,7 +46,7 @@
                     </div>
 
                     <div class="col-md-8 ps-md-5">
-                        
+
                         <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-person-lines-fill me-2"></i>Informasi Pribadi</h5>
 
                         <div class="row mb-3">
@@ -59,7 +59,8 @@
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">NIP</label>
                                 <input type="text" name="nip" class="form-control bg-white border" value="{{ Auth::user()->employee->nip ?? '-' }}"
-                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                                        maxlength="20"
+                                        oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                                 <div class="form-text small">Hanya angka.</div>
                             </div>
                         </div>
@@ -76,7 +77,7 @@
                                 <input type="email" name="email" class="form-control bg-white border" value="{{ Auth::user()->email }}" required>
                             </div>
                         </div>
-                        
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">Jabatan</label>
@@ -95,22 +96,22 @@
                         </div>
 
                         <hr class="my-4">
-                        
+
                         <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-geo-alt-fill me-2"></i>Kontak & Alamat</h5>
-  
+
                         <div class="mb-3">
                             <label for="alamat" class="form-label fw-bold text-muted small">Alamat Rumah</label>
                             <textarea class="form-control" id="alamat" name="alamat" rows="2" placeholder="Masukkan alamat lengkap..."
                                       oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s.,\-\/]/g, '')">{{ Auth::user()->employee->alamat ?? '' }}</textarea>
                             <div class="form-text small">Hanya huruf, angka, titik, koma, strip, dan garis miring.</div>
                         </div>
-                        
+
                         <div class="mb-4">
                             <label for="no_telepon" class="form-label fw-bold text-muted small">Nomor Telepon</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-white"><i class="bi bi-telephone"></i></span>
-                                <input type="number" class="form-control" id="no_telepon" name="no_telepon" 
-                                       value="{{ Auth::user()->employee->no_telepon ?? '' }}" 
+                                <input type="number" class="form-control" id="no_telepon" name="no_telepon"
+                                       value="{{ Auth::user()->employee->no_telepon ?? '' }}"
                                        placeholder="Contoh: 081234567890">
                             </div>
                         </div>
@@ -139,7 +140,7 @@
                     </div>
                     <h5 class="fw-bold mb-2">Hapus Foto Profil?</h5>
                     <p class="text-muted small mb-4">Foto akan dihapus permanen dan diganti dengan inisial nama setelah Anda menyimpan perubahan.</p>
-                    
+
                     <div class="d-grid gap-2">
                         <button type="button" class="btn btn-danger fw-bold" id="btn-confirm-hapus">Ya, Hapus</button>
                         <button type="button" class="btn btn-light fw-bold" data-bs-dismiss="modal" id="btn-close-modal-batal">Batal</button>
@@ -157,12 +158,12 @@
     .btn-outline-primary { color: var(--primary-color); border-color: var(--primary-color); }
     .btn-outline-primary:hover { background-color: var(--primary-color); color: white; }
     .bg-primary { background-color: var(--primary-color) !important; }
-    
-    input[type=number]::-webkit-inner-spin-button, 
-    input[type=number]::-webkit-outer-spin-button { 
-        -webkit-appearance: none; margin: 0; 
+
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none; margin: 0;
     }
-    
+
     @media (max-width: 768px) {
         .col-md-4 { border-right: none !important; border-bottom: 1px solid #dee2e6; padding-bottom: 2rem; margin-bottom: 2rem !important; }
         .col-md-4[style*="min-height"] { min-height: auto !important; }
@@ -201,12 +202,12 @@
         const [file] = event.target.files;
         if (file) {
             hapusInput.value = "0";
-            container.innerHTML = ''; 
+            container.innerHTML = '';
             const newImg = document.createElement('img');
             newImg.src = URL.createObjectURL(file);
             newImg.className = "rounded-circle shadow-lg object-fit-cover";
-            newImg.style.width = "280px"; 
-            newImg.style.height = "280px"; 
+            newImg.style.width = "280px";
+            newImg.style.height = "280px";
             newImg.style.border = "5px solid #fff";
             container.appendChild(newImg);
 

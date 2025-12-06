@@ -27,15 +27,15 @@ class AdminController extends Controller
 
     // Regex untuk Teks Umum/Alamat/Deskripsi: Huruf, Angka, Spasi, ., , -, /
     private const GENERAL_TEXT_REGEX = '/^[a-zA-Z0-9\s\.\,\-\/]+$/';
-    
+
     // Regex untuk NAMA: Hanya Huruf dan Spasi
-    private const NAMA_TEXT_REGEX = '/^[a-zA-Z\s]+$/'; 
+    private const NAMA_TEXT_REGEX = '/^[a-zA-Z\s]+$/';
 
     // Regex untuk DEPARTEMEN & POSISI: Hanya Huruf dan Spasi
-    private const DEPARTEMEN_POSISI_TEXT_REGEX = '/^[a-zA-Z\s]+$/'; 
-    
+    private const DEPARTEMEN_POSISI_TEXT_REGEX = '/^[a-zA-Z\s]+$/';
+
     // Regex untuk Username: Hanya Huruf dan Angka
-    private const USERNAME_REGEX = '/^[a-zA-Z0-9]+$/'; 
+    private const USERNAME_REGEX = '/^[a-zA-Z0-9]+$/';
     // Regex untuk Telepon (Hanya Angka)
     private const PHONE_REGEX = '/^[0-9]+$/';
 
@@ -401,7 +401,7 @@ class AdminController extends Controller
             'username.regex' => 'Username hanya boleh mengandung huruf dan angka (tanpa spasi atau simbol).',
             'no_telepon.regex' => 'Nomor telepon hanya boleh mengandung angka.',
             'alamat.regex' => 'Alamat tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
-            
+
             // PESAN SPESIFIK UNTUK FILE FOTO PROFIL
             'foto_profil.image' => 'Foto profil harus berupa gambar.',
             'foto_profil.mimes' => 'Format foto profil harus JPG, JPEG, atau PNG.',
@@ -410,10 +410,10 @@ class AdminController extends Controller
         // JANGAN MENGGUNAKAN 'foto_profil.required' di sini, biarkan Laravel yang menangani image, mimes, dan max.
         $validated = $request->validate([
             'nama' => ['required', 'string', 'max:255', 'regex:' . self::NAMA_TEXT_REGEX],
-            'nip' => ['required', 'string', 'max:50', 'regex:' . self::PHONE_REGEX, 'unique:employee'],
+            'nip' => ['required', 'string', 'max:20', 'regex:' . self::PHONE_REGEX, 'unique:employee'],
             'departemen' => ['nullable', 'string', 'max:100', 'regex:' . self::DEPARTEMEN_POSISI_TEXT_REGEX],
             'posisi' => ['nullable', 'string', 'max:100', 'regex:' . self::DEPARTEMEN_POSISI_TEXT_REGEX],
-            'username' => ['required', 'string', 'max:100', 'unique:user', 'regex:' . self::USERNAME_REGEX], 
+            'username' => ['required', 'string', 'max:100', 'unique:user', 'regex:' . self::USERNAME_REGEX],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', 'in:Karyawan,Admin,Manajemen'],
             'no_telepon' => ['nullable', 'string', 'max:20', 'regex:' . self::PHONE_REGEX],
@@ -448,7 +448,7 @@ class AdminController extends Controller
             'username.regex' => 'Username hanya boleh mengandung huruf dan angka (tanpa spasi atau simbol).',
             'no_telepon.regex' => 'Nomor telepon hanya boleh mengandung angka.',
             'alamat.regex' => 'Alamat tidak boleh mengandung simbol spesial. Hanya huruf, angka, spasi, titik (.), koma (,), strip (-), dan garis miring (/) yang diizinkan.',
-            
+
             // PESAN SPESIFIK UNTUK FILE FOTO PROFIL
             'foto_profil.image' => 'Foto profil harus berupa gambar.',
             'foto_profil.mimes' => 'Format foto profil harus JPG, JPEG, atau PNG.',
@@ -456,7 +456,7 @@ class AdminController extends Controller
 
         $validated = $request->validate([
             'nama' => ['required', 'string', 'max:255', 'regex:' . self::NAMA_TEXT_REGEX],
-            'nip' => ['required', 'string', 'max:50', 'regex:' . self::PHONE_REGEX, 'unique:employee,nip,' . $employee->emp_id . ',emp_id'],
+            'nip' => ['required', 'string', 'max:20', 'regex:' . self::PHONE_REGEX, 'unique:employee,nip,' . $employee->emp_id . ',emp_id'],
             'departemen' => ['nullable', 'string', 'max:100', 'regex:' . self::DEPARTEMEN_POSISI_TEXT_REGEX],
             'posisi' => ['nullable', 'string', 'max:100', 'regex:' . self::DEPARTEMEN_POSISI_TEXT_REGEX],
             'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id', 'regex:' . self::USERNAME_REGEX],
@@ -702,13 +702,13 @@ class AdminController extends Controller
     // =================================================================
     // SELF ATTENDANCE (ADMIN SELF-SERVICE)
     // =================================================================
-    
+
     public function showProfil(): \Illuminate\View\View
     {
         $user = Auth::user();
         // Asumsi admin juga punya entri di tabel employee untuk data profil
-        $employee = $user->employee; 
-        
+        $employee = $user->employee;
+
         return view('admin.profil', compact('user', 'employee'));
     }
 
@@ -731,7 +731,7 @@ class AdminController extends Controller
             'departemen.regex' => 'Departemen hanya boleh mengandung huruf dan spasi.',
             'no_telepon.regex' => 'Nomor telepon hanya boleh mengandung angka.',
             'email.unique' => 'Email ini sudah digunakan oleh akun lain.',
-            
+
             // PESAN SPESIFIK UNTUK FILE FOTO PROFIL
             'foto_profil.image' => 'Foto profil harus berupa gambar.',
             'foto_profil.mimes' => 'Format foto profil harus JPG, JPEG, atau PNG.',
@@ -740,9 +740,9 @@ class AdminController extends Controller
         // Validasi diperketat untuk input dari form profil admin
         $validated = $request->validate([
             'nama' => ['required', 'string', 'max:255', 'regex:' . self::NAMA_TEXT_REGEX],
-            'nip' => ['nullable', 'string', 'max:50', 'regex:' . self::PHONE_REGEX, 'unique:employee,nip,' . $employee->emp_id . ',emp_id'], 
+            'nip' => ['nullable', 'string', 'max:20', 'regex:' . self::PHONE_REGEX, 'unique:employee,nip,' . $employee->emp_id . ',emp_id'],
             'username' => ['required', 'string', 'max:100', 'unique:user,username,' . $user->user_id . ',user_id', 'regex:' . self::USERNAME_REGEX],
-            'email' => ['required', 'email', 'max:255', 'unique:user,email,' . $user->user_id . ',user_id'], 
+            'email' => ['required', 'email', 'max:255', 'unique:user,email,' . $user->user_id . ',user_id'],
             'posisi' => ['nullable', 'string', 'max:100', 'regex:' . self::DEPARTEMEN_POSISI_TEXT_REGEX],
             'departemen' => ['nullable', 'string', 'max:100', 'regex:' . self::DEPARTEMEN_POSISI_TEXT_REGEX],
             'no_telepon' => ['nullable', 'string', 'max:20', 'regex:' . self::PHONE_REGEX],
@@ -783,7 +783,7 @@ class AdminController extends Controller
 
         return redirect()->route('admin.profil.show')->with('success', 'Profil Admin berhasil diperbarui.');
     }
-    
+
     public function showUnggah(): \Illuminate\View\View|\Illuminate\Http\RedirectResponse
     {
         $user = Auth::user();
