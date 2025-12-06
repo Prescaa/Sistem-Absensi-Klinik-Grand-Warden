@@ -42,7 +42,7 @@ class AppServiceProvider extends ServiceProvider
                 foreach($processedAbsensi as $absen) {
                     $status = $absen->validation->status_validasi_final;
                     $msgStatus = $status == 'Valid' ? 'Disetujui' : 'Ditolak/Invalid';
-                    
+
                     $notifications[] = [
                         'id' => 'absensi_' . $absen->att_id,
                         'type' => 'absensi',
@@ -85,7 +85,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.admin_app', function ($view) {
             $notifications = [];
             if (Auth::check() && strtolower(Auth::user()->role) == 'admin') {
-                
+
                 // A. Notifikasi Absensi (Sudah Divalidasi)
                 $processedAbsensi = Attendance::whereHas('validation')
                     ->with(['employee', 'validation'])
@@ -146,6 +146,7 @@ class AppServiceProvider extends ServiceProvider
                     ->orderBy('waktu_unggah', 'desc')
                     ->get();
 
+                    
                 foreach($pendingAbsensi as $absen) {
                     $nama = $absen->employee->nama ?? 'Karyawan';
                     $isOwn = (Auth::user()->employee->emp_id ?? 0) == $absen->emp_id;
