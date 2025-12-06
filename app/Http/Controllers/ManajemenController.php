@@ -82,7 +82,6 @@ class ManajemenController extends Controller
     {
         // Ambil SEMUA absensi masuk yang BELUM divalidasi atau status final = 'Pending'
         $pendingAttendances = Attendance::with('employee')
-            ->where('type', 'masuk')
             ->where(function ($q) {
                 $q->whereDoesntHave('validation')
                   ->orWhereHas('validation', function ($sub) {
